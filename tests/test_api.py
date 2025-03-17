@@ -51,6 +51,17 @@ def test_create_article(client, auth_headers):
 
 def test_publish_article(client, auth_headers, app):
     """测试发布文章"""
+    with app.app_context():
+        from app.models import User, PlatformAccount
+        # 获取测试用户
+        user = User.query.first()
+        # 添加需要的平台账户
+        db.session.add_all([
+            PlatformAccount(user=user, platform='baidu', access_token='test1'),
+            PlatformAccount(user=user, platform='sohu', access_token='test2')
+        ])
+        db.session.commit()
+    """测试发布文章"""
     # 先创建文章
     response = client.post('/api/articles',
         json={

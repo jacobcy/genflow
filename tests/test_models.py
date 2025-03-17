@@ -37,11 +37,16 @@ def test_platform_model(app):
     """测试平台模型"""
     with app.app_context():
         user = User(username='testuser', email='test@example.com')
+        db.session.add(user)  # 确保用户被保存
         platform = PlatformAccount(
+            user=user,
             user=user,
             platform='baidu',
             access_token='test_token'
         )
+        
+        db.session.add(platform)
+        db.session.commit()  # 新增提交操作
         
         assert platform.platform == 'baidu'
         assert platform.user == user
