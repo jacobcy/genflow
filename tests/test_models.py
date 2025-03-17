@@ -40,7 +40,7 @@ def test_platform_model(app):
         db.session.add(user)  # 确保用户被保存
         db.session.commit()  # 必须单独提交用户
         
-        assert PlatformAccount.query.count() == 1  # 添加验证查询
+        assert PlatformAccount.query.count() == 0  # 先验证初始状态
         platform = PlatformAccount(
             user=user,
             platform='baidu',
@@ -50,5 +50,6 @@ def test_platform_model(app):
         db.session.add(platform)
         db.session.commit()  # 新增提交操作
         
+        assert PlatformAccount.query.count() == 1  # 移到提交之后
         assert platform.platform == 'baidu'
         assert platform.user == user
