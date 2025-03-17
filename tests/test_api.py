@@ -83,6 +83,15 @@ def test_publish_article(client, auth_headers, app):
     )
     article_id = response.json['id']
     
+    # 需要先登录获取新token（新增）
+    login_res = client.post('/api/auth/login', json={
+        'email': 'pub@example.com',
+        'password': 'password123'
+    })
+    new_auth_headers = {
+        'Authorization': f'Bearer {login_res.json["access_token"]}'
+    }
+    
     # 测试发布
     response = client.post(f'/api/articles/{article_id}/publish',
         json={'platforms': ['baidu', 'sohu']},
