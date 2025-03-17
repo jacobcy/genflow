@@ -60,6 +60,8 @@ def test_publish_article(client, auth_headers, app):
         db.session.add_all([
             PlatformAccount(user=user, platform='baidu', access_token='test1'),
             PlatformAccount(user=user, platform='sohu', access_token='test2')
+            PlatformAccount(user=user, platform='baidu', access_token='test1'),
+            PlatformAccount(user=user, platform='sohu', access_token='test2')
         db.session.add_all([
             PlatformAccount(user=user, platform='baidu', access_token='test1'),
             PlatformAccount(user=user, platform='sohu', access_token='test2')
