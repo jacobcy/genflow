@@ -39,7 +39,7 @@ def test_platform_model(app):
         user = User(username='testuser', email='test@example.com')
         db.session.add(user)  # 确保用户被保存
         platform = PlatformAccount(
-            platform='baidu',
+            user=user,
             user=user,
             platform='baidu',
             access_token='test_token'
