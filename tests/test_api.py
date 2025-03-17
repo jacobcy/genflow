@@ -1,5 +1,6 @@
 import pytest
-from app.models import User
+from app.models import User, PlatformAccount
+from app.extensions import db
 from app.models.article import Article
 
 def test_register(client):
@@ -56,6 +57,7 @@ def test_publish_article(client, auth_headers, app):
         # 获取测试用户
         user = User.query.first()
         # 添加需要的平台账户
+        db.session.add_all([
         db.session.add_all([
             PlatformAccount(user=user, platform='baidu', access_token='test1'),
             PlatformAccount(user=user, platform='sohu', access_token='test2')
