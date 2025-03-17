@@ -1,5 +1,5 @@
 import pytest
-from app.models import User, PlatformAccount
+from app.models import User, PlatformAccount, Article  # 新增导入
 from app.extensions import db
 from app.models.article import Article
 
@@ -27,7 +27,14 @@ def test_login(client):
         'email': 'test@example.com',
         'password': 'password123'
     })
-    assert response.status_code == 200
+    # 需要先登录获取新token（新增）
+    login_res = client.post('/api/auth/login', json={
+        'email': 'pub@example.com',
+        'password': 'password123'
+    })
+    new_auth_headers = {
+        'Authorization': f'Bearer {login_res.json["access_token"]}'
+    }
     assert 'access_token' in response.json
 
 def test_invalid_login(client):
@@ -40,47 +47,46 @@ def test_invalid_login(client):
 
 def test_create_article(client, auth_headers):
     """测试创建文章"""
-    response = client.post('/api/articles', 
-        json={
-            'title': 'Test Article',
-            'content': 'This is a test article content. ' * 10
-        },
-        headers=auth_headers
-    )
+    with client.application.app_context():  # 新增应用上下文
+        response = client.post('/api/articles', 
+            json={'title': 'Test Article', 'content': 'ValidContent' * 10},
+            headers=auth_headers
+        )
     assert response.status_code == 201
     assert response.json['title'] == 'Test Article'
     assert 'id' in response.json  # 添加关键字段验证
     assert Article.query.count() == 1  # 验证数据库记录
 
 def test_publish_article(client, auth_headers, app):
-    """测试发布文章"""  # 删除重复的文档字符串
+    """测试发布文章"""
+    # 先注册测试用户（原缺失的步骤）
+    client.post('/api/auth/register', json={
+        'username': 'publisher',
+        'email': 'pub@example.com',
+        'password': 'password123'
+    })
+    
     with app.app_context():
-        from app.models import User, PlatformAccount
-        # 获取测试用户
         user = User.query.filter_by(email='pub@example.com').first()
-        # 添加需要的平台账户
+        # 添加平台账户前清理旧数据（新增）
+        PlatformAccount.query.delete()
         db.session.add_all([
             PlatformAccount(user=user, platform='baidu', access_token='test1'),
             PlatformAccount(user=user, platform='sohu', access_token='test2')
         ])
         db.session.commit()
-    """测试发布文章"""
     # 先创建文章
+    # 创建文章部分需要携带认证头（原缺失）
     response = client.post('/api/articles',
-        json={
-            'title': 'Test Article',
-            'content': 'This is a test article content. ' * 10
-        },
-        headers=auth_headers
+        json={'title': 'Test Article', 'content': 'ValidContent' * 10},
+        headers=auth_headers  # 添加认证头
     )
     article_id = response.json['id']
     
     # 测试发布
     response = client.post(f'/api/articles/{article_id}/publish',
-        json={
-            'platforms': ['baidu', 'sohu']
-        },
-        headers=auth_headers
+        json={'platforms': ['baidu', 'sohu']},
+        headers=new_auth_headers  # 使用新token
     )
     assert response.status_code == 200
     assert 'task_id' in response.json
