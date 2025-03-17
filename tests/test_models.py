@@ -38,6 +38,9 @@ def test_platform_model(app):
     with app.app_context():
         user = User(username='testuser', email='test@example.com')
         db.session.add(user)  # 确保用户被保存
+        db.session.commit()  # 必须单独提交用户
+        
+        assert PlatformAccount.query.count() == 1  # 添加验证查询
         platform = PlatformAccount(
             user=user,
             platform='baidu',
