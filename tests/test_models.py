@@ -40,8 +40,8 @@ def test_platform_model(app):
         db.session.add(user)  # 确保用户被保存
         platform = PlatformAccount(
             user=user,
-            platform='baidu',  # 参数顺序修正
-            access_token='test_token'  # 删除重复参数
+            platform='baidu',
+            access_token='test_token'
         )
         
         db.session.add(platform)
