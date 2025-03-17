@@ -39,11 +39,9 @@ def test_platform_model(app):
         user = User(username='testuser', email='test@example.com')
         db.session.add(user)  # 确保用户被保存
         platform = PlatformAccount(
-            platform='baidu',
-            access_token='test_token'
             user=user,
-            platform='baidu',
-            access_token='test_token'
+            platform='baidu',  # 参数顺序修正
+            access_token='test_token'  # 删除重复参数
         )
         
         db.session.add(platform)
