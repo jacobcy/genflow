@@ -49,13 +49,15 @@ def test_create_article(client, auth_headers):
     )
     assert response.status_code == 201
     assert response.json['title'] == 'Test Article'
+    assert 'id' in response.json  # 添加关键字段验证
+    assert Article.query.count() == 1  # 验证数据库记录
 
 def test_publish_article(client, auth_headers, app):
-    """测试发布文章"""
+    """测试发布文章"""  # 删除重复的文档字符串
     with app.app_context():
         from app.models import User, PlatformAccount
         # 获取测试用户
-        user = User.query.first()
+        user = User.query.filter_by(email='pub@example.com').first()
         # 添加需要的平台账户
         db.session.add_all([
             PlatformAccount(user=user, platform='baidu', access_token='test1'),
