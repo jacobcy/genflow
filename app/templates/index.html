@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}智汇导航 - AI赋能的内容变现平台{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='css/index.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-8 d-flex align-items-center">
+            <div class="hero-section">
+                <h1 class="display-4 mb-4">AI赋能的数字内容平台</h1>
+                <p class="lead mb-4">
+                    智汇MCN是领先的数字内容机构，专注于创作者孵化、内容分发和品牌合作。我们为创作者提供从内容策划、制作到多平台分发的全链路服务，帮助创作者实现内容价值最大化。
+                </p>
+
+                <div class="row g-4 mb-4 feature-section">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-chart-line feature-icon"></i>
+                            <h5>内容分发</h5>
+                            <p>覆盖主流平台的全渠道分发网络</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-brain feature-icon"></i>
+                            <h5>创作者孵化</h5>
+                            <p>专业的创作者培训与成长体系</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-network-wired feature-icon"></i>
+                            <h5>品牌合作</h5>
+                            <p>丰富的品牌资源与商业变现机会</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 d-flex align-items-center">
+            <div id="login" class="login-card sticky-top" style="top: 2rem;">
+                <h3 class="mb-4">用户登录</h3>
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">邮箱</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">密码</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100" id="loginButton">
+                        <i class="fas fa-sign-in-alt me-2"></i>登录
+                    </button>
+                    <div id="errorMessage" class="mt-3"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="stats-section">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-4 stat-item">
+                <div class="stat-number">100+</div>
+                <div class="stat-label">签约创作者</div>
+            </div>
+            <div class="col-md-4 stat-item">
+                <div class="stat-number">10M+</div>
+                <div class="stat-label">月均播放量</div>
+            </div>
+            <div class="col-md-4 stat-item">
+                <div class="stat-number">50+</div>
+                <div class="stat-label">合作品牌</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    <h2 class="mb-4 text-center">我们的价值</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">技术驱动</h5>
+                    <p class="card-text">我们采用先进的AI技术，为内容创作和分发提供智能解决方案。</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">数据赋能</h5>
+                    <p class="card-text">通过大数据分析，帮助创作者精准定位受众，优化内容策略。</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">全链路服务</h5>
+                    <p class="card-text">从内容策划、制作到多平台分发，提供一站式解决方案。</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">资源整合</h5>
+                    <p class="card-text">整合行业资源，为创作者提供更多商业变现机会。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="bg-dark text-white py-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <h5>关于我们</h5>
+                <p>智汇MCN是领先的数字内容机构，致力于帮助创作者实现内容价值最大化。</p>
+            </div>
+            <div class="col-md-4">
+                <h5>联系我们</h5>
+                <ul class="list-unstyled">
+                    <li>电话: 123-456-7890</li>
+                    <li>邮箱: info@zhihuimcn.com</li>
+                    <li>地址: 北京市朝阳区XX路XX号</li>
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <h5>关注我们</h5>
+                <div class="social-links">
+                    <a href="#" class="text-white me-3"><i class="fab fa-weixin"></i></a>
+                    <a href="#" class="text-white me-3"><i class="fab fa-weibo"></i></a>
+                    <a href="#" class="text-white"><i class="fab fa-douyin"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/index.js') }}"></script>
+{% endblock %}

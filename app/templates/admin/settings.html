@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}系统设置{% endblock %}
+
+{# 隐藏基础模板的导航栏 #}
+{% set hide_nav = true %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='css/admin.css') }}" rel="stylesheet">
+<style>
+    body {
+        padding-top: 0 !important;
+        background-color: var(--bg-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrapper">
+    <!-- 侧边栏 -->
+    <aside class="admin-sidebar">
+        <div class="admin-sidebar-header">
+            <h1 class="admin-sidebar-title">智汇导航</h1>
+        </div>
+        <div class="admin-sidebar-content">
+            <nav>
+                <ul class="admin-nav">
+                    <li class="admin-nav-item">
+                        <a href="{{ url_for('admin.dashboard') }}" class="admin-nav-link">
+                            <i class="fas fa-tachometer-alt"></i>仪表盘
+                        </a>
+                    </li>
+                    <li class="admin-nav-item">
+                        <a href="{{ url_for('admin.settings') }}" class="admin-nav-link active">
+                            <i class="fas fa-cog"></i>系统设置
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <div class="admin-sidebar-footer">
+            <button id="theme-toggle" class="btn btn-outline-secondary w-100 mb-2">
+                <i class="fas fa-moon"></i>
+                <span>切换主题</span>
+            </button>
+            <button id="logout-btn" class="btn btn-danger w-100">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>退出登录</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- 主内容区域 -->
+    <main class="admin-content">
+        <header class="admin-header">
+            <h2 class="admin-title">系统设置</h2>
+            <div class="admin-toolbar">
+                <span class="admin-welcome">欢迎回来，{{ username }}</span>
+            </div>
+        </header>
+
+        <div class="row">
+            <!-- 数据库设置 -->
+            <div class="col-md-6 mb-4">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3 class="admin-card-title">数据库设置</h3>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="form-group mb-3">
+                            <label class="form-label">数据库类型</label>
+                            <input type="text" class="form-control" value="{{ db_type }}" readonly>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">数据库路径</label>
+                            <input type="text" class="form-control" value="{{ db_host }}" readonly>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">数据库名称</label>
+                            <input type="text" class="form-control" value="{{ db_name }}" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统信息 -->
+            <div class="col-md-6 mb-4">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3 class="admin-card-title">系统信息</h3>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="form-group mb-3">
+                            <label class="form-label">运行环境</label>
+                            <input type="text" class="form-control" value="{{ env }}" readonly>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">调试模式</label>
+                            <input type="text" class="form-control" value="{{ 'Yes' if debug_mode else 'No' }}"
+                                readonly>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">Python 版本</label>
+                            <input type="text" class="form-control" value="{{ python_version }}" readonly>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">当前时间</label>
+                            <input type="text" class="form-control" value="{{ current_time }}" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 缓存设置 -->
+            <div class="col-md-6 mb-4">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3 class="admin-card-title">缓存设置</h3>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="form-group mb-3">
+                            <label class="form-label">缓存类型</label>
+                            <input type="text" class="form-control" value="{{ cache_type }}" readonly>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">缓存地址</label>
+                            <input type="text" class="form-control" value="{{ cache_host }}" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 日志设置 -->
+            <div class="col-md-6 mb-4">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3 class="admin-card-title">日志设置</h3>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="form-group mb-3">
+                            <label class="form-label">日志级别</label>
+                            <input type="text" class="form-control" value="{{ log_level }}" readonly>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">日志路径</label>
+                            <input type="text" class="form-control" value="{{ log_path }}" readonly>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">日志保留天数</label>
+                            <input type="text" class="form-control" value="{{ log_retention }}" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // 主题切换
+        const themeToggle = document.getElementById('theme-toggle');
+        themeToggle.addEventListener('click', function () {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+
+            // 更新图标
+            const icon = this.querySelector('i');
+            if (newTheme === 'dark') {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+        });
+
+        // 退出登录
+        const logoutBtn = document.getElementById('logout-btn');
+        logoutBtn.addEventListener('click', async function () {
+            try {
+                const response = await fetch('/admin/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    window.location.href = '/admin/login';
+                } else {
+                    throw new Error('退出登录失败');
+                }
+            } catch (error) {
+                console.error('退出登录错误:', error);
+                alert('退出登录失败，请重试');
+            }
+        });
+
+        // 设置初始主题
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        if (savedTheme === 'dark') {
+            const icon = themeToggle.querySelector('i');
+            icon.classList.remove('fa-moon');
+            icon.classList.add('fa-sun');
+        }
+    });
+</script>
+{% endblock %}

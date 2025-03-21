@@ -1,0 +1,152 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "genflow"
+version = "0.1.0"
+description = "GenFlow - AI Agent Flow Engine"
+authors = [
+    {name = "GenFlow Team", email = "team@genflow.dev"},
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # Core Dependencies
+    "python-dotenv>=1.0.1",
+    "pydantic>=2.6.1",
+    "httpx>=0.23.0,<0.28.0",
+    "requests>=2.31.0",
+    "werkzeug>=3.0.0",
+    "click>=8.1.0",
+    "cryptography>=41.0.0",
+
+    # Framework
+    "fastapi>=0.110.0",
+    "uvicorn>=0.27.1",
+    "sse-starlette>=1.6.5",
+    "flask>=3.0.2",
+    "flask-sqlalchemy>=3.1.1",
+    "flask-migrate>=4.0.5",
+    "flask-login>=0.6.3",
+    "flask-jwt-extended>=4.6.0",
+    "flask-cors>=4.0.0",
+    "gunicorn>=21.2.0",
+    "markupsafe>=2.1.5",
+    "gradio>=4.19.2",
+    "gradio-client>=0.12.1",
+    "jinja2>=3.1.3",
+    "itsdangerous>=2.1.2",
+    "mako>=1.3.2",
+    "pyjwt>=2.8.0",
+    "sniffio>=1.3.1",
+    
+    # Database & Storage
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.1",
+    "psycopg2-binary>=2.9.9",
+    "redis>=5.0.1",
+    
+    # AI & Language Models
+    "openai>=1.12.0",
+    "transformers>=4.30.0",
+    "tiktoken>=0.9.0",
+    
+    # LangChain Ecosystem
+    "langchain-community>=0.3.19",
+    "langchain-experimental>=0.3.4",
+    "langchain-openai>=0.3.8",
+    "langchain-deepseek>=0.1.2",
+    "langgraph>=0.3.5",
+    "litellm==1.60.2",
+    
+    # Task Management & Agents
+    "crewai>=0.108.0",
+    "instructor>=1.7.0",
+    "celery>=5.3.0",
+    
+    # NLP & Text Processing
+    "nltk>=3.9.0",
+    "readabilipy>=0.3.0",
+    
+    # Data Processing
+    "pandas>=2.2.3",
+    "numpy>=2.2.3",
+    "yfinance>=0.2.54",
+    
+    # Web & Scraping
+    "browser-use>=0.1.0",
+    "beautifulsoup4>=4.12.2",
+    "selenium>=4.10.0",
+    
+    # Telemetry & Monitoring
+    "opentelemetry-api>=1.31.0",
+    "opentelemetry-sdk>=1.31.0",
+    "opentelemetry-semantic-conventions>=0.44b0",
+    "opentelemetry-exporter-otlp>=1.22.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.22.0",
+    "opentelemetry-exporter-otlp-proto-common>=1.22.0",
+    "opentelemetry-proto>=1.22.0",
+    "grpcio>=1.60.0",
+    "protobuf>=4.25.0",  # Google Protocol Buffers
+    "googleapis-common-protos>=1.62.0",  # Google API Common Protos
+    
+    # ChromaDB Dependencies
+    "chromadb>=0.4.24",
+    "onnxruntime>=1.17.0",
+    "tenacity>=8.2.3",
+    "overrides>=7.7.0",
+    "deprecated>=1.2.14",
+    "wrapt>=1.16.0",
+    
+    # Utilities
+    "tqdm>=4.66.0",
+    "pyyaml>=0.7.0",
+    "json-repair>=0.7.0",
+    "typing-extensions>=4.9.0",
+    "annotated-types>=0.6.0",
+    "pydantic-core>=2.14.5",
+    "idna>=3.6",
+    "tokenizers>=0.15.0",
+    "importlib-metadata>=7.0.1",
+    "appdirs>=1.4.4",
+    "blinker>=1.7.0",
+    "markdown>=3.5.2",
+    "email_validator>=2.1.1",
+    "markdownify>=0.11.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.1.1",
+    "isort>=5.13.2",
+    "flake8>=7.0.0",
+    "mypy>=1.8.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.5",
+    "pytest-cov>=4.1.0"
+]
+
+[project.scripts]
+genflow = "run:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src", "app"]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.pytest.ini_options]
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+python_files = ["test_*.py", "*_test.py"]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+^/build/
+'''

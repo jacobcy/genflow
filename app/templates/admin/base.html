@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}管理后台{% endblock %}</title>
+
+    <!-- 引入 CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    {% block styles %}{% endblock %}
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <div id="wrapper">
+        <!-- 侧边栏 -->
+        {% if not hide_sidebar %}
+        <div id="sidebar">
+            <div class="sidebar-header">
+                <h3>管理后台</h3>
+                <button id="sidebarToggle" class="btn btn-link">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('admin.dashboard') }}"><i class="fas fa-home"></i> 仪表盘</a></li>
+                    <li><a href="{{ url_for('admin.settings') }}"><i class="fas fa-cog"></i> 系统设置</a></li>
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+
+        <!-- 主要内容区域 -->
+        <div id="content">
+            <!-- 顶部导航栏 -->
+            {% if not hide_navbar %}
+            <nav class="navbar">
+                <div class="navbar-left">
+                    {% if not hide_sidebar %}
+                    <button id="sidebarCollapseBtn" class="btn btn-link">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="navbar-right">
+                    <!-- 主题切换按钮 -->
+                    <button id="themeToggle" class="btn btn-link" title="切换主题">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    {% if not hide_logout %}
+                    <button id="adminLogoutBtn" class="btn btn-link">
+                        <i class="fas fa-sign-out-alt"></i> 退出
+                    </button>
+                    {% endif %}
+                </div>
+            </nav>
+            {% endif %}
+
+            <!-- 主要内容 -->
+            <div class="container">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入 JavaScript -->
+    <script src="{{ url_for('static', filename='js/admin/common.js') }}" type="module"></script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

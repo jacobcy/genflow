@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "6060:6060"
+    env_file: .env
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - .:/app
+    command: gunicorn --bind 0.0.0.0:6060 wsgi:app
+
+  celery:
+    build: .
+    env_file: .env
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    command: celery -A wsgi.celery worker --loglevel=info
+
+  db:
+    image: postgres:13
+    container_name: genflow_db
+    environment:
+      POSTGRES_DB: genflow_dev
+      POSTGRES_USER: your_user
+      POSTGRES_PASSWORD: your_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network: 
