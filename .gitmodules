@@ -1,0 +1,9 @@
+[submodule "integrations/md"]
+	path = integrations/md
+	url = https://github.com/jacobcy/md.git
+[submodule "integrations/langmanus"]
+	path = integrations/langmanus
+	url = https://github.com/jacobcy/langmanus.git
+[submodule "integrations/langmanus-web"]
+	path = integrations/langmanus-web
+	url = https://github.com/jacobcy/langmanus-web.git
