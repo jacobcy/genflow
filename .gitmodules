@@ -7,3 +7,6 @@
 [submodule "integrations/langmanus-web"]
 	path = integrations/langmanus-web
 	url = https://github.com/jacobcy/langmanus-web.git
+[submodule "integrations/daily-hot-api"]
+	path = integrations/daily-hot-api
+	url = https://github.com/jacobcy/DailyHotApi.git
