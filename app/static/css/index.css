@@ -8,18 +8,19 @@
     --primary-color: #0d6efd;
     --shadow-color: rgba(0, 0, 0, 0.1);
     --accent-color: #6c757d;
+    --muted-color: #6c757d;
 }
 
-[data-theme="dark"] {
-    --bg-color: #1a1a1a;
+[data-bs-theme="dark"] {
+    --bg-color: #212529;
     --text-color: #f8f9fa;
-    --card-bg: #2d2d2d;
+    --card-bg: #2c3034;
     --card-text: #f8f9fa;
-    --nav-bg: #212529;
+    --nav-bg: #2c3034;
     --nav-text: #f8f9fa;
     --primary-color: #0d6efd;
     --shadow-color: rgba(0, 0, 0, 0.3);
-    --muted-color: #a8a8a8;
+    --muted-color: #adb5bd;
     --accent-color: #adb5bd;
 }
 
@@ -27,6 +28,7 @@ body {
     background: linear-gradient(135deg, var(--bg-color), var(--card-bg));
     min-height: 100vh;
     color: var(--text-color);
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 .hero-section {
@@ -35,6 +37,7 @@ body {
     padding: 4rem;
     margin-top: 5rem;
     box-shadow: 0 0.5rem 1rem var(--shadow-color);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .hero-section h1 {
@@ -42,86 +45,97 @@ body {
     font-size: 3rem;
     font-weight: 700;
     margin-bottom: 1.5rem;
+    transition: color 0.3s ease;
 }
 
 .hero-section p {
     color: var(--muted-color);
     font-size: 1.25rem;
     margin-bottom: 2rem;
+    transition: color 0.3s ease;
 }
 
 .feature-icon {
-    font-size: 2rem;
-    display: block;
-    margin: 0 auto 1rem;
+    font-size: 2.5rem;
     color: var(--primary-color);
+    margin-bottom: 1rem;
+    transition: color 0.3s ease;
 }
 
 .login-card {
     background: var(--card-bg);
     border-radius: 1rem;
-    padding: 2.5rem;
+    padding: 2rem;
     box-shadow: 0 0.5rem 1rem var(--shadow-color);
     margin-top: 5rem;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .navbar {
-    background-color: var(--nav-bg) !important;
+    background-color: var(--nav-bg);
+    transition: background-color 0.3s ease;
 }
 
 .navbar-brand {
-    color: var(--nav-text) !important;
+    color: var(--nav-text);
+    transition: color 0.3s ease;
 }
 
 .btn-primary {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
+    transition: all 0.3s ease;
 }
 
 .stats-section {
+    padding: 4rem 0;
     background: var(--card-bg);
-    padding: 3rem 0;
-    margin: 3rem 0;
-    box-shadow: 0 0.25rem 0.5rem var(--shadow-color);
+    margin-top: 4rem;
+    transition: background-color 0.3s ease;
 }
 
 .stat-item {
     text-align: center;
-    padding: 1rem;
+    padding: 2rem;
 }
 
 .stat-number {
     font-size: 2.5rem;
-    font-weight: bold;
+    font-weight: 700;
     color: var(--primary-color);
+    margin-bottom: 0.5rem;
+    transition: color 0.3s ease;
 }
 
 .stat-label {
-    color: var(--accent-color);
-    margin-top: 0.5rem;
+    color: var(--muted-color);
     font-size: 1.1rem;
+    transition: color 0.3s ease;
 }
 
 .creator-card {
     background: var(--card-bg);
     border-radius: 1rem;
-    padding: 1.5rem;
-    box-shadow: 0 0.5rem 1rem var(--shadow-color);
-    transition: transform 0.2s ease;
-    text-align: center;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 0.25rem 0.5rem var(--shadow-color);
+    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
 }
 
 .creator-card:hover {
     transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem var(--shadow-color);
 }
 
 .creator-avatar {
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    object-fit: cover;
     margin-bottom: 1rem;
+    object-fit: cover;
     border: 3px solid var(--primary-color);
+    transition: border-color 0.3s ease;
 }
 
 .creator-name {
@@ -129,95 +143,97 @@ body {
     font-size: 1.25rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
+    transition: color 0.3s ease;
 }
 
 .creator-bio {
     color: var(--muted-color);
     font-size: 0.9rem;
     line-height: 1.5;
+    transition: color 0.3s ease;
 }
 
 .card {
     background: var(--card-bg);
-    border: 1px solid rgba(0, 0, 0, 0.125);
-    border-radius: 0.5rem;
-    transition: all 0.2s ease;
-    margin-bottom: 1rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    margin-bottom: 2rem;
+    overflow: hidden;
 }
 
 .card-body {
-    padding: 1.5rem;
+    padding: 2rem;
 }
 
 .card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-5px);
     box-shadow: 0 0.5rem 1rem var(--shadow-color);
 }
 
 .card-title {
     color: var(--text-color);
-    margin-bottom: 0.75rem;
+    font-weight: 600;
+    transition: color 0.3s ease;
 }
 
 .card-text {
     color: var(--muted-color);
-    margin-bottom: 0;
+    transition: color 0.3s ease;
 }
 
 .feature-section {
-    padding: 4rem 0;
+    margin-top: 4rem;
 }
 
 .feature-section h2 {
-    text-align: center;
-    margin-bottom: 3rem;
     color: var(--text-color);
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    transition: color 0.3s ease;
 }
 
 .feature-section h5 {
     color: var(--text-color);
     font-size: 1.25rem;
     font-weight: 600;
-    margin-bottom: 1rem;
-    text-align: center;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    transition: color 0.3s ease;
 }
 
 .feature-section p {
     color: var(--muted-color);
-    text-align: center;
-    margin-bottom: 2rem;
-    max-width: 300px;
-    margin-left: auto;
-    margin-right: auto;
+    font-size: 1rem;
+    line-height: 1.6;
+    transition: color 0.3s ease;
 }
 
 .alert {
-    background-color: var(--card-bg);
-    color: var(--text-color);
-    border-color: var(--primary-color);
-    margin-top: 1rem;
-    padding: 0.75rem 1.25rem;
-    border-radius: 0.25rem;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
     border: 1px solid transparent;
+    transition: all 0.3s ease;
 }
 
 .alert-danger {
-    background-color: var(--card-bg);
-    border-color: #dc3545;
-    color: #dc3545;
+    background-color: var(--error-bg);
+    border-color: var(--error-border);
+    color: var(--danger-color);
 }
 
-[data-theme="dark"] .alert-danger {
-    background-color: #2d2d2d;
-    border-color: #dc3545;
+[data-bs-theme="dark"] .alert-danger {
+    background-color: rgba(220, 53, 69, 0.2);
+    border-color: rgba(220, 53, 69, 0.4);
     color: #ff6b6b;
 }
 
-/* 响应式调整 */
 @media (max-width: 768px) {
     .hero-section {
         padding: 2rem;
-        margin-top: 3rem;
+        margin-top: 2rem;
         text-align: center;
     }
 
@@ -238,15 +254,14 @@ body {
     }
 
     .feature-section {
-        padding: 2rem 0;
+        margin-top: 2rem;
     }
 
     .creator-card {
-        margin-bottom: 2rem;
+        padding: 1.5rem;
     }
 }
 
-/* 动画效果 */
 @keyframes fadeIn {
     from {
         opacity: 0;

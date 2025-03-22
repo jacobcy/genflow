@@ -15,7 +15,17 @@
            │  GenFlow 前端  │ │LangManus Web│ │LangManus API│
            │  (端口:6060)  │ │ (端口:3000) │ │ (端口:8000) │
            │   [CrewAI]    │ │[LangGraph参考]│ │ [LangGraph] │
-           └───────────────┘ └───────────┘ └─────────────┘
+           └───────┬───────┘ └───────────┘ └─────────────┘
+                   │
+           ┌───────┴───────┐
+           │  DailyHot UI  │
+           │  (端口:6699)  │
+           └───────┬───────┘
+                   │
+           ┌───────┴───────┐
+           │ DailyHot API  │
+           │  (端口:6688)  │
+           └───────────────┘
 ```
 
 ### 2. 技术栈对比
@@ -35,7 +45,9 @@ GenFlow/
 ├── integrations/                # 第三方集成目录
 │   ├── doocs.github.io/        # Markdown 编辑器
 │   ├── langmanus/             # LangManus (LangGraph实现)
-│   └── langmanus-web/         # LangManus Web UI
+│   ├── langmanus-web/         # LangManus Web UI
+│   ├── daily-hot/            # DailyHot 前端界面
+│   └── daily-hot-api/        # DailyHot API 服务
 ├── frontend/                  # GenFlow 主前端
 │   ├── app/                  # Next.js 应用
 │   ├── components/          # 共享组件
@@ -201,6 +213,27 @@ services:
     environment:
       - PORT=8000
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+  daily-hot:
+    build:
+      context: ../../../integrations/daily-hot
+    ports:
+      - "6699:6699"
+    environment:
+      - VITE_API_URL=http://daily-hot-api:6688
+    depends_on:
+      - daily-hot-api
+
+  daily-hot-api:
+    build:
+      context: ../../../integrations/daily-hot-api
+    ports:
+      - "6688:6688"
+    environment:
+      - PORT=6688
+      - CACHE_TIME=60
+    volumes:
+      - ../../../integrations/daily-hot-api:/app
 ```
 
 ## 开发工作流
@@ -221,6 +254,15 @@ cd integrations/langmanus
 python server.py  # 运行在 8000 端口
 cd ../langmanus-web
 npm run dev  # 运行在 3000 端口
+
+# 4. （可选）启动 DailyHot 服务
+cd integrations/daily-hot-api
+pnpm install
+pnpm dev  # 运行在 6688 端口
+
+cd ../daily-hot
+pnpm install
+pnpm dev  # 运行在 6699 端口
 ```
 
 ### 2. 开发重点
@@ -232,11 +274,13 @@ npm run dev  # 运行在 3000 端口
 
 2. **UI 开发**：
    - 参考 LangManus Web 的界面设计
+   - 集成 DailyHot 的热点数据展示
    - 实现 CrewAI 特有的功能界面
    - 优化用户交互体验
 
 3. **API 设计**：
    - 实现 CrewAI 的 RESTful API
+   - 整合 DailyHot API 的数据源
    - 设计 WebSocket 通信协议
    - 处理异步任务流程
 

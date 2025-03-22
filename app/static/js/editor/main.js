@@ -3,322 +3,288 @@
  * 整合基础编辑功能、AI 功能和文章管理
  */
 
-// 编辑器全局状态
-let editor = null;
-let isContentChanged = false;
-let lastSavedContent = '';
+class Editor {
+    constructor(selector, options = {}) {
+        this.element = typeof selector === 'string' ? document.querySelector(selector) : selector;
+        if (!this.element) throw new Error('Editor element not found');
 
-// 初始化编辑器
-document.addEventListener('DOMContentLoaded', function () {
-    initializeEditor();
-});
+        this.options = {
+            autofocus: true,
+            placeholder: '开始写作...',
+            onChange: null,
+            autosaveInterval: 30000, // 30秒
+            ...options
+        };
 
-/**
- * 编辑器初始化
- */
-function initializeEditor() {
-    // 初始化编辑器实例
-    editor = new Editor('#editor', {
-        autofocus: true,
-        placeholder: '开始写作...',
-        onChange: () => {
-            isContentChanged = true;
-            updatePreview();
+        this.isContentChanged = false;
+        this.lastSavedContent = '';
+        this.autosaveTimer = null;
+
+        this.initialize();
+    }
+
+    initialize() {
+        // 初始化编辑器 UI
+        this.setupUI();
+
+        // 加载已有内容
+        this.loadExistingContent();
+
+        // 绑定事件
+        this.bindEvents();
+
+        // 初始化 AI 功能
+        this.initializeAIFeatures();
+
+        // 设置自动保存
+        this.setupAutosave();
+
+        // 设置图片上传
+        this.setupImageUpload();
+    }
+
+    setupUI() {
+        // 设置编辑器基础 UI
+        this.element.contentEditable = true;
+        this.element.classList.add('editor-content');
+
+        if (this.options.placeholder) {
+            this.element.setAttribute('data-placeholder', this.options.placeholder);
         }
-    });
+
+        if (this.options.autofocus) {
+            this.element.focus();
+        }
+    }
 
     // 加载已有内容
-    loadExistingContent();
+    async loadExistingContent() {
+        const articleId = new URLSearchParams(window.location.search).get('article_id');
+        if (!articleId) return;
 
-    // 绑定事件处理
-    bindEditorEvents();
+        try {
+            const response = await fetch(`/api/articles/${articleId}`);
+            if (!response.ok) throw new Error('加载失败');
+
+            const article = await response.json();
+            this.setContent(article.content || '');
+            this.lastSavedContent = this.getContent();
+
+            // 设置其他字段
+            document.getElementById('articleTitle').value = article.title || '';
+            document.getElementById('articleSummary').value = article.summary || '';
+            document.getElementById('articleTags').value = article.tags || '';
+
+            if (article.cover_image) {
+                this.setCoverImage(article.cover_image);
+            }
+        } catch (error) {
+            console.error('加载文章失败:', error);
+            this.showToast('加载文章失败', 'error');
+        }
+    }
+
+    // 绑定事件
+    bindEvents() {
+        this.element.addEventListener('input', () => {
+            this.isContentChanged = true;
+            if (this.options.onChange) {
+                this.options.onChange();
+            }
+        });
+
+        // 离开页面提示
+        window.addEventListener('beforeunload', e => {
+            if (this.isContentChanged) {
+                e.preventDefault();
+                e.returnValue = '您有未保存的更改，确定要离开吗？';
+            }
+        });
+    }
+
+    // 获取内容
+    getContent() {
+        return this.element.innerHTML;
+    }
+
+    // 设置内容
+    setContent(content) {
+        this.element.innerHTML = content;
+    }
+
+    // 设置封面图片
+    setCoverImage(url) {
+        const preview = document.createElement('img');
+        preview.src = url;
+        preview.className = 'img-thumbnail mt-2';
+        preview.alt = '封面图片';
+
+        const coverInput = document.getElementById('articleCover');
+        if (coverInput) {
+            const existingPreview = coverInput.nextElementSibling;
+            if (existingPreview && existingPreview.tagName === 'IMG') {
+                existingPreview.remove();
+            }
+            coverInput.parentNode.appendChild(preview);
+        }
+    }
+
+    // 保存文章
+    async save(publish = false, isAutosave = false) {
+        const title = document.getElementById('articleTitle').value;
+        const content = this.getContent();
+        const summary = document.getElementById('articleSummary').value;
+        const tags = document.getElementById('articleTags').value;
+
+        // 基本验证
+        if (!isAutosave && !title.trim()) {
+            this.showToast('请输入文章标题', 'warning');
+            return;
+        }
+
+        try {
+            const articleId = new URLSearchParams(window.location.search).get('article_id');
+            const endpoint = articleId ? `/api/articles/${articleId}` : '/api/articles';
+            const method = articleId ? 'PUT' : 'POST';
+
+            const response = await fetch(endpoint, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title,
+                    content,
+                    summary,
+                    tags,
+                    published: publish
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('保存失败');
+            }
+
+            const data = await response.json();
+            this.lastSavedContent = content;
+            this.isContentChanged = false;
+
+            if (!isAutosave) {
+                const message = publish ? '文章已发布' : '草稿已保存';
+                this.showToast(message, 'success');
+
+                if (!articleId && data.id) {
+                    window.location.href = `/user/edit/${data.id}`;
+                }
+            }
+        } catch (error) {
+            console.error('保存文章失败:', error);
+            if (!isAutosave) {
+                this.showToast('保存失败，请重试', 'error');
+            }
+        }
+    }
+
+    // 显示提示消息
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+
+        const container = document.createElement('div');
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.appendChild(toast);
+        document.body.appendChild(container);
+
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+
+        toast.addEventListener('hidden.bs.toast', () => {
+            container.remove();
+        });
+    }
+
+    // 事件监听
+    on(event, callback) {
+        this.element.addEventListener(event, callback);
+    }
+
+    // 检查内容是否改变
+    hasChanges() {
+        return this.isContentChanged;
+    }
+
+    // 设置自动保存
+    setupAutosave() {
+        this.on('change', () => {
+            clearTimeout(this.autosaveTimer);
+            this.autosaveTimer = setTimeout(() => {
+                if (this.hasChanges()) {
+                    this.save(false, true);
+                }
+            }, this.options.autosaveInterval);
+        });
+    }
+
+    // 设置图片上传
+    setupImageUpload() {
+        const coverInput = document.getElementById('articleCover');
+        if (!coverInput) return;
+
+        coverInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const response = await fetch('/api/upload/image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('上传失败');
+                }
+
+                const data = await response.json();
+                if (data.url) {
+                    this.setCoverImage(data.url);
+                }
+            } catch (error) {
+                console.error('图片上传失败:', error);
+                this.showToast('图片上传失败，请重试', 'error');
+            }
+        });
+    }
 
     // 初始化 AI 功能
-    initializeAIFeatures();
-}
-
-/**
- * 加载已有内容
- */
-function loadExistingContent() {
-    const articleId = new URLSearchParams(window.location.search).get('article_id');
-    if (articleId) {
-        fetch(`/api/articles/${articleId}`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.article) {
-                    editor.setContent(data.article.content);
-                    document.getElementById('articleTitle').value = data.article.title;
-                    document.getElementById('articleSummary').value = data.article.summary || '';
-                    document.getElementById('articleTags').value = data.article.tags || '';
-
-                    // 显示已有封面图
-                    if (data.article.cover_image) {
-                        const img = document.createElement('img');
-                        img.src = data.article.cover_image;
-                        img.className = 'img-thumbnail mt-2';
-                        img.alt = '封面图片';
-                        document.getElementById('articleCover').parentNode.appendChild(img);
-                    }
-
-                    lastSavedContent = editor.getContent();
-                    updatePreview();
-                }
-            })
-            .catch(console.error);
+    initializeAIFeatures() {
+        // AI 相关功能将在 ai-features.js 中实现
     }
 }
 
-/**
- * 绑定编辑器事件
- */
-function bindEditorEvents() {
-    // 保存草稿
-    document.querySelector('button[onclick="saveArticle(false)"]')
-        .addEventListener('click', () => saveArticle(false));
+// 初始化编辑器实例
+document.addEventListener('DOMContentLoaded', () => {
+    window.editor = new Editor('#editor');
+});
 
-    // 发布文章
-    document.querySelector('button[onclick="saveArticle(true)"]')
-        .addEventListener('click', () => saveArticle(true));
-
-    // 封面图片预览
-    document.getElementById('articleCover').addEventListener('change', handleCoverImagePreview);
-
-    // 离开页面提示
-    window.addEventListener('beforeunload', e => {
-        if (isContentChanged) {
-            e.preventDefault();
-            e.returnValue = '您有未保存的更改，确定要离开吗？';
-        }
-    });
-}
-
-/**
- * 处理封面图片预览
- */
-function handleCoverImagePreview(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            const img = document.querySelector('.img-thumbnail');
-            if (img) {
-                img.src = e.target.result;
-            } else {
-                const newImg = document.createElement('img');
-                newImg.src = e.target.result;
-                newImg.className = 'img-thumbnail mt-2';
-                newImg.alt = '封面图片';
-                document.getElementById('articleCover').parentNode.appendChild(newImg);
-            }
-        }
-        reader.readAsDataURL(file);
+// 导出编辑器类和全局函数
+window.Editor = Editor;
+window.saveArticle = function (publish = false) {
+    if (window.editor) {
+        window.editor.save(publish);
     }
-}
-
-/**
- * 保存或发布文章
- */
-function saveArticle(isPublished = false) {
-    const articleId = new URLSearchParams(window.location.search).get('article_id');
-    const title = document.getElementById('articleTitle').value;
-    const content = editor.getContent();
-    const summary = document.getElementById('articleSummary').value;
-    const tags = document.getElementById('articleTags').value;
-
-    if (!title) {
-        alert('请输入文章标题');
-        return;
-    }
-
-    if (!content) {
-        alert('请输入文章内容');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('content', content);
-    formData.append('summary', summary);
-    formData.append('tags', tags);
-    formData.append('published', isPublished);
-
-    const coverFile = document.getElementById('articleCover').files[0];
-    if (coverFile) {
-        formData.append('cover_image', coverFile);
-    }
-
-    const url = articleId ? `/api/articles/${articleId}` : '/api/articles';
-    const method = articleId ? 'PUT' : 'POST';
-
-    // 显示保存中状态
-    const saveBtn = document.querySelector(`button[onclick="saveArticle(${isPublished})"]`);
-    const originalText = saveBtn.textContent;
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>保存中...';
-
-    fetch(url, {
-        method: method,
-        headers: {
-            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-        },
-        body: formData
-    })
-        .then(response => {
-            if (response.ok) {
-                return response.json();
-            }
-            throw new Error('保存文章失败');
-        })
-        .then(data => {
-            alert(isPublished ? '文章已发布' : '草稿已保存');
-            lastSavedContent = content;
-            isContentChanged = false;
-
-            // 如果是新建文章，保存后跳转到编辑页
-            if (!articleId && data.id) {
-                window.location.href = `/user/edit?article_id=${data.id}`;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('保存失败，请稍后重试');
-        })
-        .finally(() => {
-            saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
-        });
-}
-
-/**
- * 实时预览更新
- */
-function updatePreview() {
-    const previewContainer = document.getElementById('preview');
-    if (previewContainer) {
-        const content = editor.getContent();
-        previewContainer.innerHTML = content || '<p class="text-muted">预览区域</p>';
-    }
-}
-
-/**
- * AI 功能初始化
- */
-function initializeAIFeatures() {
-    // AI 写作助手按钮
-    const aiToolbar = document.createElement('div');
-    aiToolbar.className = 'ai-toolbar';
-    aiToolbar.innerHTML = `
-        <div class="btn-group">
-            <button class="btn btn-outline-primary btn-sm" onclick="aiComplete()">
-                <i class="fas fa-magic me-1"></i>AI 补全
-            </button>
-            <button class="btn btn-outline-primary btn-sm" onclick="aiPolish()">
-                <i class="fas fa-feather me-1"></i>优化文本
-            </button>
-            <button class="btn btn-outline-primary btn-sm" onclick="aiSuggest()">
-                <i class="fas fa-lightbulb me-1"></i>写作建议
-            </button>
-        </div>
-    `;
-    editor.wrapper.insertBefore(aiToolbar, editor.wrapper.firstChild);
-}
-
-/**
- * AI 文本补全
- */
-function aiComplete() {
-    const selection = editor.getSelection();
-    if (!selection) {
-        alert('请先选择需要补全的文本');
-        return;
-    }
-
-    fetch('/api/ai/complete', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-        },
-        body: JSON.stringify({ text: selection })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.completion) {
-                editor.replaceSelection(data.completion);
-            }
-        })
-        .catch(error => {
-            console.error('AI 补全失败:', error);
-            alert('AI 补全失败，请稍后重试');
-        });
-}
-
-/**
- * AI 文本优化
- */
-function aiPolish() {
-    const selection = editor.getSelection();
-    if (!selection) {
-        alert('请先选择需要优化的文本');
-        return;
-    }
-
-    fetch('/api/ai/polish', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-        },
-        body: JSON.stringify({ text: selection })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.polished) {
-                editor.replaceSelection(data.polished);
-            }
-        })
-        .catch(error => {
-            console.error('文本优化失败:', error);
-            alert('文本优化失败，请稍后重试');
-        });
-}
-
-/**
- * AI 写作建议
- */
-function aiSuggest() {
-    const content = editor.getContent();
-    if (!content) {
-        alert('请先输入一些内容');
-        return;
-    }
-
-    fetch('/api/ai/suggest', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-        },
-        body: JSON.stringify({ text: content })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.suggestions) {
-                // 显示建议对话框
-                const modal = new bootstrap.Modal(document.getElementById('aiSuggestionsModal'));
-                document.getElementById('aiSuggestionsList').innerHTML = data.suggestions
-                    .map(s => `<li class="list-group-item">${s}</li>`)
-                    .join('');
-                modal.show();
-            }
-        })
-        .catch(error => {
-            console.error('获取写作建议失败:', error);
-            alert('获取写作建议失败，请稍后重试');
-        });
-} 
+}; 

@@ -20,7 +20,11 @@ def index():
                 flash('请使用管理员登录页面', 'error')
                 return redirect(url_for('admin.login'))
             
-            access_token = create_access_token(identity=str(user.id))
+            # 创建 JWT 令牌时添加用户角色
+            access_token = create_access_token(
+                identity=str(user.id),
+                additional_claims={'role': user.role}
+            )
             response = redirect(url_for('main.user_dashboard'))
             set_access_cookies(response, access_token)
             return response
@@ -38,9 +42,6 @@ def user_dashboard():
     
     if not user:
         return redirect(url_for('main.index'))
-    
-    if user.role == 'admin':
-        return redirect(url_for('admin.dashboard'))
     
     articles = Article.query.filter_by(user_id=current_user_id).all()
     return render_template('user/dashboard.html', user=user, articles=articles)

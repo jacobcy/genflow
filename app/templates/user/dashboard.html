@@ -15,26 +15,68 @@
     </div>
 
     <div class="row">
-        <div class="col-md-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title">
-                        <i class="fas fa-edit me-2"></i>创建文章
-                    </h5>
-                    <p class="card-text">开始创作新的文章内容。</p>
-                    <a href="{{ url_for('main.user_edit') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>新建文章
-                    </a>
+        <!-- 左侧快捷方式区域 -->
+        <div class="col-md-4">
+            <h4 class="mb-3"><i class="fas fa-star me-2"></i>创作工具</h4>
+            <div class="mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-fire me-2"></i>今日热榜
+                        </h5>
+                        <p class="card-text">查看各大平台的热门内容。</p>
+                        <a href="http://localhost:6699" target="_blank" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt me-2"></i>查看热榜
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-edit me-2"></i>创建文章
+                        </h5>
+                        <p class="card-text">开始创作新的文章内容。</p>
+                        <a href="{{ url_for('main.user_edit') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>新建文章
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-robot me-2"></i>AI 助手
+                        </h5>
+                        <p class="card-text">使用 AI 助手优化您的创作。</p>
+                        <a href="http://localhost:3000" target="_blank" class="btn btn-primary">
+                            <i class="fas fa-magic me-2"></i>启动助手
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-code me-2"></i>MD 编辑器
+                        </h5>
+                        <p class="card-text">使用 Markdown 编辑器快速创作内容。</p>
+                        <a href="http://localhost:9000" target="_blank" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt me-2"></i>打开编辑器
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- 右侧文章列表 -->
         <div class="col-md-8 mb-4">
+            <h4 class="mb-3"><i class="fas fa-list-alt me-2"></i>我的文章</h4>
             <div class="card h-100">
                 <div class="card-body">
-                    <h5 class="card-title">
-                        <i class="fas fa-list-alt me-2"></i>我的文章
-                    </h5>
                     {% if articles %}
                     <div class="table-responsive">
                         <table class="table">
@@ -85,4 +127,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/user/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/user/article-manager.js') }}"></script>
 {% endblock %}
