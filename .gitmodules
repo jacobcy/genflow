@@ -10,3 +10,6 @@
 [submodule "integrations/daily-hot-api"]
 	path = integrations/daily-hot-api
 	url = https://github.com/jacobcy/DailyHotApi.git
+[submodule "integrations/daily-hot"]
+	path = integrations/daily-hot
+	url = https://github.com/jacobcy/DailyHot.git
