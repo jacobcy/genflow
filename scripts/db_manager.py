@@ -13,6 +13,8 @@ import os
 import sys
 import click
 import logging
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
@@ -29,42 +31,48 @@ sys.path.append(str(project_root))
 from dotenv import load_dotenv
 load_dotenv()
 
+# 先导入数据库模块
+from backend.src.db.session import engine
+from backend.src.models.base import Base
+# 导入所有模型以确保它们被注册到元数据
+from backend.src.models.user import User
+from backend.src.models.article import Article, Tag, article_tag
+from backend.src.core.security import get_password_hash
+from backend.src.core.config import settings
+
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy import text
-
-# 导入数据库模型
-from backend.app.models import Base
-from backend.app.models.user import User
-from backend.app.core.security import get_password_hash
+from sqlalchemy import text, select
 
 async def get_db_url() -> str:
     """获取数据库 URL"""
     db_url = os.getenv('DATABASE_URL')
     if not db_url:
+        db_url = settings.DATABASE_URL
+    if not db_url:
         raise ValueError("未设置 DATABASE_URL 环境变量")
-    
+
     # 确保异步数据库 URL
     if db_url.startswith('postgresql://'):
         db_url = db_url.replace('postgresql://', 'postgresql+asyncpg://', 1)
-    
+
     return db_url
 
 async def create_database(db_url: str) -> None:
     """创建数据库（如果不存在）"""
     parsed = urlparse(db_url)
     db_name = parsed.path[1:]  # 移除开头的 /
-    
+
     # 构建管理员连接 URL（连接到默认数据库）
     admin_url = f"{parsed.scheme}://{parsed.username}:{parsed.password}@{parsed.hostname}:{parsed.port or 5432}/postgres"
-    
+
     engine = create_async_engine(admin_url)
-    
+
     async with engine.connect() as conn:
         # 检查数据库是否存在
         result = await conn.execute(text(f"SELECT 1 FROM pg_database WHERE datname = '{db_name}'"))
         exists = result.scalar() is not None
-        
+
         if not exists:
             await conn.execute(text("COMMIT"))  # 提交当前事务
             # 创建数据库
@@ -84,10 +92,10 @@ async def drop_database(db_url: str) -> None:
     """删除数据库"""
     parsed = urlparse(db_url)
     db_name = parsed.path[1:]
-    
+
     admin_url = f"{parsed.scheme}://{parsed.username}:{parsed.password}@{parsed.hostname}:{parsed.port or 5432}/postgres"
     engine = create_async_engine(admin_url)
-    
+
     async with engine.connect() as conn:
         await conn.execute(text("COMMIT"))
         # 终止数据库连接
@@ -108,26 +116,31 @@ async def init_tables(db_url: str) -> None:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("数据库表创建成功")
 
-async def create_admin_user(db_url: str, username: str, password: str, email: str) -> None:
+async def create_admin_user(db_url: str, email: str, password: str) -> None:
     """创建管理员用户"""
     engine = create_async_engine(db_url)
     async_session = async_sessionmaker(engine, expire_on_commit=False)
-    
+
     async with async_session() as session:
         # 检查是否已存在管理员用户
-        admin = await session.get(User, username)
+        stmt = select(User).where(User.email == email)
+        result = await session.execute(stmt)
+        admin = result.scalar_one_or_none()
+
         if not admin:
             admin = User(
-                username=username,
+                id=uuid.uuid4(),
                 email=email,
                 hashed_password=get_password_hash(password),
-                is_admin=True
+                is_active=True,
+                name="Administrator",
+                role="admin"
             )
             session.add(admin)
             await session.commit()
-            logger.info(f"管理员用户 {username} 创建成功")
+            logger.info(f"管理员用户 {email} 创建成功")
         else:
-            logger.info(f"管理员用户 {username} 已存在")
+            logger.info(f"管理员用户 {email} 已存在")
 
 @click.group()
 def cli():
@@ -135,17 +148,16 @@ def cli():
     pass
 
 @cli.command()
-@click.option('--username', default='admin', help='管理员用户名')
-@click.option('--password', default='admin', help='管理员密码')
-@click.option('--email', default='admin@example.com', help='管理员邮箱')
-def init(username: str, password: str, email: str):
+@click.option('--email', default='admin@genflow.dev', help='管理员邮箱')
+@click.option('--password', default='admin123', help='管理员密码')
+def init(email: str, password: str):
     """初始化数据库和管理员用户"""
     async def _init():
         db_url = await get_db_url()
         await create_database(db_url)
         await init_tables(db_url)
-        await create_admin_user(db_url, username, password, email)
-        
+        await create_admin_user(db_url, email, password)
+
     asyncio.run(_init())
     logger.info("数据库初始化完成")
 
@@ -158,8 +170,8 @@ def reset():
         await drop_database(db_url)
         await create_database(db_url)
         await init_tables(db_url)
-        await create_admin_user(db_url, 'admin', 'admin', 'admin@example.com')
-        
+        await create_admin_user(db_url, 'admin@genflow.dev', 'admin123')
+
     asyncio.run(_reset())
     logger.info("数据库重置完成")
 
@@ -173,14 +185,14 @@ def status():
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
                 logger.info("数据库连接正常")
-                
+
                 # 获取数据库大小
                 result = await conn.execute(text("""
                     SELECT pg_size_pretty(pg_database_size(current_database()))
                 """))
                 size = result.scalar()
                 logger.info(f"数据库大小: {size}")
-                
+
                 # 获取表信息
                 result = await conn.execute(text("""
                     SELECT tablename, pg_size_pretty(pg_total_relation_size(quote_ident(tablename)))
@@ -191,11 +203,11 @@ def status():
                 logger.info("\n表信息:")
                 for table, size in tables:
                     logger.info(f"- {table}: {size}")
-                
+
         except Exception as e:
             logger.error(f"数据库连接失败: {str(e)}")
             sys.exit(1)
-            
+
     asyncio.run(_status())
 
 if __name__ == '__main__':

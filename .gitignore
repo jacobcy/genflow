@@ -149,3 +149,6 @@ Cargo.lock
 /vendor/
 /Godeps/
 .go-version
+
+# other
+flask/

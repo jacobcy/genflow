@@ -4,18 +4,24 @@ from crewai import Agent
 from core.tools.nlp_tools import NLPAggregator, SummaTool, YakeTool
 from core.tools.style_tools import StyleAdapter
 from core.tools.writing_tools import ArticleWriter
+from core.models.platform import Platform
 
 class WritingAgents:
     """写作团队智能体定义"""
-    
-    def __init__(self):
-        """初始化工具"""
+
+    def __init__(self, platform: Platform):
+        """初始化工具
+
+        Args:
+            platform: 目标平台
+        """
+        self.platform = platform
         self.nlp_tools = NLPAggregator()
         self.summa_tool = SummaTool()
         self.yake_tool = YakeTool()
-        self.style_adapter = StyleAdapter.get_instance()
+        self.style_adapter = StyleAdapter.get_instance(platform)
         self.article_writer = ArticleWriter()
-    
+
     def create_outline_writer(self) -> Agent:
         """创建大纲撰写员"""
         return Agent(
@@ -29,7 +35,7 @@ class WritingAgents:
                 self.yake_tool.execute
             ]
         )
-    
+
     def create_content_writer(self) -> Agent:
         """创建内容撰写员"""
         return Agent(
@@ -44,7 +50,7 @@ class WritingAgents:
                 self.style_adapter.execute
             ]
         )
-    
+
     def create_seo_optimizer(self) -> Agent:
         """创建SEO优化师"""
         return Agent(
@@ -57,7 +63,7 @@ class WritingAgents:
                 self.nlp_tools.execute
             ]
         )
-    
+
     def create_editor(self) -> Agent:
         """创建文章编辑"""
         return Agent(
@@ -70,4 +76,4 @@ class WritingAgents:
                 self.summa_tool.execute,
                 self.style_adapter.execute
             ]
-        ) 
+        )

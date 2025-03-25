@@ -4,7 +4,7 @@ from typing import Any, Generic, List, Optional, Type, TypeVar
 from sqlalchemy.orm import Session
 from sqlmodel import SQLModel, select
 
-from src.interfaces.repository import IRepository
+from interfaces.repository import IRepository
 
 
 ModelType = TypeVar("ModelType", bound=SQLModel)

@@ -9,12 +9,14 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 class Base(DeclarativeBase):
     """基础模型类"""
-    
+
+    __table_args__ = {'extend_existing': True}
+
     @declared_attr.directive
     def __tablename__(cls) -> str:
         """自动生成表名"""
         return cls.__name__.lower()
-    
+
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -27,7 +29,7 @@ class Base(DeclarativeBase):
         onupdate=func.now(),
         nullable=False,
     )
-    
+
     def dict(self) -> dict[str, Any]:
         """转换为字典"""
         return {

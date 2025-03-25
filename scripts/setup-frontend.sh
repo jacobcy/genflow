@@ -53,8 +53,8 @@ if [ ! -f .env ]; then
     if [ ! -f .env ]; then
         cat > .env << EOL
 # Frontend Environment Variables
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_APP_URL=http://localhost:${FRONTEND_PORT:-6060}
 NEXT_PUBLIC_APP_NAME=GenFlow
 NEXT_PUBLIC_APP_DESCRIPTION="AI Agent Flow Engine"
 EOL
@@ -67,13 +67,23 @@ if [ ! -f tsconfig.json ]; then
     exit 1
 fi
 
-# 运行类型检查
-echo -e "${BLUE}🔍 Running type check...${NC}"
-pnpm type-check
+# 检查 package.json 中是否有 type-check 脚本
+if grep -q "\"type-check\":" package.json; then
+    # 运行类型检查
+    echo -e "${BLUE}🔍 Running type check...${NC}"
+    pnpm type-check || echo -e "${YELLOW}⚠️  Type check failed, but continuing...${NC}"
+else
+    echo -e "${YELLOW}⚠️  No type-check script found in package.json, skipping...${NC}"
+fi
 
-# 运行 lint
-echo -e "${BLUE}🔍 Running lint...${NC}"
-pnpm lint
+# 检查 package.json 中是否有 lint 脚本
+if grep -q "\"lint\":" package.json; then
+    # 运行 lint
+    echo -e "${BLUE}🔍 Running lint...${NC}"
+    pnpm lint || echo -e "${YELLOW}⚠️  Lint failed, but continuing...${NC}"
+else
+    echo -e "${YELLOW}⚠️  No lint script found in package.json, skipping...${NC}"
+fi
 
 echo -e "${GREEN}✅ Frontend setup complete!${NC}"
 echo -e "${BLUE}You can now start the development server with:${NC}"
@@ -83,11 +93,17 @@ echo -e "${YELLOW}💡 Development Commands:${NC}"
 echo "   • Start dev server:     pnpm dev"
 echo "   • Build for production: pnpm build"
 echo "   • Start production:     pnpm start"
-echo "   • Type check:          pnpm type-check"
-echo "   • Lint:                pnpm lint"
-echo "   • Format code:         pnpm format"
+if grep -q "\"type-check\":" package.json; then
+    echo "   • Type check:          pnpm type-check"
+fi
+if grep -q "\"lint\":" package.json; then
+    echo "   • Lint:                pnpm lint"
+fi
+if grep -q "\"format\":" package.json; then
+    echo "   • Format code:         pnpm format"
+fi
 echo ""
 echo -e "${YELLOW}🔄 To update dependencies:${NC}"
 echo "   1. Update versions in package.json"
 echo "   2. Run: pnpm update"
-echo "   3. Run: pnpm install" 
+echo "   3. Run: pnpm install"

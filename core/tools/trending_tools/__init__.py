@@ -1,12 +1,5 @@
-"""趋势工具包"""
-from .topic_trends import (
-    TrendingTopics,
-    BaiduHot,
-    WeiboHot
-)
+"""热点话题工具包"""
 
-__all__ = [
-    'TrendingTopics',
-    'BaiduHot',
-    'WeiboHot'
-]
+from .topic_trends import TrendingTopics
+
+__all__ = ["TrendingTopics"]

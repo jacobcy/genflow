@@ -12,17 +12,31 @@ class Section(BaseModel):
 
 class SEOData(BaseModel):
     """SEO数据"""
-    keywords: List[str] = Field(default_list=[], description="关键词")
+    keywords: List[str] = Field(default=[], description="关键词")
     description: str = Field(default="", description="SEO描述")
     title: str = Field(default="", description="SEO标题")
+
+    def __init__(self, **data):
+        """确保初始化时设置默认值"""
+        if "keywords" not in data:
+            data["keywords"] = []
+        super().__init__(**data)
 
 class ReviewResult(BaseModel):
     """审核结果"""
     plagiarism_score: float = Field(default=0.0, description="查重分数(0-1)")
     ai_detection_score: float = Field(default=0.0, description="AI检测分数(0-1)")
     readability_score: float = Field(default=0.0, description="可读性分数(0-1)")
-    sensitive_words: List[str] = Field(default_list=[], description="敏感词列表")
-    suggestions: List[str] = Field(default_list=[], description="改进建议")
+    sensitive_words: List[str] = Field(default=[], description="敏感词列表")
+    suggestions: List[str] = Field(default=[], description="改进建议")
+
+    def __init__(self, **data):
+        """确保初始化时设置默认值"""
+        if "sensitive_words" not in data:
+            data["sensitive_words"] = []
+        if "suggestions" not in data:
+            data["suggestions"] = []
+        super().__init__(**data)
 
 class Article(BaseModel):
     """文章模型"""
@@ -30,26 +44,34 @@ class Article(BaseModel):
     topic_id: str = Field(..., description="关联话题ID")
     title: str = Field(..., description="文章标题")
     summary: str = Field(..., description="文章摘要")
-    sections: List[Section] = Field(..., description="文章章节")
-    
+    sections: List[Section] = Field(default=[], description="文章章节")
+
     # 元数据
     author: str = Field(default="AI", description="作者")
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
     version: int = Field(default=1, description="版本号")
     status: str = Field(default="draft", description="状态(draft/review/published)")
-    
+
     # SEO相关
     seo: SEOData = Field(default_factory=SEOData, description="SEO数据")
-    
+
     # 平台相关
     platform: str = Field(default="default", description="目标平台")
     platform_style: Dict = Field(default_factory=dict, description="平台风格配置")
-    
+
     # 审核相关
     review: ReviewResult = Field(default_factory=ReviewResult, description="审核结果")
     human_feedback: Optional[Dict] = Field(default=None, description="人工反馈")
-    
+
+    def __init__(self, **data):
+        """确保初始化时设置默认值"""
+        if "sections" not in data:
+            data["sections"] = []
+        if "platform_style" not in data:
+            data["platform_style"] = {}
+        super().__init__(**data)
+
     class Config:
         """模型配置"""
         json_schema_extra = {
@@ -93,4 +115,4 @@ class Article(BaseModel):
                     "improvement_notes": "性能优化部分可以再详细一些"
                 }
             }
-        } 
+        }

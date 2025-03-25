@@ -5,17 +5,33 @@ from core.tools.search_tools import SearchAggregator
 from core.tools.content_collectors import ContentCollector
 from core.tools.nlp_tools import NLPAggregator
 from core.tools.trending_tools import TrendingTopics
+from core.config import Config
 
 class TopicAgents:
     """选题团队智能体定义"""
-    
+
     def __init__(self):
         """初始化工具"""
+        # 加载配置
+        config = Config()
+
+        # 初始化工具
         self.search_tools = SearchAggregator()
         self.content_collector = ContentCollector()
         self.nlp_tools = NLPAggregator()
-        self.trending_tools = TrendingTopics.get_instance()
-        
+
+        # 初始化趋势工具，传入配置
+        trending_config = {
+            'baidu': {
+                'api_key': config.BAIDU_API_KEY,
+                'secret_key': config.BAIDU_SECRET_KEY
+            },
+            'weibo': {
+                'api_key': config.WEIBO_APP_KEY
+            }
+        }
+        self.trending_tools = TrendingTopics.get_instance(trending_config)
+
     def create_trend_analyzer(self) -> Agent:
         """创建趋势分析师"""
         return Agent(
@@ -29,7 +45,7 @@ class TopicAgents:
                 self.content_collector.execute
             ]
         )
-    
+
     def create_topic_researcher(self) -> Agent:
         """创建话题研究员"""
         return Agent(
@@ -43,7 +59,7 @@ class TopicAgents:
                 self.trending_tools.execute
             ]
         )
-    
+
     def create_report_writer(self) -> Agent:
         """创建报告撰写员"""
         return Agent(
@@ -52,4 +68,4 @@ class TopicAgents:
             backstory="""你是一位专业的报告撰写员，擅长将数据和分析转化为清晰的报告。
             你需要整理各类信息，生成结构化的选题报告。""",
             tools=[self.nlp_tools.execute]
-        ) 
+        )

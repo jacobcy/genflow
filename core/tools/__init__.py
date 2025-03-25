@@ -1,4 +1,5 @@
-"""工具包初始化文件"""
+"""工具包"""
+
 from core.tools.base import BaseTool, ToolResult
 from core.tools.content_collectors import ContentCollector
 from core.tools.search_tools import SearchAggregator

@@ -26,25 +26,32 @@ class WritingResult:
 
 class WritingCrew:
     """写作团队"""
-    
+
     def __init__(self):
         """初始化团队"""
-        self.agents = WritingAgents()
+        self.agents = None
+        self.outline_writer = None
+        self.content_writer = None
+        self.seo_optimizer = None
+        self.editor = None
+
+    async def write_article(self, article: Article, platform: Platform) -> WritingResult:
+        """写作文章
+
+        Args:
+            article: 文章信息
+            platform: 目标平台
+
+        Returns:
+            WritingResult: 写作结果
+        """
+        # 初始化写作团队
+        self.agents = WritingAgents(platform)
         self.outline_writer = self.agents.create_outline_writer()
         self.content_writer = self.agents.create_content_writer()
         self.seo_optimizer = self.agents.create_seo_optimizer()
         self.editor = self.agents.create_editor()
-    
-    async def write_article(self, article: Article, platform: Platform) -> WritingResult:
-        """写作文章
-        
-        Args:
-            article: 文章信息
-            platform: 目标平台
-            
-        Returns:
-            WritingResult: 写作结果
-        """
+
         # 1. 大纲优化任务
         outline_task = Task(
             description=f"""
@@ -56,7 +63,7 @@ class WritingCrew:
             """,
             agent=self.outline_writer
         )
-        
+
         # 2. 内容写作任务
         content_task = Task(
             description=f"""
@@ -68,7 +75,7 @@ class WritingCrew:
             """,
             agent=self.content_writer
         )
-        
+
         # 3. SEO优化任务
         seo_task = Task(
             description=f"""
@@ -80,7 +87,7 @@ class WritingCrew:
             """,
             agent=self.seo_optimizer
         )
-        
+
         # 4. 编辑优化任务
         edit_task = Task(
             description=f"""
@@ -92,7 +99,7 @@ class WritingCrew:
             """,
             agent=self.editor
         )
-        
+
         # 创建工作流
         crew = Crew(
             agents=[
@@ -109,10 +116,10 @@ class WritingCrew:
             ],
             process=Process.sequential
         )
-        
+
         # 执行工作流
         result = crew.kickoff()
-        
+
         # 整理写作结果
         writing_result = WritingResult(
             article=article,
@@ -121,42 +128,42 @@ class WritingCrew:
             seo_data=result["seo_data"],
             final_draft=result["final_draft"]
         )
-        
+
         return writing_result
-    
+
     def get_human_feedback(self, writing_result: WritingResult) -> WritingResult:
         """获取人工反馈
-        
+
         Args:
             writing_result: 写作结果
-            
+
         Returns:
             WritingResult: 更新后的写作结果
         """
         print("\n=== 文章评审 ===\n")
         print(f"标题: {writing_result.article.title}")
-        
+
         print("\n1. 内容质量 (0-1):")
         print("- 专业性")
         print("- 可读性")
         print("- 完整性")
         content_score = float(input("请评分: "))
-        
+
         print("\n2. 结构设计 (0-1):")
         print("- 逻辑性")
         print("- 层次感")
         print("- 过渡自然")
         structure_score = float(input("请评分: "))
-        
+
         print("\n3. SEO表现 (0-1):")
         print("- 关键词优化")
         print("- 标题吸引力")
         print("- 元描述质量")
         seo_score = float(input("请评分: "))
-        
+
         print("\n4. 修改建议:")
         comments = input("评审意见: ")
-        
+
         # 更新反馈
         writing_result.human_feedback = {
             "content_score": content_score,
@@ -166,21 +173,21 @@ class WritingCrew:
             "comments": comments,
             "reviewed_at": datetime.now()
         }
-        
+
         return writing_result
-    
+
     def update_article(self, writing_result: WritingResult) -> Article:
         """更新文章
-        
+
         Args:
             writing_result: 写作结果
-            
+
         Returns:
             Article: 更新后的文章
         """
         # 从最终稿中提取信息
         final_draft = writing_result.final_draft
-        
+
         # 更新文章
         article = writing_result.article
         article.title = final_draft["title"]
@@ -195,7 +202,7 @@ class WritingCrew:
         ]
         article.seo_data = writing_result.seo_data
         article.status = "reviewed"
-        
+
         return article
 
 # 使用示例
@@ -215,7 +222,7 @@ async def main():
         ],
         status="draft"
     )
-    
+
     # 创建一个示例平台
     platform = Platform(
         id="platform_001",
@@ -227,16 +234,16 @@ async def main():
             "allowed_tags": ["Python", "编程", "技术"]
         }
     )
-    
+
     # 创建写作团队
     crew = WritingCrew()
-    
+
     # 进行写作
     writing_result = await crew.write_article(article, platform)
-    
+
     # 获取人工反馈
     writing_result = crew.get_human_feedback(writing_result)
-    
+
     # 如果评分达标，更新文章
     if writing_result.human_feedback["average_score"] >= 0.7:
         article = crew.update_article(writing_result)
@@ -250,4 +257,4 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
-    asyncio.run(main()) 
+    asyncio.run(main())

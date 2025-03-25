@@ -1,6 +1,9 @@
 from redis import Redis
+from fastapi import Depends, Cookie
+from typing import Optional
 
-from src.core.config import settings
+from core.config import settings
+from db.session import get_db
 
 
 def get_redis_url() -> str:
@@ -15,3 +18,8 @@ def get_redis_client() -> Redis:
         decode_responses=True,
     )
     return redis
+
+
+def get_refresh_token_from_cookie(refresh_token: Optional[str] = Cookie(None, alias="refresh_token")) -> Optional[str]:
+    """从Cookie中获取refresh_token"""
+    return refresh_token

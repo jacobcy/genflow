@@ -125,7 +125,7 @@ genflow/
 │   ├── start-backend.sh    # 后端服务启动
 │   ├── init_db.py         # 数据库初始化
 │   └── test-environment.sh # 环境测试
-├── ops/              
+├── ops/
 │   ├── compose/       # Docker Compose 配置
 │   └── docker/        # Dockerfile 定义
 ├── docs/             # 项目文档
@@ -310,4 +310,4 @@ MIT License - 详见 LICENSE 文件
 | content        | TEXT         | 文章内容            |
 | user_id        | INTEGER      | 外键关联users表     |
 | created_at     | TIMESTAMP    | 创建时间            |
-| updated_at     | TIMESTAMP    | 最后更新时间        | 
+| updated_at     | TIMESTAMP    | 最后更新时间        |

@@ -1,10 +1,14 @@
 """NLP工具包"""
 from .processor import (
     NLPAggregator,
-    ChineseNLPTool
+    ChineseNLPTool,
+    SummaTool,
+    YakeTool
 )
 
 __all__ = [
     'NLPAggregator',
-    'ChineseNLPTool'
+    'ChineseNLPTool',
+    'SummaTool',
+    'YakeTool'
 ]

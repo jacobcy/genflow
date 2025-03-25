@@ -10,14 +10,26 @@
 ## 环境要求
 
 ### 必需组件
-- Docker Engine 24.0.0+
-- Docker Compose v2.20.0+
+- Python 3.12+
+- Node.js 18+
+- pnpm 8+
 - Git
+- PostgreSQL 15+
+- Redis 7+
+- uv (Python 包管理工具)
+
+### 数据库要求
+- PostgreSQL 15+ (主数据库)
+  - 默认端口：5432
+  - 需要创建数据库：genflow
+- Redis 7+ (缓存和会话管理)
+  - 默认端口：6379
+  - 建议开启持久化
 
 ### 推荐开发环境
 - VSCode 或 JetBrains IDE
-- Node.js 18+ (本地开发)
-- Python 3.10+ (本地开发)
+- tmux (可选，用于更好的开发体验)
+- Docker (可选，用于容器化部署)
 
 ## 快速开始
 
@@ -28,38 +40,80 @@ cd genflow
 ```
 
 ### 2. 环境配置
-1. 复制环境变量模板：
-```bash
-# Docker 环境变量
-cp ops/compose/.env.docker.example ops/compose/.env.docker
 
-# 项目环境变量
-cp .env.example .env
+#### 安装 uv
+```bash
+# 使用 pip 安装 uv
+pip install uv
+
+# 或使用 curl 安装
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-2. 根据需要修改环境变量：
-   - 数据库配置
-   - API密钥
-   - 端口映射
-   - 存储路径
+#### 数据库配置
+```bash
+# PostgreSQL 配置
+createdb genflow  # 创建数据库
+
+# Redis 配置检查
+redis-cli ping    # 应返回 PONG
+```
+
+#### 前端环境配置
+```bash
+# 运行前端环境配置脚本
+./scripts/setup-frontend.sh
+```
+
+#### 后端环境配置
+```bash
+# 运行后端环境配置脚本
+./scripts/setup-backend.sh
+```
+
+#### 初始化数据库
+```bash
+# 运行数据库初始化脚本
+./scripts/init_db.py
+```
 
 ### 3. 启动服务
+
+#### 方案一：一键启动（推荐）
 ```bash
-# 创建必要的数据目录
-mkdir -p ops/compose/data/{postgres,redis,nginx}
+./scripts/start-dev.sh
+```
+这会同时启动前端和后端服务。如果安装了 tmux，会在 tmux 会话中启动；如果没有，会尝试打开新的终端窗口。
 
-# 启动所有服务
-cd ops/compose
-docker compose up -d
+#### 方案二：分别启动
+1. 启动后端：
+```bash
+./scripts/start-backend.sh
+```
 
-# 查看服务状态
-docker compose ps
+2. 启动前端：
+```bash
+./scripts/start-frontend.sh
+```
+
+#### 方案三：手动启动
+1. 启动后端：
+```bash
+cd backend
+source .venv/bin/activate  # 如果使用虚拟环境
+uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+2. 启动前端：
+```bash
+cd frontend
+pnpm dev
 ```
 
 ### 4. 验证部署
-- 前端页面：http://localhost:80
-- 后端API：http://localhost:80/api
-- 健康检查：http://localhost:80/health
+- 前端页面：http://localhost:3000
+- 后端API：http://localhost:8000
+- API文档：http://localhost:8000/docs
 
 ## 项目配置
 
@@ -67,8 +121,16 @@ docker compose ps
 ```
 genflow/
 ├── frontend/          # Next.js 前端项目
-├── backend/           # Python 后端项目
-├── ops/              
+├── backend/           # FastAPI 后端项目
+├── scripts/          # 项目脚本
+│   ├── setup-frontend.sh    # 前端环境配置
+│   ├── setup-backend.sh     # 后端环境配置
+│   ├── start-dev.sh        # 开发环境启动
+│   ├── start-frontend.sh   # 前端服务启动
+│   ├── start-backend.sh    # 后端服务启动
+│   ├── init_db.py         # 数据库初始化
+│   └── test-environment.sh # 环境测试
+├── ops/
 │   ├── compose/       # Docker Compose 配置
 │   └── docker/        # Dockerfile 定义
 ├── docs/             # 项目文档
@@ -77,87 +139,92 @@ genflow/
 
 ### 环境变量说明
 
-#### Docker 环境变量 (.env.docker)
-- \`NODE_ENV\`: Node.js 环境 (development/production)
-- \`PYTHON_ENV\`: Python 环境 (development/production)
-- \`POSTGRES_*\`: PostgreSQL 配置
-- \`REDIS_URL\`: Redis 连接 URL
-- \`*_PORT\`: 服务端口映射
+#### 前端环境变量 (.env)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_NAME=GenFlow
+NEXT_PUBLIC_APP_DESCRIPTION="AI Agent Flow Engine"
+```
 
-#### 项目环境变量 (.env)
-- 数据库连接配置
-- API 密钥配置
-- 认证相关配置
-- 第三方服务集成配置
+#### 后端环境变量 (.env)
+```env
+# 数据库配置
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/genflow
+
+# 认证配置
+SECRET_KEY=your-secret-key
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# 管理员账户
+ADMIN_EMAIL=admin@genflow.ai
+ADMIN_PASSWORD=admin123456
+```
 
 ## 开发指南
 
-### 本地开发
-1. 启动依赖服务：
+### 环境测试
+在开始开发前，可以运行环境测试脚本确保所有配置正确：
 ```bash
-cd ops/compose
-docker compose up -d postgres redis
+./scripts/test-environment.sh
 ```
 
-2. 启动后端服务：
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: .\venv\Scripts\activate
-pip install -r requirements.txt
-python main.py
-```
+### 开发工作流
+1. 确保环境配置正确
+2. 启动开发服务器（使用 start-dev.sh）
+3. 进行代码修改
+4. 运行测试和类型检查
+5. 提交代码
 
-3. 启动前端服务：
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### 代码提交
+### 代码提交规范
 ```bash
 git add .
 git commit -m "feat: 添加新功能"
 git push origin main
 ```
 
-### 构建部署
-```bash
-# 构建镜像
-docker compose build
-
-# 部署服务
-docker compose up -d
-```
-
 ## 常见问题
 
-### 1. 服务无法启动
-- 检查端口占用：\`netstat -tulpn | grep LISTEN\`
-- 检查日志：\`docker compose logs -f [service_name]\`
-- 确认环境变量配置正确
-
-### 2. 数据库连接失败
-- 确认 PostgreSQL 服务运行状态
-- 验证数据库连接信息
-- 检查网络连接和防火墙设置
-
-### 3. 前端访问后端 API 失败
-- 确认 NEXT_PUBLIC_API_URL 配置正确
-- 检查 CORS 配置
-- 验证 nginx 代理配置
-
-### 4. 文件权限问题
+### 1. 启动脚本权限问题
 ```bash
-# 修复数据目录权限
-sudo chown -R 1000:1000 ops/compose/data
+# 添加执行权限
+chmod +x scripts/*.sh scripts/*.py
 ```
 
-### 5. 健康检查失败
-- 检查服务日志
-- 确认服务端口配置
-- 验证依赖服务状态
+### 2. 前端依赖安装失败
+```bash
+# 清理依赖并重新安装
+cd frontend
+rm -rf node_modules
+pnpm install
+```
+
+### 3. 后端虚拟环境问题
+```bash
+# 重新创建虚拟环境
+cd backend
+rm -rf .venv
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 4. 数据库连接失败
+- 检查数据库服务是否运行
+- 验证数据库连接信息
+- 确保已运行 init_db.py
+
+### 5. tmux 会话管理
+```bash
+# 列出所有会话
+tmux ls
+
+# 连接到现有会话
+tmux attach -t genflow
+
+# 终止会话
+tmux kill-session -t genflow
+```
 
 ## 获取帮助
 - 查看详细文档：docs/
@@ -165,4 +232,4 @@ sudo chown -R 1000:1000 ops/compose/data
 - 技术支持：support@your-domain.com
 
 ## 许可证
-MIT License - 详见 LICENSE 文件 
+MIT License - 详见 LICENSE 文件

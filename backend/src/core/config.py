@@ -14,13 +14,29 @@ class Settings(BaseSettings):
         ],
         env_file_encoding="utf-8",
         case_sensitive=True,
+        extra="allow",  # 允许额外的环境变量
     )
 
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     # SERVER_NAME: Optional[str] = Field(..., env="NGINX_HOST")
     BACKEND_CORS_ORIGINS: list[AnyHttpUrl] = []
-    LOG_LEVEL: int = Field(default=logging.INFO)
+    LOG_LEVEL: Union[int, str] = Field(default=logging.INFO)
+
+    @field_validator("LOG_LEVEL", mode="before")
+    def validate_log_level(cls, v):
+        if isinstance(v, str):
+            # 将字符串日志级别转换为整数
+            log_levels = {
+                "CRITICAL": logging.CRITICAL,
+                "ERROR": logging.ERROR,
+                "WARNING": logging.WARNING,
+                "INFO": logging.INFO,
+                "DEBUG": logging.DEBUG,
+                "NOTSET": logging.NOTSET
+            }
+            return log_levels.get(v.upper(), logging.INFO)
+        return v
 
     VERSION: str = "1.0.0"
     DEBUG: bool = Field(default=True)
@@ -52,8 +68,16 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
 
     # JWT
+    SECRET_KEY: str = "your-secret-key"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_SECONDS: int = 7200  # 2小时
+    REFRESH_TOKEN_EXPIRE_SECONDS: int = 604800  # 7天
     JWT_SECRET_KEY: str = "your-secret-key"
     JWT_ALGORITHM: str = "HS256"
+
+    # 速率限制
+    RATE_LIMIT: int = 100
+    RATE_LIMIT_PERIOD: int = 60  # 1分钟
 
     # Sentry
     SENTRY_DSN: str | None = None
@@ -88,9 +112,24 @@ class Settings(BaseSettings):
     CACHE_EXPIRE_MINUTES: int = 15
 
     # 文件上传配置
-    MAX_UPLOAD_SIZE: int = 5 * 1024 * 1024  # 5MB
+    MAX_UPLOAD_SIZE: Union[int, str] = Field(default=5 * 1024 * 1024)  # 5MB
     ALLOWED_EXTENSIONS: List[str] = ["jpg", "jpeg", "png", "pdf"]
     UPLOAD_DIR: str = "uploads"
+
+    @field_validator("MAX_UPLOAD_SIZE", mode="before")
+    def validate_max_upload_size(cls, v):
+        if isinstance(v, str):
+            # 尝试提取数字部分
+            import re
+            num_str = re.match(r'^\d+', v)
+            if num_str:
+                return int(num_str.group(0))
+            return 5 * 1024 * 1024  # 默认 5MB
+        return v
+
+    @property
+    def SECRET_KEY_BYTES(self) -> bytes:
+        return self.SECRET_KEY.encode()
 
     @field_validator("POOL_SIZE", mode="before")
     @classmethod

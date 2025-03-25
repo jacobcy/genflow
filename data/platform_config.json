@@ -1,0 +1,218 @@
+{
+  "36kr": {
+    "path": "/36kr",
+    "category": "新闻资讯"
+  },
+  "51cto": {
+    "path": "/51cto",
+    "category": "其他"
+  },
+  "52pojie": {
+    "path": "/52pojie",
+    "category": "其他"
+  },
+  "acfun": {
+    "path": "/acfun",
+    "category": "其他"
+  },
+  "baidu": {
+    "path": "/baidu",
+    "category": "新闻资讯"
+  },
+  "bilibili": {
+    "path": "/bilibili",
+    "category": "其他"
+  },
+  "coolapk": {
+    "path": "/coolapk",
+    "category": "其他"
+  },
+  "csdn": {
+    "path": "/csdn",
+    "category": "技术社区"
+  },
+  "dgtle": {
+    "path": "/dgtle",
+    "category": "其他"
+  },
+  "douban-group": {
+    "path": "/douban-group",
+    "category": "其他"
+  },
+  "douban-movie": {
+    "path": "/douban-movie",
+    "category": "其他"
+  },
+  "douyin": {
+    "path": "/douyin",
+    "category": "社交媒体"
+  },
+  "earthquake": {
+    "path": "/earthquake",
+    "category": "其他"
+  },
+  "geekpark": {
+    "path": "/geekpark",
+    "category": "其他"
+  },
+  "genshin": {
+    "path": "/genshin",
+    "category": "游戏社区"
+  },
+  "github": {
+    "path": "/github",
+    "category": "技术社区"
+  },
+  "guokr": {
+    "path": "/guokr",
+    "category": "其他"
+  },
+  "hackernews": {
+    "path": "/hackernews",
+    "category": "其他"
+  },
+  "hellogithub": {
+    "path": "/hellogithub",
+    "category": "其他"
+  },
+  "history": {
+    "path": "/history",
+    "category": "其他"
+  },
+  "honkai": {
+    "path": "/honkai",
+    "category": "其他"
+  },
+  "hostloc": {
+    "path": "/hostloc",
+    "category": "其他"
+  },
+  "hupu": {
+    "path": "/hupu",
+    "category": "其他"
+  },
+  "huxiu": {
+    "path": "/huxiu",
+    "category": "其他"
+  },
+  "ifanr": {
+    "path": "/ifanr",
+    "category": "其他"
+  },
+  "ithome-xijiayi": {
+    "path": "/ithome-xijiayi",
+    "category": "其他"
+  },
+  "ithome": {
+    "path": "/ithome",
+    "category": "其他"
+  },
+  "jianshu": {
+    "path": "/jianshu",
+    "category": "其他"
+  },
+  "juejin": {
+    "path": "/juejin",
+    "category": "技术社区"
+  },
+  "kuaishou": {
+    "path": "/kuaishou",
+    "category": "社交媒体"
+  },
+  "linuxdo": {
+    "path": "/linuxdo",
+    "category": "其他"
+  },
+  "lol": {
+    "path": "/lol",
+    "category": "其他"
+  },
+  "miyoushe": {
+    "path": "/miyoushe",
+    "category": "游戏社区"
+  },
+  "netease-news": {
+    "path": "/netease-news",
+    "category": "新闻资讯"
+  },
+  "ngabbs": {
+    "path": "/ngabbs",
+    "category": "游戏社区"
+  },
+  "nodeseek": {
+    "path": "/nodeseek",
+    "category": "其他"
+  },
+  "nytimes": {
+    "path": "/nytimes",
+    "category": "其他"
+  },
+  "producthunt": {
+    "path": "/producthunt",
+    "category": "其他"
+  },
+  "qq-news": {
+    "path": "/qq-news",
+    "category": "新闻资讯"
+  },
+  "sina-news": {
+    "path": "/sina-news",
+    "category": "新闻资讯"
+  },
+  "sina": {
+    "path": "/sina",
+    "category": "其他"
+  },
+  "smzdm": {
+    "path": "/smzdm",
+    "category": "其他"
+  },
+  "sspai": {
+    "path": "/sspai",
+    "category": "其他"
+  },
+  "starrail": {
+    "path": "/starrail",
+    "category": "其他"
+  },
+  "thepaper": {
+    "path": "/thepaper",
+    "category": "其他"
+  },
+  "tieba": {
+    "path": "/tieba",
+    "category": "其他"
+  },
+  "toutiao": {
+    "path": "/toutiao",
+    "category": "其他"
+  },
+  "v2ex": {
+    "path": "/v2ex",
+    "category": "技术社区"
+  },
+  "weatheralarm": {
+    "path": "/weatheralarm",
+    "category": "其他"
+  },
+  "weibo": {
+    "path": "/weibo",
+    "category": "社交媒体"
+  },
+  "weread": {
+    "path": "/weread",
+    "category": "其他"
+  },
+  "yystv": {
+    "path": "/yystv",
+    "category": "其他"
+  },
+  "zhihu-daily": {
+    "path": "/zhihu-daily",
+    "category": "问答平台"
+  },
+  "zhihu": {
+    "path": "/zhihu",
+    "category": "问答平台"
+  }
+}

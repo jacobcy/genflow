@@ -1,82 +1,79 @@
 """命令行入口"""
-import argparse
-from config import Config
-from writer.article import ArticleGenerator
+import asyncio
+from core.controllers.content_controller import ContentController
+from core.models.platform import PLATFORM_CONFIGS
 
-def main():
-    """主函数"""
-    # 创建参数解析器
-    parser = argparse.ArgumentParser(description='AI 文章生成器')
-    parser.add_argument('--topic', '-t', help='文章主题')
-    parser.add_argument('--source', '-s', choices=['baidu', 'weibo', 'google'], help='热点来源')
-    parser.add_argument('--style', default='新闻报道', choices=['新闻报道', '科技评测', '观点评论'], help='文章风格')
-    parser.add_argument('--no-edit', action='store_true', help='不进行编辑改进')
-    parser.add_argument('--no-save', action='store_true', help='不保存到文件')
-    
-    # 解析参数
-    args = parser.parse_args()
-    
+async def main():
+    """主程序入口"""
     try:
-        # 初始化生成器
-        config = Config()
-        generator = ArticleGenerator(config)
-        
-        # 生成文章
-        if args.topic:
-            # 从主题生成
-            result = generator.generate_from_topic(
-                topic=args.topic,
-                style_name=args.style,
-                do_edit=not args.no_edit,
-                save_to_file=not args.no_save
-            )
-            
-            # 输出结果
-            if result['success']:
-                print(f"\n主题: {args.topic}")
-                print(f"风格: {args.style}")
-                print("\n大纲:")
-                print(result['outline'])
-                print("\n原始文章:")
-                print(result['original_article'])
-                if result['edited_article']:
-                    print("\n编辑后的文章:")
-                    print(result['edited_article'])
-                if result['original_file']:
-                    print(f"\n原始文章已保存到: {result['original_file']}")
-                if result['edited_file']:
-                    print(f"编辑版文章已保存到: {result['edited_file']}")
-            else:
-                print(f"\n错误: {result['error']}")
-                
-        elif args.source or args.source == '':
-            # 从热点生成
-            results = generator.generate_from_trending(
-                source=args.source,
-                style_name=args.style,
-                do_edit=not args.no_edit,
-                save_to_file=not args.no_save
-            )
-            
-            # 输出结果
-            print(f"\n共生成 {len(results)} 篇文章:")
-            for i, result in enumerate(results, 1):
-                if result['success']:
-                    print(f"\n{i}. 文章 {i}")
-                    if result['original_file']:
-                        print(f"原始文章: {result['original_file']}")
-                    if result['edited_file']:
-                        print(f"编辑版文章: {result['edited_file']}")
-                else:
-                    print(f"\n{i}. 文章 {i} 生成失败: {result['error']}")
-                    
+        # 创建内容控制器
+        controller = ContentController()
+
+        # 1. 选择目标平台
+        print("\n=== 选择目标平台 ===\n")
+        for idx, (platform_id, platform) in enumerate(PLATFORM_CONFIGS.items(), 1):
+            print(f"{idx}. {platform.name}")
+
+        while True:
+            try:
+                choice = int(input("\n请选择目标平台 (输入序号): "))
+                if 1 <= choice <= len(PLATFORM_CONFIGS):
+                    platform = list(PLATFORM_CONFIGS.values())[choice - 1]
+                    break
+                print("无效的选择，请重试")
+            except ValueError:
+                print("请输入有效的数字")
+
+        # 2. 输入内容类别
+        category = input("\n请输入内容类别 (如: 技术、生活、教育等): ").strip()
+        topic_count = int(input("需要生成几篇文章? (1-5): ").strip())
+        topic_count = max(1, min(5, topic_count))  # 限制范围
+
+        # 3. 执行内容生产流程
+        results = await controller.produce_content(
+            category=category,
+            platform=platform,
+            topic_count=topic_count
+        )
+
+        # 4. 打印生产进度摘要
+        progress = controller.get_progress()
+        print("\n=== 生产进度摘要 ===")
+        print(f"生产ID: {progress['production_id']}")
+        print(f"总进度: {progress['progress_percentage']}%")
+        print(f"总耗时: {progress['duration']:.2f}秒")
+        print(f"完成文章数: {progress['completed_topics']}/{progress['total_topics']}")
+
+        # 5. 打印生产结果
+        if results:
+            print("\n=== 生产结果 ===")
+            for result in results:
+                print(f"\n文章: {result.article.title}")
+                print(f"平台: {result.platform.name}")
+                print(f"状态: {result.status}")
+
+                print("\n是否查看完整内容? (y/n)")
+                if input().lower().strip() == 'y':
+                    print("\n=== 完整内容 ===")
+                    print(f"标题: {result.article.title}")
+                    print(f"摘要: {result.article.summary}")
+                    print("\n正文:")
+                    for section in result.article.sections:
+                        print(f"\n{section.title}")
+                        print(section.content)
         else:
-            parser.print_help()
-            
+            print("\n未能生成符合要求的文章")
+
     except KeyboardInterrupt:
-        print("\n\n操作已取消")
+        print("\n已取消生产")
+        controller.pause_production()
     except Exception as e:
         print(f"\n发生错误: {str(e)}")
+        # 打印错误日志
+        if hasattr(controller, 'current_progress'):
+            print("\n错误日志:")
+            for error in controller.current_progress.error_logs:
+                print(f"- [{error['stage']}] {error['time']}: {error['error']}")
 
 if __name__ == "__main__":
-    main() 
+    asyncio.run(main())

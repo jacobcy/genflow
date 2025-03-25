@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
 from fastapi.responses import PlainTextResponse, Response
 
-from src.api.v1 import health
+from api.v1 import health
 
 
 home_router = APIRouter()

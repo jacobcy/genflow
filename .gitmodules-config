@@ -10,6 +10,14 @@
 
 ```
 integrations/daily-hot      - 8b91ad9d35f7dad3b0c2a0b671001a9de9873115 (master)
+integrations/daily-hot-api      - 410d88860de84246cb8c201641afb03d3a67ab4f (master)
+integrations/langmanus      - 53819ceea4d2273f749a4b24615d6a2513190964 (main)
+integrations/langmanus-web      - 66452e166c62ef22629e0c6df2a1bcd13e7555fe (main)
+integrations/md      - c7bde439c41113d106aade26c0afe1ee2f9d3144 (main)
+
+```
+
+integrations/daily-hot      - 8b91ad9d35f7dad3b0c2a0b671001a9de9873115 (master)
 integrations/daily-hot-api  - 410d88860de84246cb8c201641afb03d3a67ab4f (master)
 integrations/langmanus      - 53819ceea4d2273f749a4b24615d6a2513190964 (main)
 integrations/langmanus-web  - 66452e166c62ef22629e0c6df2a1bcd13e7555fe (main)
@@ -68,4 +76,4 @@ git submodule foreach 'git status'
 - 避免在 CI/CD 流程中修改子模块内容
 - 如需修改子模块功能，请先向原始仓库提交 PR
 - 开发过程中使用 `--recurse-submodules` 参数确保子模块正确克隆
-- 所有团队成员应了解并遵循这些规则 
+- 所有团队成员应了解并遵循这些规则
