@@ -185,6 +185,24 @@ git reset --hard
 git clean -fd
 ```
 
+### 自动化脚本
+
+项目提供了自动化脚本来简化子模块管理：
+
+```bash
+# 检查子模块状态
+./scripts/check-submodules.sh
+
+# 恢复子模块到原始状态
+./scripts/check-submodules.sh --fix
+
+# 更新所有子模块到最新版本
+./scripts/update-submodules.sh
+
+# 更新所有子模块并自动提交（无需确认）
+./scripts/update-submodules.sh --force
+```
+
 详细规则请参考项目根目录下的 `.gitmodules-config` 文件。
 
 ## 开发指南
