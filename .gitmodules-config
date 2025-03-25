@@ -1,0 +1,71 @@
+# GenFlow 子模块管理规则
+
+## 子模块管理原则
+
+1. **不修改子模块内容** - 所有子模块应保持与原始仓库同步，不应在本项目中修改子模块内容
+2. **仅通过原始仓库更新** - 子模块的更新应通过原始仓库进行，然后在本项目中同步更新
+3. **保持引用稳定** - 子模块应引用稳定的提交或标签，避免使用不稳定的分支
+
+## 子模块路径和状态
+
+```
+integrations/daily-hot      - 8b91ad9d35f7dad3b0c2a0b671001a9de9873115
+integrations/daily-hot-api  - 410d88860de84246cb8c201641afb03d3a67ab4f
+integrations/langmanus      - 53819ceea4d2273f749a4b24615d6a2513190964
+integrations/langmanus-web  - 66452e166c62ef22629e0c6df2a1bcd13e7555fe
+integrations/md             - c7bde439c41113d106aade26c0afe1ee2f9d3144
+```
+
+## 添加/更新子模块的步骤
+
+```bash
+# 添加新子模块
+git submodule add <repository-url> <path>
+
+# 更新所有子模块到最新
+git submodule update --remote
+
+# 更新特定子模块
+git submodule update --remote <path>
+
+# 提交子模块更新
+git add <submodule-path>
+git commit -m "chore: 更新子模块 <name> 到最新版本"
+```
+
+## 恢复子模块到原始状态
+
+如果子模块被意外修改，使用以下命令恢复到原始状态：
+
+```bash
+# 进入子模块目录
+cd <submodule-path>
+
+# 重置所有更改
+git reset --hard
+git clean -fd
+
+# 返回主项目
+cd -
+
+# 提交子模块恢复
+git add <submodule-path>
+git commit -m "chore: 恢复子模块到原始状态"
+```
+
+## 子模块检查脚本
+
+定期运行以下脚本检查子模块状态：
+
+```bash
+#!/bin/bash
+# 检查所有子模块是否有未提交的更改
+git submodule foreach 'git status'
+```
+
+## 注意事项
+
+- 避免在 CI/CD 流程中修改子模块内容
+- 如需修改子模块功能，请先向原始仓库提交 PR
+- 开发过程中使用 `--recurse-submodules` 参数确保子模块正确克隆
+- 所有团队成员应了解并遵循这些规则 
