@@ -43,56 +43,45 @@ echo
 # 更新 .gitmodules-config 文件
 echo -e "${BLUE}更新 .gitmodules-config 文件...${NC}"
 if [ -f "$PROJECT_ROOT/.gitmodules-config" ]; then
-    # 创建临时文件
-    tmp_file=$(mktemp)
+    # 直接将当前状态格式化为所需格式
+    formatted_status=""
+    while read -r line; do
+        if [[ -n "$line" ]]; then
+            sha=$(echo "$line" | awk '{print $1}')
+            path=$(echo "$line" | awk '{print $2}')
+            branch=$(echo "$line" | grep -o '(heads/[^)]*)' | sed 's/(heads\///' | sed 's/)//')
+            formatted_status="${formatted_status}${path}      - ${sha} (${branch})\n"
+        fi
+    done <<< "$(git submodule status)"
     
-    # 更新子模块状态部分
-    awk -v status="$submodule_status" '
-    BEGIN { updating=0; updated=0 }
-    /^## 子模块路径和状态$/ { updating=1; print; print ""; print "```"; next }
-    /^```$/ && updating==1 {
-        updating=0;
-        updated=1;
-        # 添加子模块状态
-        split(status, lines, "\n")
-        for (i in lines) {
-            if (lines[i] != "") {
-                # 提取 SHA 和路径
-                match(lines[i], /([^ ]+) ([^ ]+) \(([^)]+)\)/)
-                sha = substr(lines[i], RSTART, RLENGTH)
-                path = substr(lines[i], RSTART+length(substr(lines[i], RSTART, RLENGTH))+1)
-                branch = substr(lines[i], RSTART+length(substr(lines[i], RSTART, RLENGTH))-1, 1)
-                
-                # 格式化输出
-                match(lines[i], /[^ ]+ ([^ ]+)/)
-                path = substr(lines[i], RSTART+1, RLENGTH-1)
-                match(lines[i], /^[ ]*([^ ]+)/)
-                sha = substr(lines[i], RSTART, RLENGTH)
-                match(lines[i], /\(([^)]+)\)/)
-                branch = ""
-                if (RLENGTH > 0) {
-                    branch = substr(lines[i], RSTART+1, RLENGTH-2)
-                }
-                
-                printf "%-24s - %s (%s)\n", path, sha, branch
-            }
-        }
-        print "```";
-        print "";
-        next
-    }
-    { if (updating == 0) print }
-    END { if (updated == 0) print "错误: 无法更新子模块状态部分" }
-    ' "$PROJECT_ROOT/.gitmodules-config" > "$tmp_file"
-    
-    # 检查是否成功生成内容
-    if [ -s "$tmp_file" ]; then
-        mv "$tmp_file" "$PROJECT_ROOT/.gitmodules-config"
-        echo -e "${GREEN}✓ .gitmodules-config 文件已更新${NC}"
+    # 检测操作系统
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        sed_cmd="sed -i ''"
     else
-        echo -e "${RED}✗ 无法更新 .gitmodules-config 文件${NC}"
-        rm "$tmp_file"
+        # Linux
+        sed_cmd="sed -i"
     fi
+    
+    # 创建临时文件
+    temp_file=$(mktemp)
+    
+    # 提取子模块状态部分前面的内容
+    awk 'BEGIN{found=0} /^## 子模块路径和状态$/{found=1; exit} {print}' "$PROJECT_ROOT/.gitmodules-config" > "$temp_file"
+    
+    # 添加子模块状态部分
+    echo -e "## 子模块路径和状态\n\n\`\`\`" >> "$temp_file"
+    echo -e "$formatted_status" >> "$temp_file"
+    echo -e "\`\`\`\n" >> "$temp_file"
+    
+    # 提取子模块状态部分后面的内容
+    awk 'BEGIN{found=0} /^## 子模块路径和状态$/{found=1} /^```$/ && found==1 {found=2; next} found==2 {print}' "$PROJECT_ROOT/.gitmodules-config" >> "$temp_file"
+    
+    # 替换原文件
+    cp "$temp_file" "$PROJECT_ROOT/.gitmodules-config"
+    rm "$temp_file"
+    
+    echo -e "${GREEN}✓ .gitmodules-config 文件已更新${NC}"
 else
     echo -e "${YELLOW}警告: .gitmodules-config 文件不存在${NC}"
 fi
