@@ -8,27 +8,27 @@ from typing import Optional, Dict, Any, Type
 logger = logging.getLogger(__name__)
 
 # 导入基础类
-from src.tools.base import BaseTool, ToolResult
+from core.tools.base import BaseTool, ToolResult
 
 # 导入工具类
-from src.tools.content_collectors import (
+from core.tools.content_collectors import (
     ContentCollector,
     NewspaperCollector,
     TrafilaturaCollector,
     ReadabilityCollector
 )
-from src.tools.search_tools import SearchAggregator, DuckDuckGoTool, GoogleTrendsTool
-from src.tools.nlp_tools import NLPAggregator
-from src.tools.style_tools import StyleAdapter
-from src.tools.trending_tools import TrendingTopics
-from src.tools.review_tools import (
+from core.tools.search_tools import SearchAggregator, DuckDuckGoTool, GoogleTrendsTool
+from core.tools.nlp_tools import NLPAggregator
+from core.tools.style_tools import StyleAdapter
+from core.tools.trending_tools import TrendingTopics
+from core.tools.review_tools import (
     PlagiarismChecker,
     StatisticalAIDetector,
     OpenAIDetector,
     SensitiveWordChecker
 )
-from src.agents.content_crew import ContentCrew
-from src.models.platform import Platform, StyleRules, ContentRules, StyleGuide, SEORequirements
+from core.agents.content_crew import ContentCrew
+from core.models.platform import Platform, StyleRules, ContentRules, StyleGuide, SEORequirements
 
 # 测试数据
 TEST_URL = "https://www.python.org"

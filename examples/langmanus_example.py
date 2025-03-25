@@ -2,7 +2,7 @@
 展示如何在 GenFlow 中使用 LangManus 的能力
 """
 import asyncio
-from src.integrations.langmanus import LangManusClient
+from core.integrations.langmanus import LangManusClient
 
 async def main():
     # 初始化客户端

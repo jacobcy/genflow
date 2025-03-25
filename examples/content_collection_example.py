@@ -1,7 +1,7 @@
 """内容采集示例"""
 import asyncio
-from src.config import Config
-from src.collector.content import ContentCollector
+from core.config import Config
+from core.collector.content import ContentCollector
 from loguru import logger
 
 async def main():

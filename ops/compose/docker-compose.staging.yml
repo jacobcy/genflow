@@ -1,0 +1,76 @@
+x-fastapi-envs: &fastapi_envs
+  environment:
+    - PROJECT_NAME=genflow
+    - NGINX_HOST=api-staging.genflow.com
+    - ENV=staging
+    - POSTGRES_USER=genflow
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - POSTGRES_HOST=db
+    - POSTGRES_DB=genflow
+    - POSTGRES_PORT=5432
+    - VERSION=v1
+
+x-default_deploy: &default_deploy
+  deploy:
+    mode: replicated
+    replicas: 1
+    restart_policy:
+      condition: on-failure
+      delay: 20s
+      max_attempts: 6
+      window: 120s
+    update_config:
+      parallelism: 1
+      order: start-first
+
+volumes:
+  data-vol:
+  dbdata-vol:
+  nginxdata-vol:
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+    labels:
+      com.genflow.container.name: genflow-db
+      com.genflow.env: staging
+      com.genflow.project: genflow-cloud
+    volumes:
+      - dbdata-vol:/var/lib/postgresql/data/
+    <<: [*fastapi_envs, *default_deploy]
+
+  nginx:
+    image: ${REGISTRY}/nginx:${GITHUB_SHA}
+    environment:
+      - UPSTREAMS=/:backend:8000
+      - NGINX_SERVER_NAME=api-staging.genflow.com # without this, /admin redirects to https://_/
+      - ENABLE_SSL=true
+      - HTTPS_REDIRECT=true
+      - CERTBOT_EMAIL=jacobcy81@gmail.com
+      - DOMAIN_LIST=api-staging.genflow.com
+
+    labels:
+      com.genflow.container.name: genflow-nginx
+      com.genflow.env: staging
+      com.genflow.project: genflow-cloud
+    ports:
+      - '0.0.0.0:80:80'
+      - '0.0.0.0:443:443'
+    volumes:
+      - nginxdata-vol:/etc/letsencrypt
+    <<: *default_deploy
+
+  backend:
+    image: ${REGISTRY}/backend:${GITHUB_SHA}
+    environment:
+    labels:
+      com.genflow.container.name: genflow-backend
+      com.genflow.env: staging
+      com.genflow.project: genflow-cloud
+    <<: [*fastapi_envs, *default_deploy]
+    volumes:
+      - data-vol:/data
+    command: bash -c "
+      alembic upgrade head &&
+      gunicorn src.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --log-level=info --timeout=120"

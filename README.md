@@ -9,27 +9,62 @@ GenFlow 是一个基于 AI 的内容创作和发布平台，帮助自媒体创�
 - 文章管理系统
 - 数据分析报告
 
+## 环境要求
+
+### 必需组件
+- Docker Engine 24.0.0+
+- Docker Compose v2.20.0+
+- Git
+
+### 推荐开发环境
+- VSCode 或 JetBrains IDE
+- Node.js 18+ (本地开发)
+- Python 3.10+ (本地开发)
+
 ## 快速开始
 
-1. 克隆项目：
+### 1. 克隆项目
 ```bash
-git clone https://github.com/yourusername/genflow.git
+git clone https://github.com/your-org/genflow.git
 cd genflow
 ```
 
-2. 配置环境：
+### 2. 环境配置
+1. 复制环境变量模板：
 ```bash
+# Docker 环境变量
+cp ops/compose/.env.docker.example ops/compose/.env.docker
+
+# 项目环境变量
 cp .env.example .env
-# 编辑 .env 文件，根据你的环境修改配置
 ```
+
+2. 根据需要修改环境变量：
+   - 数据库配置
+   - API密钥
+   - 端口映射
+   - 存储路径
 
 > **重要提示：** 首次使用时请务必修改管理员密码！
 > - ADMIN_EMAIL：管理员邮箱，默认为 admin@genflow.ai
 > - ADMIN_PASSWORD：管理员密码，默认为 admin123456
 
-3. 选择安装方式：
+### 3. 启动服务
 
-### 方式一：使用 uv（推荐）
+#### 方式一：Docker 部署（推荐）
+```bash
+# 创建必要的数据目录
+mkdir -p ops/compose/data/{postgres,redis,nginx}
+
+# 启动所有服务
+cd ops/compose
+docker compose up -d
+
+# 查看服务状态
+docker compose ps
+```
+
+#### 方式二：使用 uv
 
 1. 安装 uv：
 ```bash
@@ -65,131 +100,57 @@ uv run genflow --env production
 uv run genflow --host 0.0.0.0 --port 8000
 ```
 
-### 方式二：Docker 部署
+#### 方式三：手动安装
+详见完整文档 [docs/quickstart.md](docs/quickstart.md)
 
-安装 Docker：
-```bash
-# Ubuntu/Debian
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
+### 4. 验证部署
+- 前端页面：http://localhost:80
+- 后端API：http://localhost:80/api
+- 健康检查：http://localhost:80/health
 
-# MacOS
-brew install --cask docker
+## 项目配置
 
-# Windows
-# 下载并安装 Docker Desktop: https://www.docker.com/products/docker-desktop
-```
-
-```bash
-# 构建并启动所有服务
-docker-compose up -d
-
-# 查看服务状态
-docker-compose ps
-```
-
-### 方式三：手动安装（不推荐）
-
-1. 安装系统依赖：
-```bash
-# PostgreSQL
-# Ubuntu/Debian
-sudo apt-get install postgresql postgresql-contrib
-sudo systemctl start postgresql
-sudo -u postgres createdb genflow_dev
-
-# MacOS
-brew install postgresql
-brew services start postgresql
-createdb genflow_dev
-
-# Windows
-# 下载并安装 PostgreSQL: https://www.postgresql.org/download/windows/
-# 使用 pgAdmin 或命令行创建数据库 genflow_dev
-
-# Redis
-# Ubuntu/Debian
-sudo apt-get install redis-server
-sudo systemctl start redis-server
-
-# MacOS
-brew install redis
-brew services start redis
-
-# Windows
-# 下载并安装 Redis for Windows
-```
-
-2. 创建 Python 环境：
-```bash
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-3. 启动服务：
-
-开发环境（默认）：
-```bash
-python run.py
-```
-
-生产环境：
-```bash
-python run.py --env production
-```
-
-自定义主机和端口：
-```bash
-python run.py --host 0.0.0.0 --port 8000
-```
-
-## 项目结构
-
+### 目录结构
 ```
 genflow/
-├── app/                    # 后端应用
-│   ├── api/               # API 接口
-│   │   ├── __init__.py
-│   │   ├── auth.py       # 认证相关接口
-│   │   └── platforms.py   # 平台相关接口
-│   ├── models/            # 数据模型
-│   │   ├── user.py
-│   │   ├── article.py
-│   │   └── platform.py
-│   ├── services/          # 业务逻辑
-│   │   ├── auth_service.py
-│   │   └── platform_service.py
-│   ├── tasks/             # 异步任务
-│   │   ├── __init__.py
-│   │   └── article_tasks.py
-│   └── utils/             # 工具函数
-│       ├── logger.py
-│       └── errors.py
-├── config/                # 配置文件
-│   ├── __init__.py
-│   ├── development.py
-│   └── production.py
-├── tests/                 # 测试用例
-├── .env                   # 环境变量
-├── .env.example          # 环境变量模板
-├── requirements.txt      # 项目依赖
-└── run.py               # 启动脚本
+├── frontend/          # Next.js 前端项目
+├── backend/           # Python 后端项目
+├── ops/              
+│   ├── compose/       # Docker Compose 配置
+│   └── docker/        # Dockerfile 定义
+├── docs/             # 项目文档
+└── config/           # 配置文件
 ```
 
 ## 开发指南
 
-1. **配置说明**
-- 开发环境配置在 `config/development.py`
-- 生产环境配置在 `config/production.py`
-- 环境变量配置在 `.env` 文件中
+### 本地开发
+1. 启动依赖服务：
+```bash
+cd ops/compose
+docker compose up -d postgres redis
+```
 
-2. **数据库**
-- 开发环境默认使用本地 PostgreSQL
-- 生产环境通过环境变量配置数据库连接
+2. 启动后端服务：
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: .\venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
 
-数据库重置
-```bash docker环境
+3. 启动前端服务：
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### 数据库操作
+
+数据库重置（Docker环境）:
+```bash
 # 停止并删除现有容器
 docker-compose down
 
@@ -200,7 +161,8 @@ docker volume rm genflow_postgres_data
 docker-compose up -d
 ```
 
-```bash 手动环境
+数据库重置（手动环境）:
+```bash
 # 删除现有数据库
 dropdb genflow_dev
 
@@ -211,56 +173,47 @@ createdb genflow_dev
 uv run genflow
 ```
 
-3. **异步任务**
-- 使用 Celery 处理异步任务
-- Redis 作为消息代理
-- 文章发布等耗时操作都在后台处理
+## 常见问题
 
-## 测试
+### 1. 服务无法启动
+- 检查端口占用：`netstat -tulpn | grep LISTEN`
+- 检查日志：`docker compose logs -f [service_name]`
+- 确认环境变量配置正确
 
-运行测试：
+### 2. 数据库连接失败
+- 确认 PostgreSQL 服务运行状态
+- 验证数据库连接信息
+- 检查网络连接和防火墙设置
+
+### 3. 前端访问后端 API 失败
+- 确认 NEXT_PUBLIC_API_URL 配置正确
+- 检查 CORS 配置
+- 验证 nginx 代理配置
+
+### 4. 文件权限问题
 ```bash
-uv pip sync requirements.txt[dev]  # 安装开发依赖
-pytest
+# 修复数据目录权限
+sudo chown -R 1000:1000 ops/compose/data
 ```
-
-生成覆盖率报告：
-```bash
-pytest --cov=app tests/
-```
-
-## 部署
-
-1. **Docker 部署**：
-```bash
-# 构建镜像
-docker-compose build
-
-# 启动服务
-docker-compose up -d
-```
-
-2. **传统部署**：
-```bash
-# 安装依赖
-uv pip sync requirements.txt
-
-# 启动服务
-uv run genflow --env production --host 0.0.0.0
-```
-
-## 许可证
-
-MIT License 
 
 ## 访问系统
 
-1. 打开浏览器访问：http://localhost:6060
+1. 打开浏览器访问：http://localhost:80
 2. 使用管理员账号登录：
    - 邮箱：ADMIN_EMAIL 配置值（默认：admin@genflow.ai）
    - 密码：ADMIN_PASSWORD 配置值（默认：admin123456）
 
-> **安全提示：** 为了系统安全，强烈建议在首次使用时修改默认管理员密码！ 
+> **安全提示：** 为了系统安全，强烈建议在首次使用时修改默认管理员密码！
+
+## 更多资源
+
+- 详细文档：[docs/quickstart.md](docs/quickstart.md)
+- 提交 Issue：GitHub Issues
+- 技术支持：support@your-domain.com
+
+## 许可证
+
+MIT License - 详见 LICENSE 文件
 
 ## 数据库设计
 

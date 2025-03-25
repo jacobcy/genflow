@@ -1,20 +1,26 @@
-# 使用 Python 作为基础镜像
-FROM python:3.9-slim
+FROM python:3.11 AS base
 
-# 设置工作目录
-WORKDIR /app
+ARG env
 
-# 复制依赖文件
-COPY requirements.txt .
+WORKDIR /tmp
 
-# 安装依赖
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install poetry
 
-# 复制源代码
-COPY . .
+COPY ./pyproject.toml ./poetry.lock* /tmp/
 
-# 暴露端口
-EXPOSE 8080
+RUN poetry export $(test "${env:-dev}" != "prod" && echo "--with dev") \
+    -f requirements.txt \
+    --output requirements.txt \
+    --without-hashes
 
-# 启动应用
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+FROM python:3.11
+
+COPY --from=base /tmp/requirements.txt /code/requirements.txt
+
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+
+ADD . /code/
+WORKDIR /code
+ENV PYTHONPATH=/code
+
+EXPOSE 8000

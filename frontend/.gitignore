@@ -1,0 +1,102 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+.pnpm-store/
+.npm
+.yarn
+
+# testing
+/coverage
+.nyc_output
+*.lcov
+
+# next.js
+/.next/
+/out/
+.next-env
+
+# production
+/build
+/dist
+
+# misc
+.DS_Store
+*.pem
+Thumbs.db
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+debug.log
+
+# local env files
+.env*.local
+.env
+.env.development
+.env.test
+.env.production
+
+# vercel
+.vercel
+.netlify
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.settings/
+
+# Cache
+.cache/
+.temp/
+.eslintcache
+.stylelintcache
+
+# Temporary files
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+# Build artifacts
+.turbo
+storybook-static/
+.docusaurus
+public/sitemap*.xml
+public/sw.js
+public/workbox-*.js
+
+# TypeScript
+tsconfig.tsbuildinfo
+
+# PWA
+public/sw.js
+public/workbox-*.js
+public/worker-*.js
+public/fallback-*.js
+
+# Sentry
+.sentryclirc
+
+# Bundle analyzer
+analyze/
+.analyze/
+stats.json
+
+# Test coverage
+coverage/
+.coverage/
+junit.xml
+test-results/

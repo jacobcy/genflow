@@ -1,0 +1,88 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+.mypy_cache/
+coverage.xml
+*.cover
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite3
+*.sqlite
+
+# Alembic
+alembic/versions/*
+!alembic/versions/.gitkeep
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Cache
+.cache/
+.ruff_cache/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Production
+prod.env
+prod.*.env
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Local development
+docker-compose.override.yml
+local_settings.py
+
+# Metrics and monitoring
+prometheus/
+grafana/ 

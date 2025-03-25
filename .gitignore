@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -20,26 +19,133 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.pytest_cache
 
-# 虚拟环境
+# Virtual Environment
+.env
+.venv
+env/
 venv/
 ENV/
-.venv
 
-# IDE
+# IDE and Editors
 .idea/
 .vscode/
 *.swp
 *.swo
-.cursor
-
-
-# 项目特定
-.env
-uploads/
-*.log
-.coverage
-htmlcov/ 
-.aider*
 .DS_Store
+.cursor
+*.sublime-project
+*.sublime-workspace
+.project
+.settings/
+.classpath
+.factorypath
+
+# Testing and Coverage
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+.mypy_cache/
+coverage.xml
+*.cover
+.hypothesis/
+.nox/
+
+# Logs and Databases
+logs/
+*.log
+*.db
+*.sqlite3
+*.sqlite
+
+# Environment Variables
+.env
+.env.local
+.env.*
+!.env.example
+
+# Cache and Temporary
+.cache/
+.ruff_cache/
+*.tmp
+*.bak
+*~
+.temp/
+.tmp/
+
+# Build and Packaging
+node_modules/
+dist/
+build/
+*.pyc
+__pycache__/
+.build/
+.dist/
+.eggs/
+
+# Project Specific
+uploads/
+!**/uploads/.gitkeep
+.aider*
+.aider.chat.history.md
+.aider.tags.cache.v4/
+.aider.conf.yml
+.aider.input.history
+
+# Documentation
+docs/_build/
+site/
+
+# Dependencies
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Local Development
+docker-compose.override.yml
+local_settings.py
+override.yml
+
+# Metrics and Monitoring
+prometheus/
+grafana/
+*.pprof
+.coverage.*
+
+# System Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.directory
+
+# Language Specific
+# JavaScript/Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm/
+.yarn/
+.pnp.*
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+target/
+.gradle/
+
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+
+# Go
+/vendor/
+/Godeps/
+.go-version
