@@ -9,11 +9,11 @@
 ## 子模块路径和状态
 
 ```
-integrations/daily-hot      - 8b91ad9d35f7dad3b0c2a0b671001a9de9873115
-integrations/daily-hot-api  - 410d88860de84246cb8c201641afb03d3a67ab4f
-integrations/langmanus      - 53819ceea4d2273f749a4b24615d6a2513190964
-integrations/langmanus-web  - 66452e166c62ef22629e0c6df2a1bcd13e7555fe
-integrations/md             - c7bde439c41113d106aade26c0afe1ee2f9d3144
+integrations/daily-hot      - 8b91ad9d35f7dad3b0c2a0b671001a9de9873115 (master)
+integrations/daily-hot-api  - 410d88860de84246cb8c201641afb03d3a67ab4f (master)
+integrations/langmanus      - 53819ceea4d2273f749a4b24615d6a2513190964 (main)
+integrations/langmanus-web  - 66452e166c62ef22629e0c6df2a1bcd13e7555fe (main)
+integrations/md             - c7bde439c41113d106aade26c0afe1ee2f9d3144 (main)
 ```
 
 ## 添加/更新子模块的步骤
