@@ -85,4 +85,4 @@ local_settings.py
 
 # Metrics and monitoring
 prometheus/
-grafana/ 
+grafana/

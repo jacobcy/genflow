@@ -33,7 +33,7 @@ class StageProgress:
         self.completed_items: int = 0
         self.avg_score: float = 0.0
         self.error_count: int = 0
-    
+
     @property
     def duration(self) -> float:
         """阶段耗时(秒)"""
@@ -41,14 +41,14 @@ class StageProgress:
             return 0
         end = self.end_time or datetime.now()
         return (end - self.start_time).total_seconds()
-    
+
     @property
     def success_rate(self) -> float:
         """成功率"""
         if self.total_items == 0:
             return 0
         return (self.completed_items - self.error_count) / self.total_items
-    
+
     def to_dict(self) -> Dict:
         """转换为字典"""
         return {
@@ -82,10 +82,10 @@ class ProductionProgress:
                 ProductionStage.PAUSED
             ]
         }
-    
+
     def start_stage(self, stage: ProductionStage, total_items: int):
         """开始阶段
-        
+
         Args:
             stage: 阶段
             total_items: 总项目数
@@ -96,7 +96,7 @@ class ProductionProgress:
         stage_progress.status = StageStatus.IN_PROGRESS
         stage_progress.start_time = datetime.now()
         stage_progress.total_items = total_items
-    
+
     def update_progress(
         self,
         stage: ProductionStage,
@@ -105,7 +105,7 @@ class ProductionProgress:
         error_count: int = 0
     ):
         """更新进度
-        
+
         Args:
             stage: 阶段
             completed_items: 已完成项目数
@@ -117,36 +117,36 @@ class ProductionProgress:
         stage_progress.avg_score = avg_score
         stage_progress.error_count = error_count
         self.error_count = sum(s.error_count for s in self.stages.values())
-    
+
     def complete_stage(self, stage: ProductionStage):
         """完成阶段
-        
+
         Args:
             stage: 阶段
         """
         stage_progress = self.stages[stage]
         stage_progress.status = StageStatus.COMPLETED
         stage_progress.end_time = datetime.now()
-        
+
         # 确定下一个阶段
         stages = list(ProductionStage)
         current_index = stages.index(stage)
         if current_index < len(stages) - 4:  # 排除 COMPLETED, FAILED, PAUSED
             self.current_stage = stages[current_index + 1]
             self.stage_status = StageStatus.PENDING
-    
+
     def complete(self):
         """完成生产"""
         self.current_stage = ProductionStage.COMPLETED
         self.stage_status = StageStatus.COMPLETED
         self.end_time = datetime.now()
-    
+
     def fail(self):
         """生产失败"""
         self.current_stage = ProductionStage.FAILED
         self.stage_status = StageStatus.FAILED
         self.end_time = datetime.now()
-    
+
     def pause(self):
         """暂停生产"""
         self.current_stage = ProductionStage.PAUSED
@@ -154,7 +154,7 @@ class ProductionProgress:
         # 暂停当前阶段
         if self.current_stage in self.stages:
             self.stages[self.current_stage].status = StageStatus.PAUSED
-    
+
     def resume(self):
         """恢复生产"""
         # 找到上一个未完成的阶段
@@ -164,10 +164,10 @@ class ProductionProgress:
                 self.stage_status = StageStatus.IN_PROGRESS
                 self.stages[stage].status = StageStatus.IN_PROGRESS
                 break
-    
+
     def add_error(self, stage: ProductionStage, error: str):
         """添加错误日志
-        
+
         Args:
             stage: 阶段
             error: 错误信息
@@ -177,7 +177,7 @@ class ProductionProgress:
             "stage": stage,
             "error": error
         })
-    
+
     @property
     def duration(self) -> float:
         """总耗时(秒)"""
@@ -185,7 +185,7 @@ class ProductionProgress:
             return 0
         end = self.end_time or datetime.now()
         return (end - self.start_time).total_seconds()
-    
+
     @property
     def progress_percentage(self) -> float:
         """总进度百分比"""
@@ -196,7 +196,7 @@ class ProductionProgress:
             ProductionStage.STYLE_ADAPTATION: 0.2,
             ProductionStage.ARTICLE_REVIEW: 0.2
         }
-        
+
         total_progress = 0
         for stage, progress in self.stages.items():
             if stage in stage_weights:
@@ -207,12 +207,12 @@ class ProductionProgress:
                 else:
                     stage_progress = 0
                 total_progress += stage_progress * stage_weights[stage]
-        
+
         return total_progress * 100
-    
+
     def get_summary(self) -> Dict:
         """获取进度摘要
-        
+
         Returns:
             Dict: 进度摘要
         """
@@ -229,4 +229,4 @@ class ProductionProgress:
                 stage.value: progress.to_dict()
                 for stage, progress in self.stages.items()
             }
-        } 
+        }

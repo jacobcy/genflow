@@ -5,4 +5,4 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # 使用内存数据库
     JWT_SECRET_KEY = 'test-secret-key'
-    WTF_CSRF_ENABLED = False 
+    WTF_CSRF_ENABLED = False

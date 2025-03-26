@@ -1,7 +1,7 @@
 """选题团队工作流程
 
 这个模块定义了选题团队的简化工作流程，主要是获取热搜话题并辅助人工决策。
-工作流程专注于从热搜平台获取话题信息，由人工编辑做最终决策。
+工作流程专注于从热搜平台获取话题信息，支持自动选题和人工辅助两种模式。
 """
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -21,7 +21,7 @@ class TopicCrew:
     """选题团队
 
     这个类管理选题团队的简化工作流程，获取热搜话题并提供建议，
-    以人工为主，AI辅助决策。
+    支持自动选题和人工辅助两种模式。
     """
 
     def __init__(self, config: Optional[Config] = None):
@@ -75,6 +75,80 @@ class TopicCrew:
         topics = self._parse_topics_result(result)
         logger.info(f"话题获取完成，共发现 {len(topics)} 个话题")
         return topics
+
+    async def auto_select_topics(self, topics: List[Topic], count: int = 3) -> List[Topic]:
+        """自动选择话题
+
+        基于话题的推荐理由和其他因素自动选择最合适的话题。
+
+        Args:
+            topics: 候选话题列表
+            count: 要选择的话题数量，默认为3
+
+        Returns:
+            List[Topic]: 被选中的话题列表
+        """
+        logger.info(f"开始自动选择话题，共 {len(topics)} 个候选，将选择 {count} 个")
+
+        # 创建评估任务
+        evaluation_task = self._create_topic_evaluation_task(topics)
+
+        # 创建工作流
+        crew = Crew(
+            agents=[self.topic_advisor],
+            tasks=[evaluation_task],
+            process=Process.sequential,
+            verbose=True
+        )
+
+        # 执行工作流
+        logger.info("启动话题评估流程...")
+        result = await self._execute_crew(crew)
+
+        # 处理评估结果
+        if "evaluations" in result and isinstance(result["evaluations"], list):
+            evaluations = result["evaluations"]
+            # 根据评分排序
+            sorted_indices = sorted(
+                range(len(evaluations)),
+                key=lambda i: evaluations[i].get("score", 0),
+                reverse=True
+            )
+
+            # 选择评分最高的n个话题
+            selected_indices = sorted_indices[:min(count, len(evaluations))]
+
+            for i, topic in enumerate(topics):
+                if i in selected_indices:
+                    topic.status = "selected"
+                    topic.auto_score = evaluations[i].get("score", 0)
+                    topic.selection_reason = evaluations[i].get("reason", "")
+                else:
+                    topic.status = "rejected"
+                topic.updated_at = datetime.now()
+
+            selected_topics = [topics[i] for i in selected_indices]
+            logger.info(f"自动选择完成，已选择 {len(selected_topics)} 个话题")
+
+            # 记录选择结果
+            for topic in selected_topics:
+                logger.info(f"选中话题: {topic.title}, 评分: {getattr(topic, 'auto_score', 0)}")
+
+            return selected_topics
+        else:
+            # 如果评估失败，使用简单规则选择
+            logger.warning("话题评估失败，使用简单规则选择")
+            selected_topics = topics[:min(count, len(topics))]
+            for topic in selected_topics:
+                topic.status = "selected"
+                topic.updated_at = datetime.now()
+
+            for topic in topics:
+                if topic not in selected_topics:
+                    topic.status = "rejected"
+                    topic.updated_at = datetime.now()
+
+            return selected_topics
 
     async def get_topic_details(self, topic_id: str) -> Dict:
         """获取话题详情
@@ -140,17 +214,18 @@ class TopicCrew:
         logger.info(f"人工决策完成，{selected_count}/{len(topics)} 个话题被选中")
         return topics
 
-    async def run_workflow(self, category: Optional[str] = None, count: int = 10) -> Dict:
-        """运行简化的工作流程
+    async def run_workflow(self, category: Optional[str] = None, count: int = 10, auto_mode: bool = False) -> Dict:
+        """运行选题工作流程
 
         Args:
             category: 话题分类
             count: 话题数量
+            auto_mode: 是否使用自动模式，True为自动选题，False为人工辅助
 
         Returns:
             Dict: 工作流程结果
         """
-        logger.info(f"开始执行简化工作流程: 分类={category or '全部'}, 数量={count}")
+        logger.info(f"开始执行选题工作流程: 分类={category or '全部'}, 数量={count}, 模式={'自动' if auto_mode else '人工辅助'}")
 
         # 1. 获取话题建议
         logger.info("=== 获取话题建议 ===")
@@ -159,21 +234,36 @@ class TopicCrew:
         logger.info(f"=== 获取了 {len(topics)} 个话题建议 ===")
         print(f"=== 获取了 {len(topics)} 个话题建议 ===")
 
-        # 2. 获取人工决策
-        logger.info("=== 开始获取人工决策 ===")
-        topics = self.get_human_decision(topics)
+        # 2. 话题选择（自动或人工）
+        selected_topics = []
+        if auto_mode:
+            logger.info("=== 开始自动选择话题 ===")
+            print("=== 开始自动选择话题 ===")
+            selected_topics = await self.auto_select_topics(topics, count=min(3, count))
+            print(f"=== 自动选择了 {len(selected_topics)} 个话题 ===")
+            # 显示选中的话题
+            print("\n=== 选中的话题 ===")
+            for topic in selected_topics:
+                print(f"- {topic.title}")
+                if hasattr(topic, 'selection_reason') and topic.selection_reason:
+                    print(f"  原因: {topic.selection_reason}")
+        else:
+            logger.info("=== 开始获取人工决策 ===")
+            topics = self.get_human_decision(topics)
+            selected_topics = [t for t in topics if t.status == "selected"]
 
         # 3. 生成结果报告
         logger.info("生成结果报告")
         result_report = {
             "timestamp": datetime.now().isoformat(),
             "category": category or "全部",
+            "mode": "auto" if auto_mode else "human_assisted",
             "total_topics": len(topics),
-            "selected_topics": len([t for t in topics if t.status == "selected"]),
+            "selected_topics": len(selected_topics),
             "topics": [topic.dict() for topic in topics]
         }
 
-        logger.info(f"工作流程执行完成")
+        logger.info(f"工作流程执行完成，选中了 {len(selected_topics)} 个话题")
         return result_report
 
     # ================ 辅助方法 ================
@@ -208,6 +298,61 @@ class TopicCrew:
               - recommendation_reason: 推荐理由(简洁明了)
             """,
             expected_output=f"包含{count}个推荐话题的JSON数据",
+            agent=self.topic_advisor
+        )
+
+    def _create_topic_evaluation_task(self, topics: List[Topic]) -> Task:
+        """创建话题评估任务
+
+        Args:
+            topics: 待评估的话题列表
+
+        Returns:
+            Task: 话题评估任务
+        """
+        # 准备话题数据
+        topics_data = []
+        for topic in topics:
+            topics_data.append({
+                "id": topic.id,
+                "title": topic.title,
+                "description": topic.description,
+                "category": topic.category,
+                "tags": topic.tags,
+                "recommendation_reason": getattr(topic, 'recommendation_reason', "")
+            })
+
+        topics_json = json.dumps(topics_data, ensure_ascii=False)
+
+        logger.info(f"创建话题评估任务: {len(topics)} 个话题")
+        return Task(
+            description=f"""
+            ## 话题评估任务
+
+            请评估以下话题的内容价值、受众规模、创作难度等因素，并为每个话题评分。
+
+            话题数据:
+            {topics_json}
+
+            请完成以下步骤:
+            1. 分析每个话题的潜力和可行性
+            2. 从内容质量、受众规模、时效性、创作难度等维度进行评估
+            3. 为每个话题评分(0-100)
+            4. 给出选择或放弃的理由
+
+            要求输出为JSON格式:
+            {{
+              "evaluations": [
+                {{
+                  "id": "话题ID",
+                  "score": 评分(0-100),
+                  "reason": "选择该话题的理由或建议"
+                }},
+                ...
+              ]
+            }}
+            """,
+            expected_output="话题评估结果JSON",
             agent=self.topic_advisor
         )
 
@@ -346,17 +491,14 @@ class TopicCrew:
 async def main():
     crew = TopicCrew()
 
-    # 获取话题建议
-    topics = await crew.suggest_topics(category="科技", count=5)
+    # 人工辅助模式
+    print("\n=== 人工辅助模式 ===")
+    result = await crew.run_workflow(category="科技", count=3, auto_mode=False)
 
-    # 获取人工决策
-    topics = crew.get_human_decision(topics)
-
-    # 查看选定的话题
-    selected_topics = [t for t in topics if t.status == "selected"]
-    print(f"\n=== 选定了 {len(selected_topics)} 个话题 ===")
-    for topic in selected_topics:
-        print(f"- {topic.title}")
+    # 自动模式
+    print("\n=== 自动选题模式 ===")
+    auto_result = await crew.run_workflow(category="娱乐", count=5, auto_mode=True)
+    print(f"自动选择结果: {auto_result['selected_topics']} 个话题被选中")
 
 if __name__ == "__main__":
     asyncio.run(main())

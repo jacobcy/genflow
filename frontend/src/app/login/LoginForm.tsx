@@ -11,7 +11,7 @@ export default function LoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loginType, setLoginType] = useState<'user' | 'admin'>('user');
-  
+
   const { login } = useAuth();
   const router = useRouter();
 
@@ -19,7 +19,7 @@ export default function LoginForm() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-    
+
     try {
       await login(email, password);
     } catch (err: any) {
@@ -34,7 +34,7 @@ export default function LoginForm() {
     if (process.env.NODE_ENV !== 'development') {
       return;
     }
-    
+
     // 直接使用虚假的凭据调用正常登录函数
     if (loginType === 'admin') {
       setEmail('admin@example.com');
@@ -43,7 +43,7 @@ export default function LoginForm() {
       setEmail('user@example.com');
       setPassword('user123');
     }
-    
+
     // 模拟点击登录按钮
     setTimeout(() => {
       const submitButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;

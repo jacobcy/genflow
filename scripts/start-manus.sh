@@ -52,4 +52,4 @@ cleanup() {
 trap cleanup EXIT
 
 # 等待所有后台进程
-wait 
+wait

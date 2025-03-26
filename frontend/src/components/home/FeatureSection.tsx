@@ -89,4 +89,4 @@ export function FeatureSection() {
             <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent" />
         </section>
     )
-} 
+}

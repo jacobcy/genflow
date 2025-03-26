@@ -38,7 +38,7 @@ import { Extension } from '@tiptap/core'
 
 export const AIExtension = Extension.create({
   name: 'ai',
-  
+
   addCommands() {
     return {
       suggestImprovement: () => ({ tr, dispatch }) => {
@@ -82,11 +82,11 @@ interface DocumentVersion {
 async function handleAIStream(response: ReadableStream) {
   const reader = response.getReader();
   let accumulated = '';
-  
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    
+
     accumulated += new TextDecoder().decode(value);
     // 实时更新 UI
     updateUI(accumulated);
@@ -101,7 +101,7 @@ import { diff_match_patch } from 'diff-match-patch';
 function applyChanges(original: string, changes: AIFunction[]) {
   const dmp = new diff_match_patch();
   let result = original;
-  
+
   for (const change of changes) {
     if (change.type === 'REPLACE_SECTION') {
       const patches = dmp.patch_make(
@@ -113,7 +113,7 @@ function applyChanges(original: string, changes: AIFunction[]) {
       result = dmp.patch_apply(patches, result)[0];
     }
   }
-  
+
   return result;
 }
 ```
@@ -142,19 +142,19 @@ interface ChangePreview {
 class ChangeHistory {
   private stack: AIFunction[] = [];
   private pointer: number = -1;
-  
+
   push(change: AIFunction) {
     this.stack.splice(this.pointer + 1);
     this.stack.push(change);
     this.pointer++;
   }
-  
+
   undo() {
     if (this.pointer >= 0) {
       return this.stack[this.pointer--];
     }
   }
-  
+
   redo() {
     if (this.pointer < this.stack.length - 1) {
       return this.stack[++this.pointer];
@@ -224,4 +224,4 @@ interface RateLimit {
 2. **自定义 AI 模型**
 3. **协同编辑**
 4. **插件系统**
-5. **数据分析工具** 
+5. **数据分析工具**

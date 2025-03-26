@@ -15,6 +15,14 @@ from core.models.research import ResearchResult, Article, ArticleSection
 from core.models.feedback import ResearchFeedback
 from core.agents.research_crew.research_agents import ResearchAgents
 from core.config import Config
+from core.constants.content_types import (
+    get_research_config,
+    DEFAULT_RESEARCH_CONFIG,
+    RESEARCH_CONFIG,
+    RESEARCH_DEPTH_LIGHT,
+    RESEARCH_DEPTH_MEDIUM,
+    RESEARCH_DEPTH_DEEP
+)
 
 # 配置日志
 logger = logging.getLogger("research_crew")
@@ -108,19 +116,51 @@ class ResearchCrew:
         # 记录最近执行的工作流结果
         self.last_workflow_result = None
 
-    def _create_background_research_task(self, topic: str) -> Task:
+        # 使用统一的配置
+        self.content_type_config = RESEARCH_CONFIG
+
+        # 默认内容类型配置
+        self.default_research_config = DEFAULT_RESEARCH_CONFIG.copy()
+
+        # 当前研究配置
+        self.current_research_config = self.default_research_config.copy()
+
+    def _create_background_research_task(self, topic: str, content_type: Optional[str] = None) -> Task:
         """创建背景研究任务
 
         Args:
             topic: 研究话题
+            content_type: 内容类型（如"新闻"、"论文"、"快讯"等）
 
         Returns:
             Task: 背景研究任务
         """
-        logger.info(f"创建背景研究任务，话题: {topic}")
-        return Task(
-            description=f"""
-            对话题"{topic}"进行全面的背景研究。
+        logger.info(f"创建背景研究任务，话题: {topic}，内容类型: {content_type or '未指定'}")
+
+        # 使用统一配置获取研究配置
+        self.current_research_config = get_research_config(content_type)
+
+        # 获取研究深度
+        research_depth = self.current_research_config["depth"]
+        depth_map = {
+            RESEARCH_DEPTH_LIGHT: "low",
+            RESEARCH_DEPTH_MEDIUM: "medium",
+            RESEARCH_DEPTH_DEEP: "high"
+        }
+        depth_level = depth_map.get(research_depth, "medium")
+
+        # 根据研究深度调整任务描述
+        depth_instructions = {
+            "low": "进行快速但全面的背景调查，重点关注最基本的信息和关键事实。不需要深入历史发展和复杂概念解释。",
+            "medium": "进行标准深度的背景研究，平衡全面性和深度，包括基本历史背景和主要概念解释。",
+            "high": "进行深入全面的背景研究，详细探索历史发展、相关理论基础，并提供全面的概念解释和最新研究进展。"
+        }
+
+        # 构建任务描述
+        description = f"""
+            你正在研究话题: {topic}。请记住保持客观中立的立场，关注事实而非观点。这是{content_type or '一般'}类型的内容研究，请保持适当的专业深度。
+
+            对话题"{topic}"进行{depth_instructions[depth_level]}
 
             你的任务是:
             1. 收集该话题的基本背景信息，包括历史发展、重要事件和时间线
@@ -138,31 +178,65 @@ class ResearchCrew:
             - 基础统计数据
 
             确保信息准确可靠，并尽可能引用来源。
-            """,
-            expected_output="一份详尽的背景研究报告，包含指定的所有部分，不少于1500字",
-            agent=self.agents["background_researcher"],
-            context=[
-                {"role": "system", "content": f"你正在研究话题: {topic}。请记住保持客观中立的立场，关注事实而非观点。"}
-            ]
+            """
+
+        # 根据研究深度调整预期输出长度
+        expected_outputs = {
+            "low": "一份基础的背景研究报告，简明扼要，包含指定的所有部分，约800字",
+            "medium": "一份详尽的背景研究报告，包含指定的所有部分，不少于1500字",
+            "high": "一份深入的背景研究报告，包含指定的所有部分，词汇准确专业，不少于2500字，引用专业资料"
+        }
+
+        return Task(
+            description=description,
+            expected_output=expected_outputs[depth_level],
+            agent=self.agents["background_researcher"]
         )
 
-    def _create_expert_finder_task(self, topic: str, background_research: TaskOutput) -> Task:
+    def _create_expert_finder_task(self, topic: str, background_research: TaskOutput, content_type: Optional[str] = None) -> Task:
         """创建专家发现任务
 
         Args:
             topic: 研究话题
             background_research: 背景研究结果
+            content_type: 内容类型
 
         Returns:
             Task: 专家发现任务
         """
-        logger.info(f"创建专家发现任务，话题: {topic}")
-        return Task(
-            description=f"""
+        logger.info(f"创建专家发现任务，话题: {topic}，内容类型: {content_type or '未指定'}")
+
+        # 使用统一配置获取研究配置（如果已经设置则复用）
+        if content_type:
+            self.current_research_config = get_research_config(content_type)
+
+        # 获取研究深度
+        research_depth = self.current_research_config["depth"]
+        depth_map = {
+            RESEARCH_DEPTH_LIGHT: "low",
+            RESEARCH_DEPTH_MEDIUM: "medium",
+            RESEARCH_DEPTH_DEEP: "high"
+        }
+        depth_level = depth_map.get(research_depth, "medium")
+
+        # 构建任务描述，根据深度调整专家数量和分析深度
+        expert_counts = {
+            "low": "2-3位",
+            "medium": "3-5位",
+            "high": "5-7位"
+        }
+
+        description = f"""
+            你正在寻找话题'{topic}'的专家观点。请确保收集多元观点，不要只关注单一立场的专家。这是{content_type or '一般'}类型的内容研究，请保持适当的专业深度。
+
+            这是话题的背景研究报告，请参考以便更准确地找到相关专家:
+
+            {background_research.raw_output}
+
             为话题"{topic}"寻找并分析领域专家的观点和见解。
 
             你的任务是:
-            1. 识别该话题领域的3-5位权威专家
+            1. 识别该话题领域的{expert_counts[depth_level]}权威专家
             2. 收集并整理这些专家对该话题的主要观点和见解
             3. 分析专家观点之间的共识和分歧
             4. 评估这些专家观点的可信度和影响力
@@ -178,212 +252,346 @@ class ResearchCrew:
             - 对研究最有价值的关键洞见
 
             确保引用专家观点的来源和时间。
-            """,
-            expected_output="一份专家观点分析报告，包含指定的所有部分，不少于1200字",
-            agent=self.agents["expert_finder"],
-            context=[
-                {"role": "system", "content": f"你正在寻找话题'{topic}'的专家观点。请确保收集多元观点，不要只关注单一立场的专家。"},
-                {"role": "user", "content": f"这是话题的背景研究报告，请参考以便更准确地找到相关专家:\n\n{background_research.raw_output}"}
-            ]
+            """
+
+        # 根据研究深度调整预期输出长度
+        expected_outputs = {
+            "low": "一份简明的专家观点分析报告，包含指定的所有部分，约700字",
+            "medium": "一份专家观点分析报告，包含指定的所有部分，不少于1200字",
+            "high": "一份深入的专家观点分析报告，包含指定的所有部分，不少于2000字，引用详细的专家言论和出处"
+        }
+
+        return Task(
+            description=description,
+            expected_output=expected_outputs[depth_level],
+            agent=self.agents["expert_finder"]
         )
 
-    def _create_data_analysis_task(self, topic: str, background_research: TaskOutput) -> Task:
+    def _create_data_analysis_task(self, topic: str, background_research: TaskOutput, content_type: Optional[str] = None) -> Task:
         """创建数据分析任务
 
         Args:
             topic: 研究话题
             background_research: 背景研究结果
+            content_type: 内容类型
 
         Returns:
             Task: 数据分析任务
         """
-        logger.info(f"创建数据分析任务，话题: {topic}")
-        return Task(
-            description=f"""
-            对话题"{topic}"的相关数据进行深入分析。
+        logger.info(f"创建数据分析任务，话题: {topic}，内容类型: {content_type or '未指定'}")
+
+        # 使用统一配置获取研究配置（如果已经设置则复用）
+        if content_type:
+            self.current_research_config = get_research_config(content_type)
+
+        # 获取研究深度
+        research_depth = self.current_research_config["depth"]
+        depth_map = {
+            RESEARCH_DEPTH_LIGHT: "low",
+            RESEARCH_DEPTH_MEDIUM: "medium",
+            RESEARCH_DEPTH_DEEP: "high"
+        }
+        depth_level = depth_map.get(research_depth, "medium")
+
+        # 根据研究深度调整任务描述
+        data_requirements = {
+            "low": "收集基本统计数据和关键趋势，不需要深入分析",
+            "medium": "收集足够的数据点，包括趋势分析和简单预测",
+            "high": "进行全面深入的数据收集和分析，包括详细的统计分析和多维度比较"
+        }
+
+        description = f"""
+            你正在分析话题'{topic}'的相关数据。要保持客观，避免过度解读数据。这是{content_type or '一般'}类型的内容研究，请保持适当的专业深度。
+
+            这是话题的背景研究报告，请参考以确保你的数据分析与背景一致:
+
+            {background_research.raw_output}
+
+            对话题"{topic}"进行数据分析，{data_requirements[depth_level]}。
 
             你的任务是:
-            1. 分析与该话题相关的关键数据和统计信息
-            2. 识别数据中的模式、趋势和关联
-            3. 提取支持或反驳主要观点的数据证据
+            1. 收集与该话题相关的关键数据和统计信息
+            2. 分析数据中的模式、趋势和关联
+            3. 比较不同来源和时间点的数据
             4. 评估数据的可靠性和代表性
-            5. 生成对研究有价值的数据洞察
+            5. 提取对研究最有价值的数据洞见
 
-            参考背景研究报告以确保你的分析与话题紧密相关。
+            参考背景研究报告以确保你的数据分析与话题背景一致。
 
             输出应为一份数据分析报告，包含以下部分:
-            - 分析摘要
-            - 关键数据点和统计信息
-            - 模式和趋势分析
+            - 关键数据点概述
+            - 趋势和模式分析
+            - 数据来源和可靠性评估
+            - 数据的限制和不确定性
             - 数据支持的主要发现
-            - 数据局限性说明
-            - 基于数据的建议或预测
+            - 可视化建议(如适用)
 
-            确保清晰说明数据来源和分析方法。
-            """,
-            expected_output="一份数据分析报告，包含指定的所有部分，不少于1000字",
-            agent=self.agents["data_analyst"],
-            context=[
-                {"role": "system", "content": f"你正在分析话题'{topic}'的相关数据。请保持客观，避免数据过度解读或选择性引用。"},
-                {"role": "user", "content": f"这是话题的背景研究报告，请参考以便进行更有针对性的数据分析:\n\n{background_research.raw_output}"}
-            ]
+            确保引用数据来源并说明数据收集的时间范围。
+            """
+
+        # 根据研究深度调整预期输出长度
+        expected_outputs = {
+            "low": "一份简明的数据分析报告，包含指定的所有部分，约600字",
+            "medium": "一份详细的数据分析报告，包含指定的所有部分，不少于1000字",
+            "high": "一份深入的数据分析报告，包含指定的所有部分，不少于1800字，包含详细的统计分析和数据解释"
+        }
+
+        return Task(
+            description=description,
+            expected_output=expected_outputs[depth_level],
+            agent=self.agents["data_analyst"]
         )
 
     def _create_research_report_task(
         self,
         topic: str,
         background_research: TaskOutput,
-        expert_insights: TaskOutput,
-        data_analysis: TaskOutput
+        expert_insights: Optional[TaskOutput] = None,
+        data_analysis: Optional[TaskOutput] = None,
+        content_type: Optional[str] = None
     ) -> Task:
-        """创建研究报告撰写任务
+        """创建研究报告任务
 
         Args:
             topic: 研究话题
             background_research: 背景研究结果
-            expert_insights: 专家洞见结果
+            expert_insights: 专家观点结果
             data_analysis: 数据分析结果
+            content_type: 内容类型
 
         Returns:
-            Task: 研究报告撰写任务
+            Task: 研究报告任务
         """
-        logger.info(f"创建研究报告撰写任务，话题: {topic}")
-        return Task(
-            description=f"""
-            为话题"{topic}"撰写一份综合研究报告。
+        logger.info(f"创建研究报告任务，话题: {topic}，内容类型: {content_type or '未指定'}")
+
+        # 使用统一配置获取研究配置（如果已经设置则复用）
+        if content_type:
+            self.current_research_config = get_research_config(content_type)
+
+        # 获取研究深度
+        research_depth = self.current_research_config["depth"]
+        depth_map = {
+            RESEARCH_DEPTH_LIGHT: "low",
+            RESEARCH_DEPTH_MEDIUM: "medium",
+            RESEARCH_DEPTH_DEEP: "high"
+        }
+        depth_level = depth_map.get(research_depth, "medium")
+
+        # 整合所有研究结果
+        description_parts = [
+            f"你正在为话题'{topic}'撰写最终研究报告。这是{content_type or '一般'}类型的内容研究，请保持适当的专业深度。",
+            "\n\n这是话题的背景研究报告:\n\n" + background_research.raw_output
+        ]
+
+        # 添加专家观点结果（如果有）
+        if expert_insights:
+            description_parts.append("\n\n这是相关专家的观点分析:\n\n" + expert_insights.raw_output)
+        else:
+            description_parts.append("\n\n没有专家观点分析数据。")
+
+        # 添加数据分析结果（如果有）
+        if data_analysis:
+            description_parts.append("\n\n这是相关数据分析:\n\n" + data_analysis.raw_output)
+        else:
+            description_parts.append("\n\n没有数据分析结果。")
+
+        # 报告要求
+        report_requirements = {
+            "low": "简明扼要的概述，重点关注最关键的信息，不需要深入分析",
+            "medium": "全面但重点突出的报告，平衡详细程度和可读性",
+            "high": "深入详尽的研究报告，包括全面的分析、多角度观点和完整的参考资料"
+        }
+
+        # 构建任务描述
+        task_description = f"""
+            根据提供的背景研究、专家观点和数据分析，为话题"{topic}"撰写一份{report_requirements[depth_level]}。
 
             你的任务是:
-            1. 整合背景研究、专家洞见和数据分析的结果
-            2. 形成对话题的全面、深入和客观的分析
-            3. 提出有支持证据的结论和建议
-            4. 确保报告结构清晰、逻辑严密且易于理解
-            5. 标注信息来源和参考文献
+            1. 综合所有研究结果，形成一份结构清晰的研究报告
+            2. 确保准确表达背景信息、专家观点和数据分析的关键内容
+            3. 分析不同信息来源之间的关联和矛盾
+            4. 提出基于研究的合理结论和建议
+            5. 明确指出研究的局限性和未来研究方向
 
-            你将获得背景研究报告、专家观点分析和数据分析报告作为输入。
+            报告应包含以下部分:
+            - 执行摘要：简明扼要地概述研究的主要发现和结论
+            - 引言：介绍研究背景、目的和范围
+            - 研究方法：简述获取信息的方法和来源
+            - 主要发现：详细阐述研究的关键发现，整合背景信息、专家见解和数据分析
+            - 讨论：分析发现的含义、局限性和与现有知识的关系
+            - 结论和建议：总结主要观点并提出基于研究的建议
+            - 参考资料：列出主要信息来源（如适用）
 
-            输出应为一份完整的研究报告，包含以下部分:
-            - 执行摘要
-            - 引言(研究背景和目的)
-            - 研究方法
-            - 主要发现(分主题组织)
-            - 讨论和分析
-            - 结论和建议
-            - 参考资料
+            确保报告专业、客观、结构清晰，内容深度符合{content_type or '一般'}类型内容的要求。
+            """
 
-            确保报告内容客观中立，观点有据可依，并适当引用背景研究、专家观点和数据分析中的信息。
-            """,
-            expected_output="一份完整的研究报告，包含指定的所有部分，不少于3000字",
-            agent=self.agents["research_writer"],
-            context=[
-                {"role": "system", "content": f"你正在撰写话题'{topic}'的综合研究报告。请确保报告逻辑连贯，观点平衡，证据充分。"},
-                {"role": "user", "content": f"这是背景研究报告:\n\n{background_research.raw_output}"},
-                {"role": "user", "content": f"这是专家观点分析报告:\n\n{expert_insights.raw_output}"},
-                {"role": "user", "content": f"这是数据分析报告:\n\n{data_analysis.raw_output}"}
-            ]
+        # 将所有部分组合到一个description中
+        description_parts.append(task_description)
+        description = "".join(description_parts)
+
+        # 根据研究深度调整预期输出长度
+        expected_outputs = {
+            "low": "一份简明的研究报告，包含指定的所有部分，约1500字",
+            "medium": "一份全面的研究报告，包含指定的所有部分，不少于2500字",
+            "high": "一份深入详尽的研究报告，包含指定的所有部分，不少于4000字，专业术语准确，分析深入"
+        }
+
+        return Task(
+            description=description,
+            expected_output=expected_outputs[depth_level],
+            agent=self.agents["research_writer"]
         )
 
-    def research_topic(self, topic: str, progress_callback=None) -> ResearchResult:
-        """研究指定话题并生成研究报告
+    async def research_topic(self, topic: str, content_type: Optional[str] = None, progress_callback=None) -> ResearchResult:
+        """执行话题研究流程
+
+        这是研究团队的主要工作流程，按以下步骤执行：
+        1. 背景研究：收集话题的基础信息和背景知识
+        2. 专家发现：寻找并分析相关领域专家的观点和见解
+        3. 数据分析：分析与话题相关的数据和趋势
+        4. 研究报告生成：整合前三步的结果，生成完整的研究报告
 
         Args:
-            topic: 研究话题
-            progress_callback: 可选的进度回调函数，接收(current_step, total_steps, step_name)参数
+            topic: 要研究的话题
+            content_type: 内容类型（如"新闻"、"论文"、"快讯"等）
+            progress_callback: 可选的进度回调函数，接收阶段名称和完成百分比参数
 
         Returns:
             ResearchResult: 研究结果对象
         """
-        logger.info(f"开始研究话题: {topic}")
+        logger.info(f"开始研究话题: {topic}, 内容类型: {content_type or '未指定'}")
+
+        # 使用统一配置获取研究配置
+        self.current_research_config = get_research_config(content_type)
+        logger.info(f"研究配置: {self.current_research_config}")
+
+        # 创建工作流结果跟踪对象
         workflow_result = ResearchWorkflowResult(topic=topic)
-
-        # 定义工作流步骤
-        total_steps = 4
-        current_step = 0
-
-        # 第1步: 背景研究
-        current_step += 1
-        step_name = "背景研究"
-        if progress_callback:
-            progress_callback(current_step, total_steps, step_name)
-        logger.info(f"开始第{current_step}步: {step_name}")
-
-        background_task = self._create_background_research_task(topic)
-        crew = Crew(
-            agents=[self.agents["background_researcher"]],
-            tasks=[background_task],
-            verbose=self.config.CREW_VERBOSE
-        )
-        background_research = crew.kickoff()
-        workflow_result.background_research = background_research
-        logger.info(f"完成第{current_step}步: {step_name}")
-
-        # 第2步: 专家洞见
-        current_step += 1
-        step_name = "专家洞见"
-        if progress_callback:
-            progress_callback(current_step, total_steps, step_name)
-        logger.info(f"开始第{current_step}步: {step_name}")
-
-        expert_task = self._create_expert_finder_task(topic, background_research)
-        crew = Crew(
-            agents=[self.agents["expert_finder"]],
-            tasks=[expert_task],
-            verbose=self.config.CREW_VERBOSE
-        )
-        expert_insights = crew.kickoff()
-        workflow_result.expert_insights = expert_insights
-        logger.info(f"完成第{current_step}步: {step_name}")
-
-        # 第3步: 数据分析
-        current_step += 1
-        step_name = "数据分析"
-        if progress_callback:
-            progress_callback(current_step, total_steps, step_name)
-        logger.info(f"开始第{current_step}步: {step_name}")
-
-        data_task = self._create_data_analysis_task(topic, background_research)
-        crew = Crew(
-            agents=[self.agents["data_analyst"]],
-            tasks=[data_task],
-            verbose=self.config.CREW_VERBOSE
-        )
-        data_analysis = crew.kickoff()
-        workflow_result.data_analysis = data_analysis
-        logger.info(f"完成第{current_step}步: {step_name}")
-
-        # 第4步: 研究报告
-        current_step += 1
-        step_name = "研究报告"
-        if progress_callback:
-            progress_callback(current_step, total_steps, step_name)
-        logger.info(f"开始第{current_step}步: {step_name}")
-
-        report_task = self._create_research_report_task(
-            topic, background_research, expert_insights, data_analysis
-        )
-        crew = Crew(
-            agents=[self.agents["research_writer"]],
-            tasks=[report_task],
-            verbose=self.config.CREW_VERBOSE
-        )
-        research_report = crew.kickoff()
-        workflow_result.research_report = research_report
-        logger.info(f"完成第{current_step}步: {step_name}")
-
-        # 创建最终研究结果对象
-        result = ResearchResult(
-            topic=topic,
-            background_research=background_research.raw_output,
-            expert_insights=expert_insights.raw_output,
-            data_analysis=data_analysis.raw_output,
-            research_report=research_report.raw_output
-        )
-        workflow_result.result = result
-
-        # 保存工作流结果
         self.last_workflow_result = workflow_result
 
-        logger.info(f"话题'{topic}'的研究已完成")
-        return result
+        # 根据内容类型配置决定是否需要专家和数据分析
+        needs_expert = self.current_research_config["needs_expert"]
+        needs_data_analysis = self.current_research_config["needs_data_analysis"]
+
+        try:
+            # 第1步：背景研究 (始终执行)
+            if progress_callback:
+                progress_callback("背景研究", 0.0)
+
+            background_task = self._create_background_research_task(topic, content_type)
+
+            # 使用单智能体执行任务
+            logger.info("执行背景研究任务...")
+            background_crew = Crew(
+                agents=[self.agents["background_researcher"]],
+                tasks=[background_task],
+                verbose=True
+            )
+            background_result = background_crew.kickoff()
+            workflow_result.background_research = background_result[0]
+
+            if progress_callback:
+                progress_callback("背景研究", 1.0)
+
+            # 第2步：专家观点研究（可选）
+            expert_result = None
+            if needs_expert:
+                if progress_callback:
+                    progress_callback("专家观点研究", 0.0)
+
+                expert_task = self._create_expert_finder_task(
+                    topic, background_result[0], content_type
+                )
+
+                # 使用单智能体执行任务
+                logger.info("执行专家观点研究任务...")
+                expert_crew = Crew(
+                    agents=[self.agents["expert_finder"]],
+                    tasks=[expert_task],
+                    verbose=True
+                )
+                expert_result = expert_crew.kickoff()
+                workflow_result.expert_insights = expert_result[0]
+
+                if progress_callback:
+                    progress_callback("专家观点研究", 1.0)
+            else:
+                logger.info(f"根据内容类型'{content_type}'配置，跳过专家观点研究")
+
+            # 第3步：数据分析（可选）
+            data_analysis_result = None
+            if needs_data_analysis:
+                if progress_callback:
+                    progress_callback("数据分析", 0.0)
+
+                data_task = self._create_data_analysis_task(
+                    topic, background_result[0], content_type
+                )
+
+                # 使用单智能体执行任务
+                logger.info("执行数据分析任务...")
+                data_crew = Crew(
+                    agents=[self.agents["data_analyst"]],
+                    tasks=[data_task],
+                    verbose=True
+                )
+                data_analysis_result = data_crew.kickoff()
+                workflow_result.data_analysis = data_analysis_result[0]
+
+                if progress_callback:
+                    progress_callback("数据分析", 1.0)
+            else:
+                logger.info(f"根据内容类型'{content_type}'配置，跳过数据分析")
+
+            # 第4步：生成最终研究报告（始终执行）
+            if progress_callback:
+                progress_callback("研究报告生成", 0.0)
+
+            report_task = self._create_research_report_task(
+                topic,
+                background_result[0],
+                expert_result[0] if expert_result else None,
+                data_analysis_result[0] if data_analysis_result else None,
+                content_type
+            )
+
+            # 使用单智能体执行任务
+            logger.info("生成最终研究报告...")
+            report_crew = Crew(
+                agents=[self.agents["research_writer"]],
+                tasks=[report_task],
+                verbose=True
+            )
+            report_result = report_crew.kickoff()
+            workflow_result.research_report = report_result[0]
+
+            if progress_callback:
+                progress_callback("研究报告生成", 1.0)
+
+            # 处理最终结果
+            logger.info("处理研究结果...")
+            research_result = self._process_research_result(
+                topic,
+                report_result[0].raw_output,
+                workflow_result
+            )
+
+            # 添加内容类型信息到元数据
+            if not hasattr(research_result, "metadata"):
+                research_result.metadata = {}
+            research_result.metadata["content_type"] = content_type
+            research_result.metadata["research_config"] = self.current_research_config.copy()
+
+            # 存储最终结果
+            workflow_result.result = research_result
+
+            logger.info(f"话题'{topic}'研究完成")
+            return research_result
+
+        except Exception as e:
+            logger.error(f"研究过程中出错: {e}")
+            # 继续抛出异常以便上层处理
+            raise
 
     def run_full_workflow(self, topic: str, progress_callback=None) -> Tuple[ResearchResult, Article]:
         """运行完整的研究工作流，包括研究和文章大纲生成
@@ -553,3 +761,38 @@ class ResearchCrew:
         ]
 
         return sections
+
+    def _process_research_result(
+        self,
+        topic: str,
+        report: str,
+        workflow_result: ResearchWorkflowResult
+    ) -> ResearchResult:
+        """处理研究结果，生成最终的ResearchResult对象
+
+        Args:
+            topic: 研究话题
+            report: 研究报告内容
+            workflow_result: 工作流结果对象
+
+        Returns:
+            ResearchResult: 处理后的研究结果对象
+        """
+        logger.info(f"处理研究结果，话题: {topic}")
+
+        # 创建研究结果对象
+        research_result = ResearchResult(
+            topic=topic,
+            summary=report,
+            background=workflow_result.background_research.raw_output if workflow_result.background_research else "",
+            expert_insights=workflow_result.expert_insights.raw_output if workflow_result.expert_insights else "",
+            data_analysis=workflow_result.data_analysis.raw_output if workflow_result.data_analysis else "",
+            report=report,
+            metadata={
+                "workflow_id": workflow_result.id,
+                "created_at": datetime.now().isoformat()
+            }
+        )
+
+        logger.info("研究结果处理完成")
+        return research_result

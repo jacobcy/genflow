@@ -49,4 +49,4 @@ export function useArticleChat(articleId: string) {
         clearHistory,
         setMessages
     };
-} 
+}

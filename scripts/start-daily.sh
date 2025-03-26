@@ -54,7 +54,7 @@ fi
 start_api_service() {
     echo -e "${BLUE}正在启动 DailyHot API 服务...${NC}"
     cd "$DAILY_HOT_API_DIR" || exit
-    
+
     # 检查是否已安装依赖
     if [ ! -d "node_modules" ]; then
         echo -e "${YELLOW}正在安装 API 服务依赖...${NC}"
@@ -82,7 +82,7 @@ start_api_service() {
 start_ui_service() {
     echo -e "${BLUE}正在启动 DailyHot UI 服务...${NC}"
     cd "$DAILY_HOT_UI_DIR" || exit
-    
+
     # 检查是否已安装依赖
     if [ ! -d "node_modules" ]; then
         echo -e "${YELLOW}正在安装 UI 服务依赖...${NC}"

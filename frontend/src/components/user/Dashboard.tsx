@@ -199,7 +199,7 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3 min-w-0">
                         <span
-                          className={`h-7 w-7 rounded-full flex items-center justify-center 
+                          className={`h-7 w-7 rounded-full flex items-center justify-center
                             ${activity.type === 'created'
                               ? 'bg-blue-50 text-blue-500 dark:bg-blue-900/20 dark:text-blue-400'
                               : activity.type === 'published'

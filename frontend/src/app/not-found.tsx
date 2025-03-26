@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 export default function NotFound() {
   const router = useRouter();
-  
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center bg-white dark:bg-gray-900 px-4 py-16 sm:px-6 sm:py-24 md:grid md:place-items-center lg:px-8">
       <div className="max-w-max mx-auto">
@@ -17,7 +17,7 @@ export default function NotFound() {
               404
             </p>
           </div>
-          
+
           <div className="mt-6 sm:mt-0 sm:ml-6 flex flex-col justify-center">
             <div>
               <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight sm:text-4xl">
@@ -28,7 +28,7 @@ export default function NotFound() {
               </p>
             </div>
             <div className="mt-8 flex space-x-3">
-              <Link href="/" 
+              <Link href="/"
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-900 transition-colors">
                 返回首页
               </Link>
@@ -40,7 +40,7 @@ export default function NotFound() {
             </div>
           </div>
         </main>
-        
+
         <div className="mt-20 flex justify-center">
           <div className="relative w-full max-w-lg">
             <div className="absolute top-0 -left-4 w-72 h-72 bg-primary-300 dark:bg-primary-700 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
@@ -52,7 +52,7 @@ export default function NotFound() {
                 <p className="text-gray-600 dark:text-gray-400 mb-4">您可以尝试以下方式：</p>
                 <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                   <li className="flex items-center">
-                    <span className="mr-2 text-primary-500">•</span> 
+                    <span className="mr-2 text-primary-500">•</span>
                     检查URL是否输入正确
                   </li>
                   <li className="flex items-center">

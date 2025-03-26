@@ -25,16 +25,16 @@ submodule_paths=$(git config --file .gitmodules --get-regexp path | awk '{ print
 
 for submodule in $submodule_paths; do
     echo -e "${BLUE}检查子模块: ${YELLOW}$submodule${NC}"
-    
+
     # 检查子模块是否有未提交的更改
     if [ -d "$submodule" ]; then
         cd "$submodule"
-        
+
         if [[ -n $(git status -s) ]]; then
             echo -e "${RED}警告: 子模块 $submodule 有未提交的更改${NC}"
             git status -s
             submodules_changed=true
-            
+
             # 如果提供了 --fix 参数，则恢复子模块状态
             if [[ "$1" == "--fix" ]]; then
                 echo -e "${YELLOW}正在恢复子模块 $submodule 到原始状态...${NC}"
@@ -45,7 +45,7 @@ for submodule in $submodule_paths; do
         else
             echo -e "${GREEN}子模块 $submodule 状态正常${NC}"
         fi
-        
+
         cd "$PROJECT_ROOT"
     else
         echo -e "${RED}错误: 子模块目录 $submodule 不存在${NC}"
@@ -67,4 +67,4 @@ if $submodules_changed; then
     fi
 else
     echo -e "${GREEN}所有子模块状态正常${NC}"
-fi 
+fi

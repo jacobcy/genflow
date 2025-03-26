@@ -5,7 +5,7 @@ from ..core.config import settings
 class AIService:
     def __init__(self):
         openai.api_key = settings.OPENAI_API_KEY
-        
+
     async def process_message(self, message: str, context: Optional[str] = None) -> str:
         """Process a message using OpenAI's API"""
         try:
@@ -13,7 +13,7 @@ class AIService:
             if context:
                 messages.append({"role": "system", "content": context})
             messages.append({"role": "user", "content": message})
-            
+
             response = await openai.ChatCompletion.acreate(
                 model="gpt-3.5-turbo",
                 messages=messages,
@@ -24,7 +24,7 @@ class AIService:
         except Exception as e:
             # 实现降级机制
             return f"Error processing message: {str(e)}"
-    
+
     async def analyze_content(self, content: str) -> Dict:
         """Analyze content using AI"""
         try:
@@ -48,4 +48,4 @@ class AIService:
                 "analysis": "Error analyzing content",
                 "status": "error",
                 "error": str(e)
-            } 
+            }

@@ -104,46 +104,48 @@ def save_results(data: Any, output_dir: str, filename: str) -> str:
     logger.info(f"结果已保存到: {file_path}")
     return file_path
 
-async def run_research(topic: str, output_dir: str, verbose: bool = False) -> str:
-    """执行单个话题研究
+async def run_research(topic: str, content_type: Optional[str] = None) -> None:
+    """运行研究流程
 
     Args:
-        topic: 研究话题
-        output_dir: 输出目录
-        verbose: 是否详细输出
-
-    Returns:
-        str: 结果文件路径
+        topic: 要研究的话题
+        content_type: 内容类型(如"新闻"、"论文"、"快讯"等)
     """
     logger.info(f"开始研究话题: {topic}")
 
-    # 创建配置
-    config = Config()
-    config.CREW_VERBOSE = verbose
-    config.AGENT_VERBOSE = verbose
+    # 初始化研究团队
+    crew = ResearchCrew()
 
-    # 创建研究团队
-    crew = ResearchCrew(config=config)
+    # 定义进度回调函数
+    def progress_callback(stage, progress):
+        logger.info(f"研究进度: {stage} ({progress:.2%})")
 
-    # 创建进度条
-    progress_bar = configure_progress_bar(total_steps=4)
+    # 运行研究流程
+    try:
+        # 进行研究
+        result = await crew.research_topic(topic, content_type, progress_callback)
 
-    # 执行研究
-    result = crew.research_topic(
-        topic=topic,
-        progress_callback=progress_callback(progress_bar)
-    )
+        # 输出研究结果
+        logger.info("研究完成！")
+        logger.info(f"研究主题: {topic}")
+        if content_type:
+            logger.info(f"内容类型: {content_type}")
+        if hasattr(result, 'summary'):
+            summary = result.summary.split('\n')[0][:100] + '...' if len(result.summary) > 100 else result.summary
+            logger.info(f"研究摘要: {summary}")
 
-    # 关闭进度条
-    progress_bar.close()
+        # 保存结果
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"research_result_{timestamp}.json"
 
-    # 保存结果
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"research_{topic.replace(' ', '_')}_{timestamp}.json"
-    result_path = save_results(result, output_dir, filename)
+        if hasattr(result, 'to_dict'):
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(result.to_dict(), f, ensure_ascii=False, indent=2)
+            logger.info(f"研究结果已保存到: {filename}")
 
-    logger.info(f"研究完成: {topic}")
-    return result_path
+    except Exception as e:
+        logger.error(f"研究过程中发生错误: {str(e)}")
+        raise
 
 async def run_full_workflow(topic: str, output_dir: str, verbose: bool = False) -> Dict[str, str]:
     """执行完整研究工作流
@@ -231,7 +233,7 @@ async def run_batch_research(topics: List[str], output_dir: str, verbose: bool =
     results = {}
     for idx, topic in enumerate(topics):
         logger.info(f"处理第 {idx+1}/{len(topics)} 个话题: {topic}")
-        result_path = await run_research(topic, output_dir, verbose)
+        result_path = await run_research(topic, None)
         results[topic] = result_path
 
     # 保存批处理摘要
@@ -262,6 +264,7 @@ async def main():
                         help="输出目录")
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="详细输出")
+    parser.add_argument("--content-type", help="内容类型(如新闻、论文、快讯等)", default=None)
 
     args = parser.parse_args()
 
@@ -272,7 +275,7 @@ async def main():
     if args.mode == "research":
         if not args.topic:
             parser.error("研究模式需要提供 --topic 参数")
-        await run_research(args.topic, args.output_dir, args.verbose)
+        await run_research(args.topic, args.content_type)
 
     elif args.mode == "full":
         if not args.topic:

@@ -63,10 +63,10 @@ class DifyClient:
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json'
         }
-    
-    def generate_article(self, 
-                        topic: str, 
-                        keywords: List[str], 
+
+    def generate_article(self,
+                        topic: str,
+                        keywords: List[str],
                         word_count: int,
                         platform: str) -> Dict:
         """生成文章内容"""
@@ -83,9 +83,9 @@ class DifyClient:
             }
         )
         return response.json()
-    
-    def get_seo_suggestions(self, 
-                          title: str, 
+
+    def get_seo_suggestions(self,
+                          title: str,
                           content: str,
                           platform: str) -> Dict:
         """获取 SEO 优化建议"""
@@ -102,8 +102,8 @@ class DifyClient:
             }
         )
         return response.json()
-    
-    def publish_to_platform(self, 
+
+    def publish_to_platform(self,
                           article_data: Dict,
                           platform: str) -> Dict:
         """调用发布工具插件"""
@@ -131,7 +131,7 @@ class ArticleService:
             api_key=current_app.config['DIFY_API_KEY'],
             endpoint=current_app.config['DIFY_ENDPOINT']
         )
-    
+
     async def create_article_with_ai(self,
                                    topic: str,
                                    keywords: List[str],
@@ -144,14 +144,14 @@ class ArticleService:
             word_count=2000,  # 可配置
             platform=platform
         )
-        
+
         # 获取 SEO 建议
         seo_result = await self.dify_client.get_seo_suggestions(
             title=article_result['title'],
             content=article_result['content'],
             platform=platform
         )
-        
+
         # 创建文章记录
         article = Article(
             title=article_result['title'],
@@ -160,7 +160,7 @@ class ArticleService:
             platform=platform,
             status='draft'
         )
-        
+
         return article
 ```
 
@@ -179,7 +179,7 @@ def update_knowledge_base():
     # 抓取最新科技新闻
     scraper = TechNewsScraper()
     news_data = scraper.fetch_latest_news()
-    
+
     # 更新到 Dify 知识库
     dify_client = DifyClient()
     for item in news_data:
@@ -192,7 +192,7 @@ def update_knowledge_base():
 class TrendService:
     def __init__(self):
         self.dify_client = DifyClient()
-    
+
     async def analyze_trends(self) -> List[Dict]:
         """分析当前科技趋势"""
         result = await self.dify_client.query_knowledge_base(
@@ -224,15 +224,15 @@ class ContentPublisher(Plugin):
                 required=True
             )
         ]
-    
+
     async def execute(self, params):
         platform = params['platform']
         article = params['article']
-        
+
         # 根据平台选择对应的发布器
         publisher = self.get_publisher(platform)
         result = await publisher.publish(article)
-        
+
         return {
             'status': 'success',
             'url': result['url']
@@ -265,7 +265,7 @@ dify_latency = Histogram(
 class ContentQualityService:
     def __init__(self):
         self.dify_client = DifyClient()
-    
+
     async def evaluate_article(self, article: Dict) -> Dict:
         """评估文章质量"""
         result = await self.dify_client.evaluate_content({
@@ -306,11 +306,11 @@ from cryptography.fernet import Fernet
 class APIKeyManager:
     def __init__(self, encryption_key):
         self.fernet = Fernet(encryption_key)
-    
+
     def encrypt_api_key(self, api_key: str) -> str:
         """加密 API 密钥"""
         return self.fernet.encrypt(api_key.encode()).decode()
-    
+
     def decrypt_api_key(self, encrypted_key: str) -> str:
         """解密 API 密钥"""
         return self.fernet.decrypt(encrypted_key.encode()).decode()
@@ -330,4 +330,4 @@ ENCRYPTION_KEY=your_encryption_key
 ### 8.2 依赖安装
 ```bash
 pip install dify-client cryptography tenacity prometheus-client
-``` 
+```

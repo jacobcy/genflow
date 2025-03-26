@@ -12,6 +12,7 @@ from crewai import Crew, Agent, Task
 from core.models.platform import Platform
 from core.models.article import Article
 from core.tools.style_tools.adapter import StyleAdapter
+from core.constants.style_types import get_platform_style_type, get_style_features, get_style_description
 from .style_agents import PlatformAnalystAgent, StyleExpertAgent, ContentAdapterAgent, QualityCheckerAgent
 
 logger = logging.getLogger(__name__)
@@ -170,6 +171,18 @@ class StyleCrew:
         Returns:
             Dict: 平台分析结果
         """
+        # 从style_types模块获取平台风格信息
+        platform_style_type = get_platform_style_type(platform.id)
+        style_features = {}
+        style_description = ""
+
+        if platform_style_type:
+            style_features = get_style_features(platform_style_type)
+            style_description = get_style_description(platform_style_type)
+            logger.info(f"使用预定义风格: {platform_style_type}, 描述: {style_description}")
+        else:
+            logger.info(f"未找到平台 {platform.id} 的预定义风格，使用平台自身配置")
+
         # 创建平台分析任务
         agent = self.platform_analyst.get_agent()
         task = Task(
@@ -185,15 +198,22 @@ class StyleCrew:
             verbose=True
         )
 
-        result = await platform_crew.run_async(
-            inputs={
-                "platform_name": platform.name,
-                "platform_description": platform.description,
-                "target_audience": platform.target_audience,
-                "content_types": platform.content_types,
-                "style_rules": platform.style_rules.to_dict() if platform.style_rules else {}
-            }
-        )
+        # 合并预定义风格和平台配置
+        style_inputs = {
+            "platform_name": platform.name,
+            "platform_description": platform.description,
+            "target_audience": platform.target_audience,
+            "content_types": platform.content_types,
+            "style_rules": platform.style_rules.to_dict() if platform.style_rules else {}
+        }
+
+        # 添加预定义风格信息
+        if platform_style_type:
+            style_inputs["predefined_style_type"] = platform_style_type
+            style_inputs["predefined_style_features"] = style_features
+            style_inputs["predefined_style_description"] = style_description
+
+        result = await platform_crew.run_async(inputs=style_inputs)
 
         # 将结果转换为字典
         try:
@@ -215,6 +235,17 @@ class StyleCrew:
         Returns:
             Dict: 风格建议
         """
+        # 获取平台ID并检查是否有预定义风格
+        platform_id = self.platform.id
+        platform_style_type = get_platform_style_type(platform_id)
+        style_features = {}
+        style_description = ""
+
+        if platform_style_type:
+            style_features = get_style_features(platform_style_type)
+            style_description = get_style_description(platform_style_type)
+            logger.info(f"风格推荐阶段使用预定义风格: {platform_style_type}")
+
         # 创建风格专家任务
         agent = self.style_expert.get_agent()
         task = Task(
@@ -230,15 +261,22 @@ class StyleCrew:
             verbose=True
         )
 
-        result = await style_crew.run_async(
-            inputs={
-                "platform_analysis": str(platform_analysis),
-                "article_title": article.title,
-                "article_content": article.content[:1000] + "..." if len(article.content) > 1000 else article.content,
-                "article_keywords": article.keywords,
-                "article_type": article.article_type
-            }
-        )
+        # 准备输入内容
+        inputs = {
+            "platform_analysis": str(platform_analysis),
+            "article_title": article.title,
+            "article_content": article.content[:1000] + "..." if len(article.content) > 1000 else article.content,
+            "article_keywords": article.keywords,
+            "article_type": article.article_type
+        }
+
+        # 添加预定义风格信息
+        if platform_style_type:
+            inputs["predefined_style_type"] = platform_style_type
+            inputs["predefined_style_features"] = style_features
+            inputs["predefined_style_description"] = style_description
+
+        result = await style_crew.run_async(inputs=inputs)
 
         # 将结果转换为字典
         try:
@@ -260,6 +298,15 @@ class StyleCrew:
         Returns:
             str: 适配后的内容
         """
+        # 获取平台ID并检查是否有预定义风格
+        platform_id = self.platform.id
+        platform_style_type = get_platform_style_type(platform_id)
+        style_features = {}
+
+        if platform_style_type:
+            style_features = get_style_features(platform_style_type)
+            logger.info(f"内容适配阶段使用预定义风格: {platform_style_type}")
+
         # 创建内容适配任务
         agent = self.content_adapter.get_agent()
         task = Task(
@@ -275,13 +322,21 @@ class StyleCrew:
             verbose=True
         )
 
-        result = await adapter_crew.run_async(
-            inputs={
-                "article_title": article.title,
-                "article_content": article.content,
-                "style_recommendations": str(style_recommendations)
-            }
-        )
+        # 准备输入
+        inputs = {
+            "article_title": article.title,
+            "article_content": article.content,
+            "style_recommendations": str(style_recommendations)
+        }
+
+        # 添加预定义风格特征
+        if platform_style_type and style_features:
+            inputs["platform_style_type"] = platform_style_type
+            inputs["style_characteristics"] = style_features.get("characteristics", [])
+            inputs["style_language_patterns"] = style_features.get("language_patterns", [])
+            inputs["style_structure"] = style_features.get("structure", [])
+
+        result = await adapter_crew.run_async(inputs=inputs)
 
         return result
 
@@ -295,6 +350,17 @@ class StyleCrew:
         Returns:
             Dict: 质量检查结果
         """
+        # 获取平台风格信息
+        platform_id = platform.id
+        platform_style_type = get_platform_style_type(platform_id)
+        style_description = ""
+        style_features = {}
+
+        if platform_style_type:
+            style_description = get_style_description(platform_style_type)
+            style_features = get_style_features(platform_style_type)
+            logger.info(f"质量检查阶段使用预定义风格: {platform_style_type}")
+
         # 创建质量检查任务
         agent = self.quality_checker.get_agent()
         task = Task(
@@ -310,16 +376,25 @@ class StyleCrew:
             verbose=True
         )
 
-        result = await checker_crew.run_async(
-            inputs={
-                "adapted_content": adapted_content[:1500] + "..." if len(adapted_content) > 1500 else adapted_content,
-                "platform_name": platform.name,
-                "platform_rules": str({
-                    "style_rules": platform.style_rules.to_dict() if platform.style_rules else {},
-                    "content_rules": platform.content_rules.to_dict() if platform.content_rules else {}
-                })
-            }
-        )
+        # 准备输入
+        inputs = {
+            "adapted_content": adapted_content[:1500] + "..." if len(adapted_content) > 1500 else adapted_content,
+            "platform_name": platform.name,
+            "platform_rules": str({
+                "style_rules": platform.style_rules.to_dict() if platform.style_rules else {},
+                "content_rules": platform.content_rules.to_dict() if platform.content_rules else {}
+            })
+        }
+
+        # 添加预定义风格信息
+        if platform_style_type:
+            inputs["platform_style_type"] = platform_style_type
+            inputs["style_description"] = style_description
+            inputs["expected_tone"] = style_features.get("tone", "")
+            inputs["expected_formality"] = style_features.get("formality", 3)
+            inputs["expected_characteristics"] = style_features.get("characteristics", [])
+
+        result = await checker_crew.run_async(inputs=inputs)
 
         # 将结果转换为字典
         try:

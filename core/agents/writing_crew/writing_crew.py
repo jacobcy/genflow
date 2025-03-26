@@ -17,6 +17,11 @@ from crewai.agent import Agent
 from core.models.article import Article, Section
 from core.models.platform import Platform
 from .writing_agents import WritingAgents
+from core.constants.content_types import (
+    get_writing_config,
+    DEFAULT_WRITING_CONFIG,
+    WRITING_CONFIG
+)
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -103,9 +108,18 @@ class WritingCrew:
         self.editor = None
         self.fact_checker = None
 
+        # 使用统一的配置
+        self.content_type_config = WRITING_CONFIG
+
+        # 默认内容类型配置
+        self.default_content_config = DEFAULT_WRITING_CONFIG
+
+        # 当前配置
+        self.current_content_config = self.default_content_config.copy()
+
         logger.info("写作团队初始化完成")
 
-    async def write_article(self, article: Article, platform: Platform) -> WritingResult:
+    async def write_article(self, article: Article, platform: Platform, content_type: Optional[str] = None) -> WritingResult:
         """实现文章写作流程
 
         组织智能体团队，执行从大纲设计到最终编辑的完整文章写作流程。
@@ -113,121 +127,36 @@ class WritingCrew:
         Args:
             article: 文章信息对象，包含标题、主题和初始内容
             platform: 目标发布平台，决定了内容风格和要求
+            content_type: 内容类型（如"新闻"、"论文"、"快讯"等）
 
         Returns:
             WritingResult: 完整的写作过程结果
         """
-        logger.info(f"开始文章写作流程: {article.title}, 目标平台: {platform.name}")
+        logger.info(f"开始文章写作流程: {article.title}, 目标平台: {platform.name}, 内容类型: {content_type or '未指定'}")
+
+        # 根据内容类型设置写作配置
+        self.current_content_config = get_writing_config(content_type)
+
+        logger.info(f"当前写作配置: {self.current_content_config}")
+
+        # 如果文章元数据中没有content_type，添加它
+        if hasattr(article, "metadata") and isinstance(article.metadata, dict):
+            article.metadata["content_type"] = content_type
+        else:
+            article.metadata = {"content_type": content_type}
+
+        # 初始化返回结果
+        result = WritingResult(article=article)
+
+        # 延迟初始化智能体，便于多次调用
+        if not self.agents:
+            self._initialize_agents()
 
         try:
-            # 初始化写作智能体团队
-            self.agents = WritingAgents(platform)
+            # 创建写作任务
+            tasks = self._create_writing_tasks(article, platform)
 
-            # 创建所有需要的智能体
-            self.outline_creator = self.agents.create_outline_creator(self.verbose)
-            self.content_writer = self.agents.create_content_writer(self.verbose)
-            self.seo_specialist = self.agents.create_seo_specialist(self.verbose)
-            self.editor = self.agents.create_editor(self.verbose)
-            self.fact_checker = self.agents.create_fact_checker(self.verbose)
-
-            logger.info("所有智能体创建完成，开始定义任务")
-
-            # 1. 大纲设计任务
-            outline_task = Task(
-                description=f"""为文章"{article.title}"创建一个引人入胜且结构合理的大纲。
-
-任务要求:
-1. 分析文章主题并确定目标受众
-2. 根据平台"{platform.name}"的要求设计合适的文章结构
-3. 创建引人注目的标题和副标题
-4. 设计引人入胜的开头和有力的结尾
-5. 确保大纲逻辑流畅，各部分衔接自然
-6. 考虑内容的可读性和信息价值
-
-输出格式:
-以JSON格式提供大纲，包含标题、引言、主要章节（每个都有标题和要点）、结论。""",
-                expected_output="包含完整文章结构的JSON格式大纲",
-                agent=self.outline_creator
-            )
-
-            # 2. 内容创作任务
-            content_task = Task(
-                description=f"""根据提供的大纲，创作专业、生动且信息丰富的文章内容。
-
-任务要求:
-1. 根据大纲创作完整的文章内容
-2. 确保内容专业准确，观点清晰
-3. 使用生动的案例和具体例子支持论点
-4. 加入适当的过渡，确保内容流畅
-5. 注意文章的节奏感和可读性
-6. 确保内容符合平台"{platform.name}"的风格和要求
-
-输出格式:
-提供完整的文章内容，包括标题、引言、正文各部分和结论。使用JSON格式。""",
-                expected_output="完整的文章内容JSON",
-                agent=self.content_writer,
-                context=[outline_task]  # 使用大纲任务的结果作为上下文
-            )
-
-            # 3. SEO优化任务
-            seo_task = Task(
-                description=f"""对文章进行SEO优化，提高其在搜索引擎中的可见性。
-
-任务要求:
-1. 分析文章内容和目标关键词
-2. 优化标题、副标题和元描述
-3. 提出关键词密度和分布的改进建议
-4. 建议内部链接和外部链接策略
-5. 确保SEO优化不影响内容质量和可读性
-6. 提供符合平台"{platform.name}"要求的SEO建议
-
-输出格式:
-返回JSON格式的SEO分析和优化建议，包括优化后的标题、元描述和关键词分析。""",
-                expected_output="SEO优化建议和分析报告JSON",
-                agent=self.seo_specialist,
-                context=[content_task]  # 使用内容任务的结果作为上下文
-            )
-
-            # 4. 事实核查任务
-            fact_check_task = Task(
-                description=f"""检查文章中的事实、数据和引用，确保准确性。
-
-任务要求:
-1. 仔细检查文章中的所有事实性陈述和数据
-2. 验证引用和来源的可靠性
-3. 标记任何可疑或需要进一步验证的信息
-4. 提供修正建议和更准确的信息
-5. 确保文章内容不含误导性陈述或过时信息
-
-输出格式:
-返回JSON格式的事实核查报告，包括发现的问题、修正建议和验证结果。""",
-                expected_output="事实核查报告JSON",
-                agent=self.fact_checker,
-                context=[content_task]  # 使用内容任务的结果作为上下文
-            )
-
-            # 5. 编辑优化任务
-            edit_task = Task(
-                description=f"""对文章进行全面编辑和质量提升。
-
-任务要求:
-1. 基于SEO优化和事实核查的结果，审查和编辑文章
-2. 优化语言表达，确保清晰流畅
-3. 检查并修正语法、标点和拼写错误
-4. 确保内容结构逻辑，段落衔接自然
-5. 优化标题和小标题的吸引力
-6. 根据平台"{platform.name}"的要求调整格式和风格
-7. 确保最终内容的整体质量和专业性
-
-输出格式:
-提供JSON格式的最终文章稿件，包括标题、摘要、正文和任何特殊格式要求。""",
-                expected_output="最终编辑完成的文章JSON",
-                agent=self.editor,
-                context=[content_task, seo_task, fact_check_task]  # 使用前面任务的结果作为上下文
-            )
-
-            # 创建工作流
-            logger.info("任务定义完成，创建工作流")
+            # 创建与执行写作工作流
             crew = Crew(
                 agents=[
                     self.outline_creator,
@@ -236,38 +165,316 @@ class WritingCrew:
                     self.fact_checker,
                     self.editor
                 ],
-                tasks=[
-                    outline_task,
-                    content_task,
-                    seo_task,
-                    fact_check_task,
-                    edit_task
-                ],
-                process=Process.sequential,  # 按顺序执行任务
-                verbose=self.verbose
+                tasks=tasks,
+                verbose=self.verbose,
+                process=Process.sequential
             )
 
-            # 执行工作流
-            logger.info("开始执行写作工作流")
-            result = crew.kickoff()
-            logger.info("写作工作流执行完成")
+            # 执行工作流获取结果
+            crew_results = crew.kickoff()
 
-            # 整理写作结果
-            writing_result = WritingResult(
-                article=article,
-                outline=result.get("outline_task"),
-                content=result.get("content_task"),
-                seo_data=result.get("seo_task"),
-                final_draft=result.get("edit_task")
-            )
+            # 处理结果
+            result = self._process_results(crew_results, article)
+            logger.info(f"文章写作完成: {article.title}")
 
-            logger.info(f"写作结果已整理，文章: {article.title}")
-            return writing_result
+            # 更新文章内容
+            self._update_article_from_results(article, result)
+
+            return result
 
         except Exception as e:
-            logger.error(f"写作过程发生错误: {str(e)}", exc_info=True)
-            # 返回部分结果，如果有的话
-            return WritingResult(article=article)
+            logger.error(f"写作过程发生错误: {str(e)}")
+            raise
+
+    def _initialize_agents(self):
+        """初始化写作智能体团队"""
+        if self.agents:
+            return
+
+        # 创建写作智能体管理器
+        self.agents = WritingAgents()
+
+        # 初始化各种角色的智能体
+        self.outline_creator = self.agents.get_outline_creator()
+        self.content_writer = self.agents.get_content_writer()
+        self.seo_specialist = self.agents.get_seo_specialist()
+        self.fact_checker = self.agents.get_fact_checker()
+        self.editor = self.agents.get_editor()
+
+    def _create_writing_tasks(self, article: Article, platform: Platform) -> List[Task]:
+        """创建写作工作流任务
+
+        Args:
+            article: 文章信息
+            platform: 发布平台信息
+
+        Returns:
+            List[Task]: 写作任务列表
+        """
+        tasks = []
+
+        # 1. 创建大纲任务
+        outline_task = Task(
+            description=f"""
+            为文章《{article.title}》创建合适的大纲结构。
+
+            文章主题：{article.topic.name if hasattr(article, 'topic') and article.topic else article.title}
+            内容类型：{article.metadata.get('content_type', '未指定')}
+            目标平台：{platform.name}
+            平台特点：{platform.description}
+            写作风格：{self.current_content_config['style']}
+            内容结构：{self.current_content_config['structure']}
+
+            请根据文章主题和内容类型，生成一个详细的大纲，包括：
+            1. 文章引言方向
+            2. 主要段落和小节（至少3-5个关键部分）
+            3. 每个部分应包含的要点
+            4. 适合的结论方向
+
+            输出格式：JSON对象，包含outline键（大纲数组）和summary键（大纲说明）
+            """,
+            agent=self.outline_creator,
+            expected_output="""
+            {
+                "outline": [
+                    {"title": "引言", "points": ["要点1", "要点2", ...]},
+                    {"title": "第一部分", "points": ["要点1", "要点2", ...]},
+                    ...
+                ],
+                "summary": "大纲总体思路和结构说明"
+            }
+            """
+        )
+        tasks.append(outline_task)
+
+        # 2. 创建内容写作任务
+        content_task = Task(
+            description=f"""
+            根据提供的大纲，为文章《{article.title}》创建完整内容。
+
+            文章主题：{article.topic.name if hasattr(article, 'topic') and article.topic else article.title}
+            内容类型：{article.metadata.get('content_type', '未指定')}
+            目标平台：{platform.name}
+            字数要求：{self.current_content_config['word_count']}字左右
+            写作风格：{self.current_content_config['style']}
+            内容深度：{self.current_content_config['depth']}
+
+            大纲：{{outline_task.output}}
+
+            请创建一篇结构完整、内容丰富的文章，确保：
+            1. 语言流畅自然，符合指定的写作风格
+            2. 深度符合要求，{self.current_content_config['depth']}级内容
+            3. 所有关键部分都有充分展开
+            4. 总体字数在要求范围内
+            5. 适合目标平台的受众
+
+            输出格式：JSON对象，包含sections键（各部分内容）和metadata键（创作说明）
+            """,
+            agent=self.content_writer,
+            expected_output="""
+            {
+                "sections": [
+                    {"title": "部分标题", "content": "部分内容..."},
+                    ...
+                ],
+                "metadata": {
+                    "word_count": 1500,
+                    "style_notes": "写作风格说明",
+                    "target_audience": "目标受众描述"
+                }
+            }
+            """
+        )
+        tasks.append(content_task)
+
+        # 3. SEO优化任务
+        seo_task = Task(
+            description=f"""
+            为文章《{article.title}》进行SEO优化分析与建议。
+
+            文章主题：{article.topic.name if hasattr(article, 'topic') and article.topic else article.title}
+            内容类型：{article.metadata.get('content_type', '未指定')}
+            目标平台：{platform.name}
+            SEO关注点：{self.current_content_config['seo_focus']}
+
+            文章内容：{{content_task.output}}
+
+            请进行SEO分析并提供优化建议，包括：
+            1. 识别主要关键词和长尾关键词
+            2. 评估关键词在文章中的分布
+            3. 标题和小标题的SEO优化建议
+            4. 内容和结构的改进建议
+            5. 适合文章的元描述示例
+
+            输出格式：JSON对象，包含keywords、suggestions和meta_description键
+            """,
+            agent=self.seo_specialist,
+            expected_output="""
+            {
+                "keywords": {
+                    "primary": ["关键词1", "关键词2"],
+                    "secondary": ["长尾关键词1", "长尾关键词2", ...]
+                },
+                "suggestions": {
+                    "title": "标题优化建议",
+                    "headings": "小标题优化建议",
+                    "content": "内容优化建议",
+                    "structure": "结构优化建议"
+                },
+                "meta_description": "推荐的元描述"
+            }
+            """
+        )
+        tasks.append(seo_task)
+
+        # 4. 事实核查任务
+        fact_check_task = Task(
+            description=f"""
+            对文章《{article.title}》进行事实核查和准确性验证。
+
+            文章内容：{{content_task.output}}
+
+            请仔细审核文章中的事实性内容，特别注意：
+            1. 数据和统计信息的准确性
+            2. 引用和声明的可信度
+            3. 历史事件和时间线的准确性
+            4. 技术细节和专业知识的正确性
+            5. 可能存在的误导性表述
+
+            请基于内容{self.current_content_config['depth']}级深度要求进行相应级别的事实核查。
+
+            输出格式：JSON对象，包含accuracy_score、issues和suggestions键
+            """,
+            agent=self.fact_checker,
+            expected_output="""
+            {
+                "accuracy_score": 8.5,
+                "issues": [
+                    {"type": "数据错误", "description": "...", "correction": "..."},
+                    {"type": "误导性表述", "description": "...", "correction": "..."},
+                    ...
+                ],
+                "suggestions": "改进建议"
+            }
+            """
+        )
+        tasks.append(fact_check_task)
+
+        # 5. 编辑和完善任务
+        edit_task = Task(
+            description=f"""
+            对文章《{article.title}》进行最终编辑和完善。
+
+            原始内容：{{content_task.output}}
+            SEO建议：{{seo_task.output}}
+            事实核查：{{fact_check_task.output}}
+
+            内容类型：{article.metadata.get('content_type', '未指定')}
+            目标平台：{platform.name}
+            字数要求：{self.current_content_config['word_count']}字左右
+            写作风格：{self.current_content_config['style']}
+
+            请根据以上信息对文章进行最终编辑：
+            1. 整合SEO建议和事实核查结果
+            2. 确保文章风格一致，符合{self.current_content_config['style']}的要求
+            3. 优化段落和句子结构，提高可读性
+            4. 检查并修正语法和拼写错误
+            5. 调整文章长度至{self.current_content_config['word_count']}字左右
+
+            输出格式：完整的最终文章内容，JSON格式，包含title、sections和metadata键
+            """,
+            agent=self.editor,
+            expected_output="""
+            {
+                "title": "最终文章标题",
+                "subtitle": "副标题（如有）",
+                "sections": [
+                    {"title": "部分标题", "content": "部分内容..."},
+                    ...
+                ],
+                "metadata": {
+                    "word_count": 1500,
+                    "keywords": ["关键词1", "关键词2", ...],
+                    "description": "文章描述/摘要"
+                }
+            }
+            """
+        )
+        tasks.append(edit_task)
+
+        return tasks
+
+    def _process_results(self, crew_results: Any, article: Article) -> WritingResult:
+        """处理写作工作流结果
+
+        Args:
+            crew_results: CrewAI工作流结果
+            article: 原始文章信息
+
+        Returns:
+            WritingResult: 处理后的写作结果
+        """
+        result = WritingResult(article=article)
+
+        try:
+            # 解析各个任务的结果
+            if isinstance(crew_results, list) and len(crew_results) >= 5:
+                result.outline = json.loads(crew_results[0]) if isinstance(crew_results[0], str) else crew_results[0]
+                result.content = json.loads(crew_results[1]) if isinstance(crew_results[1], str) else crew_results[1]
+                result.seo_data = json.loads(crew_results[2]) if isinstance(crew_results[2], str) else crew_results[2]
+                fact_check = json.loads(crew_results[3]) if isinstance(crew_results[3], str) else crew_results[3]
+                result.final_draft = json.loads(crew_results[4]) if isinstance(crew_results[4], str) else crew_results[4]
+
+                # 合并事实核查到最终结果
+                if isinstance(result.final_draft, dict) and isinstance(fact_check, dict):
+                    if "metadata" not in result.final_draft:
+                        result.final_draft["metadata"] = {}
+                    result.final_draft["metadata"]["fact_check"] = fact_check
+        except Exception as e:
+            logger.error(f"处理写作结果时出错: {str(e)}")
+
+        return result
+
+    def _update_article_from_results(self, article: Article, result: WritingResult) -> None:
+        """根据最终稿件更新文章对象
+
+        Args:
+            article: 需要更新的文章对象
+            result: 写作结果
+        """
+        if not result.final_draft:
+            logger.warning("缺少最终稿件，无法更新文章对象")
+            return
+
+        try:
+            # 更新标题（如果最终稿件中有）
+            if "title" in result.final_draft and result.final_draft["title"]:
+                article.title = result.final_draft["title"]
+
+            # 更新副标题
+            if "subtitle" in result.final_draft and result.final_draft["subtitle"]:
+                article.subtitle = result.final_draft["subtitle"]
+
+            # 更新文章部分
+            if "sections" in result.final_draft and isinstance(result.final_draft["sections"], list):
+                article.sections = []
+                for section_data in result.final_draft["sections"]:
+                    section = Section(
+                        title=section_data.get("title", ""),
+                        content=section_data.get("content", "")
+                    )
+                    article.sections.append(section)
+
+            # 更新元数据
+            if "metadata" in result.final_draft and isinstance(result.final_draft["metadata"], dict):
+                if not hasattr(article, "metadata") or not article.metadata:
+                    article.metadata = {}
+
+                for key, value in result.final_draft["metadata"].items():
+                    article.metadata[key] = value
+
+        except Exception as e:
+            logger.error(f"更新文章对象时出错: {str(e)}")
 
     def get_human_feedback(self, writing_result: WritingResult) -> WritingResult:
         """获取人工反馈

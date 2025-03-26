@@ -71,4 +71,4 @@ else
     echo -e "${GREEN}Production server will be available at:${NC}"
     echo -e "${GREEN}http://localhost:9000/md${NC}"
     serve -s dist -l 9000
-fi 
+fi

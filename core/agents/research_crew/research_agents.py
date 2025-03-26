@@ -135,26 +135,32 @@ class ResearchAgents:
         logger.info(f"成功创建 {len(agents)} 个研究团队智能体")
         return agents
 
-    def create_background_researcher(self) -> Agent:
+    def create_background_researcher(self, verbose: bool = True) -> Agent:
         """创建背景研究员智能体
+
+        Args:
+            verbose: 是否输出详细日志
 
         Returns:
             Agent: 背景研究员智能体
         """
         logger.info("创建背景研究员智能体...")
-        config = self.agent_configs["background_researcher"]
         agent = Agent(
-            role=config["role"],
-            goal=config["goal"],
-            backstory=config["backstory"],
+            role=self.agent_configs["background_researcher"]["role"],
+            goal=self.agent_configs["background_researcher"]["goal"],
+            backstory=self.agent_configs["background_researcher"]["backstory"],
             tools=self.agent_tools["background_researcher"],
-            verbose=self.config.AGENT_VERBOSE
+            verbose=verbose,
+            allow_delegation=True
         )
-        logger.info(f"背景研究员智能体创建完成，工具数量: {len(self.agent_tools['background_researcher'])}")
+        logger.info("背景研究员智能体创建完成")
         return agent
 
-    def create_expert_finder(self) -> Agent:
+    def create_expert_finder(self, verbose: bool = True) -> Agent:
         """创建专家发现者智能体
+
+        Args:
+            verbose: 是否输出详细日志
 
         Returns:
             Agent: 专家发现者智能体
@@ -166,13 +172,17 @@ class ResearchAgents:
             goal=config["goal"],
             backstory=config["backstory"],
             tools=self.agent_tools["expert_finder"],
-            verbose=self.config.AGENT_VERBOSE
+            verbose=verbose,
+            allow_delegation=True
         )
-        logger.info(f"专家发现者智能体创建完成，工具数量: {len(self.agent_tools['expert_finder'])}")
+        logger.info("专家发现者智能体创建完成")
         return agent
 
-    def create_data_analyst(self) -> Agent:
+    def create_data_analyst(self, verbose: bool = True) -> Agent:
         """创建数据分析师智能体
+
+        Args:
+            verbose: 是否输出详细日志
 
         Returns:
             Agent: 数据分析师智能体
@@ -184,13 +194,17 @@ class ResearchAgents:
             goal=config["goal"],
             backstory=config["backstory"],
             tools=self.agent_tools["data_analyst"],
-            verbose=self.config.AGENT_VERBOSE
+            verbose=verbose,
+            allow_delegation=True
         )
-        logger.info(f"数据分析师智能体创建完成，工具数量: {len(self.agent_tools['data_analyst'])}")
+        logger.info("数据分析师智能体创建完成")
         return agent
 
-    def create_research_writer(self) -> Agent:
+    def create_research_writer(self, verbose: bool = True) -> Agent:
         """创建研究报告撰写员智能体
+
+        Args:
+            verbose: 是否输出详细日志
 
         Returns:
             Agent: 研究报告撰写员智能体
@@ -202,7 +216,8 @@ class ResearchAgents:
             goal=config["goal"],
             backstory=config["backstory"],
             tools=self.agent_tools["research_writer"],
-            verbose=self.config.AGENT_VERBOSE
+            verbose=verbose,
+            allow_delegation=True
         )
-        logger.info(f"研究报告撰写员智能体创建完成，工具数量: {len(self.agent_tools['research_writer'])}")
+        logger.info("研究报告撰写员智能体创建完成")
         return agent

@@ -11,12 +11,12 @@ interface ErrorProps {
 
 export default function Error({ error, reset }: ErrorProps) {
   const router = useRouter();
-  
+
   useEffect(() => {
     // 记录错误到错误报告服务
     console.error('页面错误:', error);
   }, [error]);
-  
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center bg-white dark:bg-gray-900 px-4 py-16 sm:px-6 sm:py-24 md:grid md:place-items-center lg:px-8">
       <div className="max-w-max mx-auto">
@@ -27,7 +27,7 @@ export default function Error({ error, reset }: ErrorProps) {
               500
             </p>
           </div>
-          
+
           <div className="mt-6 sm:mt-0 sm:ml-6 flex flex-col justify-center">
             <div>
               <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight sm:text-4xl">
@@ -48,7 +48,7 @@ export default function Error({ error, reset }: ErrorProps) {
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-900 transition-colors">
                 重试
               </button>
-              <Link href="/" 
+              <Link href="/"
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-900 transition-colors">
                 返回首页
               </Link>
@@ -60,7 +60,7 @@ export default function Error({ error, reset }: ErrorProps) {
             </div>
           </div>
         </main>
-        
+
         <div className="mt-20 flex justify-center">
           <div className="relative w-full max-w-lg">
             <div className="absolute top-0 -left-4 w-72 h-72 bg-red-300 dark:bg-red-700 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
@@ -72,7 +72,7 @@ export default function Error({ error, reset }: ErrorProps) {
                 <p className="text-gray-600 dark:text-gray-400 mb-4">如果问题持续存在，您可以：</p>
                 <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                   <li className="flex items-center">
-                    <span className="mr-2 text-red-500">•</span> 
+                    <span className="mr-2 text-red-500">•</span>
                     清除浏览器缓存并刷新页面
                   </li>
                   <li className="flex items-center">

@@ -123,10 +123,10 @@ export async function PUT(
 
     const body = await request.json();
     const oldArticle = articles[articleIndex];
-    
+
     // 检查是否从草稿变为已发布状态
     const isPublishing = oldArticle.status === 'draft' && body.status === 'published';
-    
+
     // 更新文章
     const updatedArticle = {
       ...oldArticle,

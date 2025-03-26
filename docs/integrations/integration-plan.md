@@ -96,10 +96,10 @@ export class ChatService {
   async sendMessage(message: ChatMessage) {
     // 1. 根据消息内容选择或创建合适的 Agent
     const agent = await this.agentService.selectAgent(message.content);
-    
+
     // 2. 创建任务并分配给 Agent
     const task = await this.agentService.createTask(message);
-    
+
     // 3. 执行任务并返回结果
     return this.agentService.executeTask(task);
   }
@@ -121,14 +121,14 @@ class GenFlowAgent:
             backstory=config["backstory"],
             tools=config["tools"]
         )
-    
+
     async def handle_message(self, message: str) -> str:
         # 创建任务
         task = Task(
             description=message,
             agent=self.agent
         )
-        
+
         # 执行任务
         result = await task.execute()
         return result
@@ -143,7 +143,7 @@ router = APIRouter()
 @router.websocket("/ws/chat")
 async def chat_websocket(websocket: WebSocket):
     await websocket.accept()
-    
+
     # 初始化 CrewAI 团队
     crew = Crew(
         agents=[
@@ -153,14 +153,14 @@ async def chat_websocket(websocket: WebSocket):
             # 配置初始任务
         ]
     )
-    
+
     try:
         while True:
             message = await websocket.receive_text()
-            
+
             # 通过 CrewAI 处理消息
             response = await crew.process_message(message)
-            
+
             await websocket.send_text(response)
     except Exception as e:
         print(f"Error: {e}")
@@ -174,7 +174,7 @@ async def chat_websocket(websocket: WebSocket):
 version: '3.8'
 services:
   genflow-frontend:
-    build: 
+    build:
       context: ../../../frontend
     ports:
       - "6060:6060"

@@ -15,4 +15,4 @@ export async function GET() {
         console.error('获取抖音热搜失败:', error);
         return NextResponse.json({ error: '获取热搜数据失败' }, { status: 500 });
     }
-} 
+}

@@ -37,11 +37,11 @@
 - **后端:** Flask (轻量级，易于集成)
 - **数据库:** PostgreSQL + MongoDB (内容存储)
 - **ORM:** SQLAlchemy
-- **AI服务:** 
+- **AI服务:**
   - Dify API (核心 AI 功能)
   - GPT-4 API (内容生成)
   - Stable Diffusion (图像生成)
-- **部署:** 
+- **部署:**
   - 开发环境: 本地 Flask 开发服务器
   - 生产环境: Gunicorn + Nginx
 
@@ -138,14 +138,14 @@ def create_editor():
                 suggest_button = gr.Button("AI 建议")
             with gr.Column():
                 preview = gr.HTML(label="预览")
-        
+
         # 事件处理
         suggest_button.click(
             fn=DifyClient.get_suggestion,
             inputs=text_input,
             outputs=text_input
         )
-    
+
     return editor
 ```
 
@@ -156,7 +156,7 @@ class DifyClient:
     def __init__(self, api_key):
         self.api_key = api_key
         self.base_url = "https://api.dify.ai/v1"
-    
+
     def publish_article(self, article, platforms):
         """发布文章到指定平台"""
         # 实现发布逻辑
@@ -238,4 +238,4 @@ class DifyClient:
 
 本项目通过结合 AI 技术和自动化工作流，旨在提升导航网站的流量变现能力。通过分阶段实施，将逐步建立一个高效、稳定、可扩展的内容生产与分发系统，实现从导航网站流量到自媒体平台再到私域流量的有效转化。
 
-未来，随着 AI 技术的发展，系统将持续优化内容质量，拓展更多变现渠道，探索更多创新的内容形式，为用户提供更高价值的体验。 
+未来，随着 AI 技术的发展，系统将持续优化内容质量，拓展更多变现渠道，探索更多创新的内容形式，为用户提供更高价值的体验。

@@ -15,7 +15,7 @@ import asyncio
 import argparse
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 # 添加项目根目录到Python路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -98,6 +98,62 @@ def get_platform(platform_name: str) -> Platform:
             }
         )
 
+async def run_writing(
+    article: Article,
+    platform: Platform,
+    content_type: Optional[str] = None
+) -> Union[WritingResult, Dict]:
+    """运行写作流程
+
+    Args:
+        article: 文章信息对象，包含标题、主题和初始内容
+        platform: 目标发布平台，决定了内容风格和要求
+        content_type: 内容类型（如"新闻"、"论文"、"快讯"等）
+
+    Returns:
+        WritingResult或Dict: 写作结果，包含最终文章和中间结果
+    """
+    try:
+        logger.info(f"启动写作流程: {article.title}, 平台: {platform.name}, 内容类型: {content_type or '未指定'}")
+
+        # 创建写作团队实例
+        writing_crew = WritingCrew(verbose=True)
+
+        # 执行写作流程
+        result = await writing_crew.write_article(article, platform, content_type)
+
+        # 保存结果到文件
+        timestamp = result.article.metadata.get("timestamp") if hasattr(result.article, "metadata") else None
+        filename = f"writing_result_{timestamp or 'latest'}.json"
+        save_path = os.path.join(os.getcwd(), "results", filename)
+
+        # 确保目录存在
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+        # 保存结果
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "title": result.article.title,
+                "metadata": {
+                    "content_type": content_type,
+                    **result.article.metadata
+                } if hasattr(result.article, "metadata") else {"content_type": content_type},
+                "outline": result.outline,
+                "final_draft": result.final_draft
+            }, f, ensure_ascii=False, indent=2)
+
+        logger.info(f"写作结果已保存: {save_path}")
+        return result
+
+    except Exception as e:
+        logger.error(f"写作过程出错: {str(e)}", exc_info=True)
+        return {
+            "error": str(e),
+            "article": article.title if article else None,
+            "platform": platform.name if platform else None,
+            "content_type": content_type
+        }
+
 async def run_writing_workflow(args):
     """运行写作工作流
 
@@ -167,12 +223,9 @@ async def run_writing_workflow(args):
 
         logger.info(f"创建文章: {article.title}, ID: {article.id}")
 
-        # 创建写作团队
-        crew = WritingCrew(verbose=args.verbose)
-
         # 执行写作流程
         logger.info("开始执行写作流程")
-        writing_result = await crew.write_article(article, platform)
+        result = await run_writing(article, platform, args.content_type)
 
         # 保存原始结果
         output_path = args.output or "output"
@@ -180,24 +233,25 @@ async def run_writing_workflow(args):
         output_dir.mkdir(exist_ok=True, parents=True)
 
         result_file = output_dir / f"{article_id}_result.json"
-        writing_result.save_to_file(str(result_file))
+        with open(result_file, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
         logger.info(f"写作结果已保存到: {result_file}")
 
         # 是否需要人工反馈
         if not args.no_feedback:
-            writing_result = get_human_feedback(writing_result)
+            result = get_human_feedback(result)
 
             # 更新反馈结果
             feedback_file = output_dir / f"{article_id}_feedback.json"
             with open(feedback_file, "w", encoding="utf-8") as f:
-                json.dump(writing_result.to_dict(), f, ensure_ascii=False, indent=2)
+                json.dump(result.to_dict(), f, ensure_ascii=False, indent=2)
             logger.info(f"反馈结果已保存到: {feedback_file}")
 
             # 如果评分达标，更新文章
             threshold = args.threshold or 0.7
-            if writing_result.human_feedback and writing_result.human_feedback.get("normalized_average_score", 0) >= threshold:
+            if result.human_feedback and result.human_feedback.get("normalized_average_score", 0) >= threshold:
                 logger.info(f"评分达标(>={threshold})，更新文章")
-                article = crew.update_article(writing_result)
+                article = result.crew.update_article(result)
 
                 # 保存最终文章
                 final_file = output_dir / f"{article_id}_final.json"
@@ -240,6 +294,7 @@ def main():
     parser.add_argument("--threshold", type=float, help="评分通过阈值，默认0.7")
     parser.add_argument("--no-feedback", action="store_true", help="跳过人工反馈")
     parser.add_argument("--verbose", action="store_true", help="显示详细日志")
+    parser.add_argument("--content-type", help="内容类型（如'新闻'、'论文'、'快讯'等）")
 
     args = parser.parse_args()
 

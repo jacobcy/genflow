@@ -19,7 +19,7 @@ class ContentItem:
 
 class BaseCollector(BaseTool):
     """内容采集器基类"""
-    
+
     @abstractmethod
     async def execute(self, url: str) -> ToolResult:
         """执行内容采集"""
@@ -27,10 +27,10 @@ class BaseCollector(BaseTool):
 
 class ContentParser(ABC):
     """内容解析器基类"""
-    
+
     # 类级别缓存
     _instances: ClassVar[Dict[str, 'ContentParser']] = {}
-    
+
     @classmethod
     def get_instance(cls, parser_type: str) -> 'ContentParser':
         """获取解析器实例"""
@@ -40,17 +40,17 @@ class ContentParser(ABC):
                 raise ValueError(f"Unknown parser type: {parser_type}")
             cls._instances[parser_type] = parser_class()
         return cls._instances[parser_type]
-    
+
     @classmethod
     def clear_cache(cls):
         """清除所有缓存的实例"""
         cls._instances.clear()
-    
+
     @abstractmethod
     async def parse(self, url: str) -> ContentItem:
         """解析URL内容"""
         pass
-        
+
     async def health_check(self) -> bool:
         """检查解析器健康状态"""
         try:
@@ -60,10 +60,10 @@ class ContentParser(ABC):
 
 class ContentSource(ABC):
     """内容源基类"""
-    
+
     # 类级别缓存
     _instances: ClassVar[Dict[str, 'ContentSource']] = {}
-    
+
     @classmethod
     def get_instance(cls, source_type: str) -> 'ContentSource':
         """获取内容源实例"""
@@ -73,17 +73,17 @@ class ContentSource(ABC):
                 raise ValueError(f"Unknown source type: {source_type}")
             cls._instances[source_type] = source_class()
         return cls._instances[source_type]
-    
+
     @classmethod
     def clear_cache(cls):
         """清除所有缓存的实例"""
         cls._instances.clear()
-    
+
     @abstractmethod
     async def search(self, keyword: str, **kwargs) -> List[ContentItem]:
         """搜索内容"""
         pass
-        
+
     async def health_check(self) -> bool:
         """检查内容源健康状态"""
         try:
@@ -107,4 +107,4 @@ def register_source(source_type: str):
     def wrapper(cls):
         SOURCE_REGISTRY[source_type] = cls
         return cls
-    return wrapper 
+    return wrapper

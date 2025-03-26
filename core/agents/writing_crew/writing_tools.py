@@ -9,7 +9,6 @@ from crewai.tools import tool
 from core.tools.nlp_tools import NLPAggregator, SummaTool, YakeTool
 from core.tools.style_tools import StyleAdapter
 from core.tools.writing_tools import ArticleWriter
-from core.models.platform import Platform
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -17,21 +16,17 @@ logger = logging.getLogger(__name__)
 class WritingTools:
     """写作团队工具类，按照CrewAI最佳实践组织工具"""
 
-    def __init__(self, platform: Platform):
+    def __init__(self):
         """
         初始化写作工具集
-
-        Args:
-            platform: 发布平台信息，包含样式规范和内容要求
         """
-        logger.info(f"初始化写作工具集，目标平台: {platform.name}")
-        self.platform = platform
+        logger.info(f"初始化写作工具集")
 
         # 初始化核心工具
         self.nlp_tools = NLPAggregator()
         self.summa_tool = SummaTool()
         self.yake_tool = YakeTool()
-        self.style_adapter = StyleAdapter.get_instance(platform)
+        self.style_adapter = None  # 延迟初始化，在需要时传入平台信息
         self.article_writer = ArticleWriter()
 
         logger.info("写作工具集初始化完成")
@@ -110,57 +105,87 @@ class WritingTools:
         )
         return result.data
 
-    @tool("风格调整")
-    def adapt_style(self, text: str, target_platform: str = None) -> str:
+    @tool("风格适配")
+    def adapt_style(self, text: str, platform_name: str = None, style: str = None) -> str:
         """
-        根据目标平台调整文章风格，包括格式、语调和长度等。
+        根据目标平台和所需风格调整文本样式。
 
         Args:
             text: 要调整的文本内容
-            target_platform: 目标平台名称，默认使用初始化时指定的平台
+            platform_name: 目标平台名称
+            style: 目标风格，如'formal'、'casual'等
 
         Returns:
             str: 调整后的文本
         """
-        platform = target_platform or self.platform.name
-        logger.info(f"调整文本风格，目标平台: {platform}")
-        result = self.style_adapter.execute(text=text, platform=platform)
-        return result.data
+        logger.info(f"调整文本风格，目标风格: {style or '默认'}")
+
+        # 由于没有在初始化时指定平台，这里需要动态调整
+        # 在实际应用中，可能需要更复杂的处理逻辑
+        processed_text = text
+
+        # 根据指定的风格应用一些基本的文本处理
+        if style == "formal":
+            # 这里只是示例，实际应用中可能需要更复杂的处理
+            processed_text = processed_text.replace("don't", "do not")
+            processed_text = processed_text.replace("can't", "cannot")
+        elif style == "casual":
+            processed_text = processed_text.replace("therefore", "so")
+            processed_text = processed_text.replace("however", "but")
+
+        return processed_text
 
     @tool("SEO优化")
-    def optimize_seo(self, title: str, content: str, keywords: List[str]) -> Dict:
+    def optimize_seo(self, content: Dict, keywords: List[str], platform_name: str = None) -> Dict:
         """
-        对文章进行SEO优化，包括标题、内容和元描述。
+        优化内容以提高搜索引擎排名。
 
         Args:
-            title: 文章标题
-            content: 文章内容
-            keywords: 目标关键词
+            content: 文章内容字典
+            keywords: 目标关键词列表
+            platform_name: 目标平台名称
 
         Returns:
-            Dict: 包含优化建议的字典
+            Dict: 包含SEO优化建议和改进后内容的字典
         """
         logger.info(f"执行SEO优化，关键词数量: {len(keywords)}")
 
-        # 组合多个工具的结果
-        analysis = self.nlp_tools.execute(
-            text=content,
-            analysis_type="seo",
-            keywords=keywords,
-            title=title
-        ).data
-
-        # 添加平台特定的SEO建议
-        platform_suggestions = {
-            "platform_name": self.platform.name,
-            "title_suggestion": f"针对{self.platform.name}的标题优化建议",
-            "keyword_density": analysis.get("keyword_density", {}),
-            "recommended_changes": []
+        # 构建优化结果
+        result = {
+            "original_content": content,
+            "optimized_content": content.copy(),
+            "keywords": keywords,
+            "suggestions": []
         }
 
-        # 合并结果
-        analysis.update({"platform_specific": platform_suggestions})
-        return analysis
+        # 分析关键词密度
+        text = ""
+        if isinstance(content, dict) and "text" in content:
+            text = content["text"]
+        elif isinstance(content, str):
+            text = content
+
+        # 计算每个关键词的出现次数
+        keyword_counts = {}
+        for keyword in keywords:
+            count = text.lower().count(keyword.lower())
+            keyword_counts[keyword] = count
+
+        # 生成优化建议
+        for keyword, count in keyword_counts.items():
+            if count == 0:
+                result["suggestions"].append(f"添加关键词 '{keyword}'")
+            elif count < 2:
+                result["suggestions"].append(f"增加关键词 '{keyword}' 的使用频率")
+
+        # 检查标题中是否包含关键词
+        if "title" in content:
+            title = content["title"]
+            title_contains_keywords = any(keyword.lower() in title.lower() for keyword in keywords)
+            if not title_contains_keywords:
+                result["suggestions"].append("在标题中添加一个主要关键词")
+
+        return result
 
     @tool("文章编辑")
     def edit_article(self, content: Dict, edit_focus: str = "all") -> Dict:

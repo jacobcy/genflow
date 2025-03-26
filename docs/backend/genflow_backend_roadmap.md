@@ -10,7 +10,7 @@
     - 自动 API 文档生成
     - 强大的类型提示和验证
     - 与 OpenAI 异步调用相性好
-    
+
 - **数据库**: PostgreSQL + SQLAlchemy
   - 原因：
     - 强大的全文搜索能力
@@ -58,7 +58,7 @@ backend/
 # app/models/user.py
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(UUID, primary_key=True)
     email = Column(String, unique=True)
     name = Column(String)
@@ -70,7 +70,7 @@ class User(Base):
 # app/models/article.py
 class Article(Base):
     __tablename__ = "articles"
-    
+
     id = Column(UUID, primary_key=True)
     title = Column(String)
     content = Column(Text)
@@ -86,7 +86,7 @@ class AIService:
     async def process_message(self, message: str) -> str:
         # OpenAI 集成
         pass
-    
+
     async def analyze_content(self, content: str) -> Dict:
         # 内容分析
         pass
@@ -182,12 +182,12 @@ services:
     depends_on:
       - postgres
       - redis
-  
+
   postgres:
     image: postgres:14
     volumes:
       - postgres_data:/var/lib/postgresql/data
-  
+
   redis:
     image: redis:6
     volumes:

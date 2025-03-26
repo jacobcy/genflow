@@ -16,10 +16,10 @@ interface DashboardChartProps {
   colorClass?: string;
 }
 
-export default function DashboardChart({ 
-  title, 
-  chartData, 
-  chartType, 
+export default function DashboardChart({
+  title,
+  chartData,
+  chartType,
   chartId,
   colorClass = 'rgb(59, 130, 246)' // 默认蓝色
 }: DashboardChartProps) {
@@ -28,16 +28,16 @@ export default function DashboardChart({
 
   useEffect(() => {
     if (!chartRef.current) return;
-    
+
     // 销毁旧图表实例
     if (chartInstance.current) {
       chartInstance.current.destroy();
     }
-    
+
     // 创建新图表
     const ctx = chartRef.current.getContext('2d');
     if (!ctx) return;
-    
+
     chartInstance.current = new Chart(ctx, {
       type: chartType,
       data: {
@@ -64,7 +64,7 @@ export default function DashboardChart({
         }
       }
     });
-    
+
     // 清理函数
     return () => {
       if (chartInstance.current) {

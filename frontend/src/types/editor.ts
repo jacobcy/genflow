@@ -137,4 +137,4 @@ export interface EditorPlugin {
     handlers: {
         [key: string]: (...args: any[]) => void;
     };
-} 
+}

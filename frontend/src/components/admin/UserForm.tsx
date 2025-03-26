@@ -35,11 +35,11 @@ export default function UserForm({ userId, isNew = false }: UserFormProps) {
         try {
           setLoading(true);
           const response = await fetch(`/api/admin/users/${userId}`);
-          
+
           if (!response.ok) {
             throw new Error('Failed to fetch user');
           }
-          
+
           const userData = await response.json();
           setUser(userData);
           setError(null);
@@ -50,7 +50,7 @@ export default function UserForm({ userId, isNew = false }: UserFormProps) {
           setLoading(false);
         }
       };
-      
+
       fetchUser();
     }
   }, [isNew, userId]);
@@ -58,7 +58,7 @@ export default function UserForm({ userId, isNew = false }: UserFormProps) {
   // 表单输入处理
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       setUser(prev => ({ ...prev, [name]: checked }));
@@ -70,14 +70,14 @@ export default function UserForm({ userId, isNew = false }: UserFormProps) {
   // 表单提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       setLoading(true);
       setError(null);
       setSuccess(null);
-      
+
       let response;
-      
+
       if (isNew) {
         // 创建新用户
         response = await fetch('/api/admin/users', {
@@ -97,16 +97,16 @@ export default function UserForm({ userId, isNew = false }: UserFormProps) {
           body: JSON.stringify(user),
         });
       }
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to save user');
       }
-      
+
       const savedUser = await response.json();
-      
+
       setSuccess(isNew ? '用户创建成功！' : '用户更新成功！');
-      
+
       // 如果是新用户，2秒后重定向
       if (isNew) {
         setTimeout(() => {
@@ -140,19 +140,19 @@ export default function UserForm({ userId, isNew = false }: UserFormProps) {
       <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-6">
         {isNew ? '创建新用户' : '编辑用户'}
       </h2>
-      
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
           <span className="block sm:inline">{error}</span>
         </div>
       )}
-      
+
       {success && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
           <span className="block sm:inline">{success}</span>
         </div>
       )}
-      
+
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" htmlFor="email">
@@ -168,7 +168,7 @@ export default function UserForm({ userId, isNew = false }: UserFormProps) {
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
         </div>
-        
+
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" htmlFor="username">
             用户名
@@ -183,7 +183,7 @@ export default function UserForm({ userId, isNew = false }: UserFormProps) {
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
         </div>
-        
+
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" htmlFor="role">
             角色
@@ -199,7 +199,7 @@ export default function UserForm({ userId, isNew = false }: UserFormProps) {
             <option value="admin">管理员</option>
           </select>
         </div>
-        
+
         <div className="mb-6">
           <div className="flex items-center">
             <input
@@ -215,7 +215,7 @@ export default function UserForm({ userId, isNew = false }: UserFormProps) {
             </label>
           </div>
         </div>
-        
+
         <div className="flex justify-end space-x-4">
           <button
             type="button"

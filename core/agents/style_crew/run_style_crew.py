@@ -19,6 +19,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 from core.agents.style_crew import StyleCrew
 from core.models.article import Article
 from core.models.platform import Platform
+from core.constants.style_types import get_platform_style_type, get_style_features, get_style_description
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,7 +69,7 @@ def get_default_platform():
     Returns:
         Platform对象
     """
-    platforms_dir = Path(__file__).parent / "platforms"
+    platforms_dir = Path(__file__).parent.parent.parent / "constants" / "platforms"
     platform_files = glob.glob(str(platforms_dir / "*.json"))
 
     if platform_files:
@@ -154,7 +155,15 @@ async def run_style_adaptation(input_file: str,
         logger.error("无法获取平台配置，请确保platforms目录中有有效的平台配置文件")
         return
 
-    logger.info(f"目标平台: {platform.name}")
+    # 获取预定义风格信息
+    platform_style_type = get_platform_style_type(platform.id)
+    if platform_style_type:
+        style_features = get_style_features(platform_style_type)
+        style_description = get_style_description(platform_style_type)
+        logger.info(f"目标平台: {platform.name}, 预定义风格: {platform_style_type}")
+        logger.info(f"风格描述: {style_description}")
+    else:
+        logger.info(f"目标平台: {platform.name}, 无预定义风格")
 
     # 创建风格团队
     style_crew = StyleCrew()

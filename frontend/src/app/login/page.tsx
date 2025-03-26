@@ -18,7 +18,7 @@ export default function LoginPage() {
             智能内容创作平台
           </p>
         </div>
-        
+
         <LoginForm />
       </div>
     </div>

@@ -18,17 +18,12 @@ class WritingAgents:
     遵循CrewAI最佳实践，每个智能体都有明确的角色定位和合适的工具集。
     """
 
-    def __init__(self, platform: Platform):
-        """初始化写作智能体管理器
-
-        Args:
-            platform: 目标发布平台，决定了内容风格和格式要求
-        """
-        logger.info(f"初始化写作智能体管理器，目标平台: {platform.name}")
-        self.platform = platform
+    def __init__(self):
+        """初始化写作智能体管理器"""
+        logger.info("初始化写作智能体管理器")
 
         # 创建写作工具集
-        self.tools = WritingTools(platform)
+        self.tools = WritingTools()
 
         # 智能体角色与能力配置
         self.role_configs = {
@@ -127,25 +122,46 @@ class WritingAgents:
 
         return agent
 
+    def get_outline_creator(self, verbose: bool = True) -> Agent:
+        """获取大纲设计师智能体"""
+        return self.create_agent("outline_creator", verbose)
+
+    def get_content_writer(self, verbose: bool = True) -> Agent:
+        """获取内容创作者智能体"""
+        return self.create_agent("content_writer", verbose)
+
+    def get_seo_specialist(self, verbose: bool = True) -> Agent:
+        """获取SEO优化专家智能体"""
+        return self.create_agent("seo_specialist", verbose)
+
+    def get_editor(self, verbose: bool = True) -> Agent:
+        """获取内容编辑智能体"""
+        return self.create_agent("editor", verbose)
+
+    def get_fact_checker(self, verbose: bool = True) -> Agent:
+        """获取事实核查员智能体"""
+        return self.create_agent("fact_checker", verbose)
+
+    # 保留以下方法以兼容旧代码
     def create_outline_creator(self, verbose: bool = True) -> Agent:
         """创建大纲设计师智能体"""
-        return self.create_agent("outline_creator", verbose)
+        return self.get_outline_creator(verbose)
 
     def create_content_writer(self, verbose: bool = True) -> Agent:
         """创建内容创作者智能体"""
-        return self.create_agent("content_writer", verbose)
+        return self.get_content_writer(verbose)
 
     def create_seo_specialist(self, verbose: bool = True) -> Agent:
         """创建SEO优化专家智能体"""
-        return self.create_agent("seo_specialist", verbose)
+        return self.get_seo_specialist(verbose)
 
     def create_editor(self, verbose: bool = True) -> Agent:
         """创建内容编辑智能体"""
-        return self.create_agent("editor", verbose)
+        return self.get_editor(verbose)
 
     def create_fact_checker(self, verbose: bool = True) -> Agent:
         """创建事实核查员智能体"""
-        return self.create_agent("fact_checker", verbose)
+        return self.get_fact_checker(verbose)
 
     def create_all_agents(self, verbose: bool = True) -> Dict[str, Agent]:
         """创建所有智能体"""

@@ -22,13 +22,13 @@ if [ -f "$PROJECT_ROOT/scripts/check-submodules.sh" ]; then
     chmod +x "$PROJECT_ROOT/scripts/check-submodules.sh"
     # 执行子模块检查脚本
     "$PROJECT_ROOT/scripts/check-submodules.sh"
-    
+
     # 如果检查到子模块有更改，提醒用户
     if [ $? -ne 0 ]; then
         echo -e "${YELLOW}⚠️  Some submodules have uncommitted changes.${NC}"
         echo -e "${YELLOW}💡 Run this command to fix:${NC}"
         echo "   $PROJECT_ROOT/scripts/check-submodules.sh --fix"
-        
+
         # 询问用户是否继续
         read -p "Continue anyway? (y/n) " -n 1 -r
         echo
@@ -175,19 +175,19 @@ async def check_db():
         db_password = os.getenv('DB_PASSWORD', 'postgres')
         db_host = os.getenv('DB_HOST', 'localhost')
         db_name = os.getenv('DB_NAME', 'genflow_dev')
-        
+
         # 构建数据库 URL
         db_url = f'postgresql://{db_user}:{db_password}@{db_host}/{db_name}'
-        
+
         # 如果存在完整的 DATABASE_URL，则使用它
         db_url = os.getenv('DATABASE_URL', db_url)
-        
+
         # 确保 URL 格式正确
         if 'postgresql+asyncpg://' in db_url:
             db_url = db_url.replace('postgresql+asyncpg://', 'postgresql://')
-        
+
         print(f"${BLUE}Connecting to database: {db_url}${NC}")
-        
+
         # 尝试连接到 PostgreSQL 服务器
         conn = await asyncpg.connect(
             db_url,
@@ -235,7 +235,7 @@ if ! command -v tmux &> /dev/null; then
     echo "   • MacOS: brew install tmux"
     echo "   • Ubuntu/Debian: apt install tmux"
     echo "   • CentOS/RHEL: yum install tmux"
-    
+
     # 启动后端（在新终端）
     echo -e "${BLUE}Starting backend server...${NC}"
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -257,7 +257,7 @@ if ! command -v tmux &> /dev/null; then
         echo "Please start backend manually in a new terminal:"
         echo "cd '$PROJECT_ROOT' && ./scripts/start-backend.sh"
     fi
-    
+
     # 启动前端（在当前终端）
     echo -e "${BLUE}Starting frontend server...${NC}"
     cd "$PROJECT_ROOT/frontend"
@@ -266,35 +266,35 @@ if ! command -v tmux &> /dev/null; then
 else
     # 使用 tmux 启动服务
     SESSION="genflow"
-    
+
     # 如果会话已存在，则附加到会话
     if tmux has-session -t $SESSION 2>/dev/null; then
         echo -e "${YELLOW}⚠️ Session $SESSION already exists. Attaching...${NC}"
         tmux attach-session -t $SESSION
         exit 0
     fi
-    
+
     # 创建新会话
     echo -e "${BLUE}Creating tmux session...${NC}"
     tmux new-session -d -s $SESSION
-    
+
     # 创建窗口并启动后端
     tmux rename-window -t $SESSION:0 'backend'
     tmux send-keys -t $SESSION:0 "cd '$PROJECT_ROOT' && ./scripts/start-backend.sh" C-m
-    
+
     # 创建窗口并启动前端
     tmux new-window -t $SESSION:1 -n 'frontend'
     tmux send-keys -t $SESSION:1 "cd '$PROJECT_ROOT/frontend' && PORT=$FRONTEND_PORT pnpm dev" C-m
-    
+
     # 额外的日志窗口
     tmux new-window -t $SESSION:2 -n 'logs'
     tmux send-keys -t $SESSION:2 "cd '$PROJECT_ROOT' && " C-m
     tmux send-keys -t $SESSION:2 "echo 'Log monitor - Press Ctrl+C to exit'" C-m
     tmux send-keys -t $SESSION:2 "tail -f backend/logs/*.log 2>/dev/null || echo 'Waiting for log files...'" C-m
-    
+
     # 返回到第一个窗口
     tmux select-window -t $SESSION:0
-    
+
     # 附加到会话
     echo -e "${GREEN}✅ Development environment started!${NC}"
     echo -e "${YELLOW}💡 Tmux commands:${NC}"
@@ -304,4 +304,4 @@ else
     echo "   • Split vertically: Ctrl+b + %"
     echo "   • Split horizontally: Ctrl+b + \""
     tmux attach-session -t $SESSION
-fi 
+fi

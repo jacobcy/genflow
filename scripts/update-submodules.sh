@@ -53,7 +53,7 @@ if [ -f "$PROJECT_ROOT/.gitmodules-config" ]; then
             formatted_status="${formatted_status}${path}      - ${sha} (${branch})\n"
         fi
     done <<< "$(git submodule status)"
-    
+
     # 检测操作系统
     if [[ "$OSTYPE" == "darwin"* ]]; then
         # macOS
@@ -62,25 +62,25 @@ if [ -f "$PROJECT_ROOT/.gitmodules-config" ]; then
         # Linux
         sed_cmd="sed -i"
     fi
-    
+
     # 创建临时文件
     temp_file=$(mktemp)
-    
+
     # 提取子模块状态部分前面的内容
     awk 'BEGIN{found=0} /^## 子模块路径和状态$/{found=1; exit} {print}' "$PROJECT_ROOT/.gitmodules-config" > "$temp_file"
-    
+
     # 添加子模块状态部分
     echo -e "## 子模块路径和状态\n\n\`\`\`" >> "$temp_file"
     echo -e "$formatted_status" >> "$temp_file"
     echo -e "\`\`\`\n" >> "$temp_file"
-    
+
     # 提取子模块状态部分后面的内容
     awk 'BEGIN{found=0} /^## 子模块路径和状态$/{found=1} /^```$/ && found==1 {found=2; next} found==2 {print}' "$PROJECT_ROOT/.gitmodules-config" >> "$temp_file"
-    
+
     # 替换原文件
     cp "$temp_file" "$PROJECT_ROOT/.gitmodules-config"
     rm "$temp_file"
-    
+
     echo -e "${GREEN}✓ .gitmodules-config 文件已更新${NC}"
 else
     echo -e "${YELLOW}警告: .gitmodules-config 文件不存在${NC}"
@@ -105,7 +105,7 @@ else
         # 显示差异并询问用户
         echo -e "${YELLOW}以下是将要提交的更改:${NC}"
         git diff --staged
-        
+
         read -p "是否提交这些更改? (y/n) " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -118,4 +118,4 @@ else
     fi
 fi
 
-echo -e "${GREEN}✓ 子模块更新完成${NC}" 
+echo -e "${GREEN}✓ 子模块更新完成${NC}"

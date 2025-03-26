@@ -296,4 +296,4 @@ export interface AIResponse {
         timestamp: number;  // 响应时间戳
         processingTime?: number; // 处理时间
     };
-} 
+}

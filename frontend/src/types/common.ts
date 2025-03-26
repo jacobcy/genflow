@@ -92,4 +92,4 @@ export interface WebSocketConfig {
     onMessage?: (message: WebSocketMessage) => void;
     onError?: (error: Event) => void;
     onClose?: () => void;
-} 
+}

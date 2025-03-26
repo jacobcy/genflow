@@ -136,4 +136,4 @@ export default function AIAssistant({ userId, articleId, className }: AIAssistan
             )}
         </div>
     );
-} 
+}

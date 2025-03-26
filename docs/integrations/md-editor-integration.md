@@ -185,4 +185,4 @@ npm run build:h5-netlify
 
 ## 许可证
 
-编辑器使用 WTFPL 许可证 
+编辑器使用 WTFPL 许可证

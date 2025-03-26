@@ -4,4 +4,4 @@ router = APIRouter()
 
 @router.get("/test")
 async def test():
-    return {"message": "Users endpoint working"} 
+    return {"message": "Users endpoint working"}

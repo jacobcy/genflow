@@ -153,13 +153,13 @@ interface AIAssistantState {
 interface AIAssistantAPI {
   // 获取当前可用的操作按钮
   getAvailableActions(): Promise<ActionButton[]>;
-  
+
   // 执行特定操作
   executeAction(actionId: string): Promise<void>;
-  
+
   // 发送消息
   sendMessage(content: string): Promise<void>;
-  
+
   // 获取写作建议
   getWritingSuggestions(): Promise<Suggestion[]>;
 }
@@ -176,4 +176,4 @@ interface AIAssistantAPI {
 - 模板系统
 - 多语言支持
 - 协同写作
-- 版本控制 
+- 版本控制

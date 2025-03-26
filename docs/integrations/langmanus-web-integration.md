@@ -73,7 +73,7 @@ export const ChatWindow = () => {
       content,
       agent: activeAgent?.id
     });
-    
+
     // 2. 更新消息列表
     setMessages(prev => [...prev, response]);
   };
@@ -99,7 +99,7 @@ export class CrewAIService {
       method: 'POST',
       body: JSON.stringify(params)
     });
-    
+
     return await response.json();
   }
 

@@ -37,32 +37,66 @@ python -m pytest tests/test_tools.py::TestContentTools
 python -m pytest tests/test_tools.py::TestContentTools::test_content_collector
 ```
 
-### 运行选题工具测试
 
-我们为选题团队工具（`TopicTools`）创建了专门的测试用例和运行脚本：
+## CrewAI 版本兼容性
 
-```bash
-# 从项目根目录运行
-python tests/run_topic_tools_test.py
+本项目测试已更新为支持最新版 CrewAI。使用新版 CrewAI 时，需要注意以下测试配置变更：
+
+### 工具实现变更
+
+1. **工具类型**：所有工具必须是 `BaseTool` 的实例
+2. **方法命名**：工具必须实现 `_run` 方法（不再使用 `execute`）
+3. **断言检查**：使用 `isinstance(tool, BaseTool)` 和 `hasattr(tool, "_run")` 进行验证
+
+### Mock 配置
+
+测试中 mock 外部服务时，需遵循以下模式：
+
+```python
+# 正确的 mock 声明
+patch("core.tools.writing_tools.article_writer.ArticleWriter.generate_article",
+      return_value=MagicMock(success=True, data="模拟结果"))
+
+# 避免实例化的 mock（适用于有复杂依赖的类）
+patch("core.agents.writing_crew.writing_tools.ArticleWriter",
+      return_value=MagicMock(
+          generate_article=MagicMock(return_value=MagicMock(success=True, data="模拟结果"))
+      ))
 ```
 
-这将运行选题工具的所有测试，并生成详细的日志输出。
+### Platform 类实例化
 
-## 测试说明
+如果测试需要使用 `Platform` 类，请按照最新的 dataclass 格式初始化：
 
-### 选题工具测试
+```python
+# 正确的 Platform 初始化
+platform = Platform(name="测试平台", url="https://test.com")
 
-选题工具测试验证以下功能：
+# 不要使用不存在的参数
+# 错误示例: platform = Platform(id="test", name="测试平台", url="https://test.com")
+```
 
-1. **工具初始化**：核心工具实例是否正确初始化
-2. **方法绑定**：工具方法是否正确绑定，确保不会出现`self`参数缺失错误
-3. **搜索功能**：网络搜索工具是否可以正确调用
-4. **趋势分析**：趋势分析工具是否可以正确调用
-5. **话题潜力分析**：话题潜力分析工具是否可以正确调用
+## 常见问题排查
 
-这些测试使用模拟（mock）技术替代实际依赖项，确保测试在任何环境下都能运行，不依赖网络连接或外部服务。
+1. **AttributeError**：检查工具类是否正确实现了 `_run` 方法而不是 `execute`
+2. **TypeError**：检查类初始化时参数是否匹配最新定义
+3. **断言失败**：确保工具实例是 `BaseTool` 的实例，并包含 `_run` 方法
 
-### 使用模拟模块
+## 测试验证
+
+成功配置后，运行特定测试模块进行验证：
+
+```bash
+# 验证写作工具测试
+python -m tests.test_writing_tools
+
+# 验证 CrewAI 工具集成测试
+python -m tests.test_crewai_tools
+```
+
+如需进一步协助，请参考 `test_writing_tools.py` 和 `test_crewai_tools.py` 作为最新版 CrewAI 测试的参考实现。
+
+## 使用模拟模块
 
 如果在测试过程中遇到依赖问题，我们提供了模拟模块（`tests/mock_tools.py`），可以替代实际的工具模块。这个模块提供了所有必要工具类的模拟版本。
 

@@ -16,7 +16,7 @@ class TopicReference(BaseModel):
     title: str = Field(..., description="资料标题")
     source: str = Field(..., description="来源平台")
     relevance: float = Field(default=0.0, description="相关度(0-1)")
-    
+
 class Topic(BaseModel):
     """话题模型"""
     id: str = Field(..., description="话题ID")
@@ -24,19 +24,19 @@ class Topic(BaseModel):
     description: str = Field(..., description="话题描述")
     category: str = Field(..., description="话题分类")
     tags: List[str] = Field(default_list=[], description="话题标签")
-    
+
     # 评估数据
     metrics: TopicMetrics = Field(default_factory=TopicMetrics, description="话题指标")
     references: List[TopicReference] = Field(default_list=[], description="参考资料")
-    
+
     # 元数据
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
     status: str = Field(default="pending", description="状态(pending/approved/rejected)")
-    
+
     # 人工反馈
     human_feedback: Optional[Dict] = Field(default=None, description="人工反馈信息")
-    
+
     class Config:
         """模型配置"""
         json_schema_extra = {
@@ -67,4 +67,4 @@ class Topic(BaseModel):
                     "notes": "需要重点关注性能优化部分"
                 }
             }
-        } 
+        }

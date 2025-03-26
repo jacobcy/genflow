@@ -13,7 +13,7 @@ import random
 
 from .api_collector import APICollector
 from .utils import TopicProcessor, TopicFilter, TokenCounter
-from .platform_categories import CATEGORY_TAGS, get_platforms_by_category, PLATFORM_CATEGORIES
+from ...constants.platform_categories import CATEGORY_TAGS, get_platforms_by_category, PLATFORM_CATEGORIES
 from .redis_storage import RedisStorage
 from .config import get_config
 from .platform_weights import get_platform_weight, get_default_hot_score
@@ -870,7 +870,7 @@ class TrendingTopics(BaseTool):
                 logger.info(f"数据字数超过限制({word_limit})，返回摘要")
                 return await self._summarize_topics(result["topics"], "keyword", compression_ratio)
 
-        return result
+            return result
 
         # 场景2-4: 其他情况 - 使用分类或默认分类
         use_category = category or "热点"

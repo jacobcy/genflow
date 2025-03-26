@@ -19,6 +19,8 @@ from core.agents.writing_crew import WritingCrew
 from core.agents.review_crew import ReviewCrew
 from core.agents.style_crew import StyleCrew
 from core.tools.style_tools import StyleAdapter
+from core.constants.platform_categories import get_platform_categories
+from core.constants.content_types import get_content_type_from_categories
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +59,7 @@ class ContentController:
 
     协调各个专业团队，完成从选题到发布的全流程内容生产。
     支持多话题批量处理、进度跟踪、人工反馈和生产流程控制。
+    可配置全自动、全人工辅助或混合模式。
     """
 
     def __init__(self):
@@ -69,6 +72,37 @@ class ContentController:
         self.style_adapter = StyleAdapter.get_instance()
         self.production_results = []
         self.current_progress = None
+
+        # 默认所有阶段都需要人工辅助
+        self.auto_stages = {
+            ProductionStage.TOPIC_DISCOVERY: False,
+            ProductionStage.TOPIC_RESEARCH: False,
+            ProductionStage.ARTICLE_WRITING: False,
+            ProductionStage.STYLE_ADAPTATION: False,
+            ProductionStage.ARTICLE_REVIEW: False
+        }
+
+    def set_auto_mode(self, mode: str, stages: Optional[List[ProductionStage]] = None):
+        """设置自动化模式
+
+        Args:
+            mode: 模式，可选 'auto'(全自动), 'human'(全人工辅助), 'mixed'(混合模式)
+            stages: 当mode为'mixed'时，指定自动执行的阶段列表
+        """
+        if mode == 'auto':
+            # 全自动模式
+            for stage in self.auto_stages:
+                self.auto_stages[stage] = True
+        elif mode == 'human':
+            # 全人工辅助模式
+            for stage in self.auto_stages:
+                self.auto_stages[stage] = False
+        elif mode == 'mixed' and stages:
+            # 混合模式，只有指定的阶段自动执行
+            for stage in self.auto_stages:
+                self.auto_stages[stage] = stage in stages
+
+        logger.info(f"已设置为{mode}模式，自动化阶段: {[s.value for s, v in self.auto_stages.items() if v]}")
 
     async def initialize(self, platform: Optional[Platform] = None):
         """初始化各个团队
@@ -93,6 +127,8 @@ class ContentController:
             List[Topic]: 发现的话题列表
         """
         logger.info(f"开始发现话题，类别: {category}，数量: {count}")
+        is_auto = self.auto_stages[ProductionStage.TOPIC_DISCOVERY]
+        logger.info(f"话题发现模式: {'自动' if is_auto else '人工辅助'}")
 
         # 更新进度
         self.current_progress.start_stage(ProductionStage.TOPIC_DISCOVERY, count)
@@ -100,28 +136,47 @@ class ContentController:
 
         try:
             # 发现话题
-            topics = await self.topic_crew.discover_topics(category, count)
+            topics = await self.topic_crew.run_workflow(category=category, count=count, auto_mode=is_auto)
 
-            # 获取人工反馈
-            topics = self.topic_crew.get_human_feedback(topics)
+            # 解析话题数据
+            if isinstance(topics, dict) and "topics" in topics:
+                # 从结果报告中提取话题列表
+                topic_list = []
+                for topic_data in topics.get("topics", []):
+                    if isinstance(topic_data, dict) and topic_data.get("status") == "selected":
+                        try:
+                            # 构建话题对象
+                            topic = Topic(**topic_data)
+                            topic_list.append(topic)
+                        except Exception as e:
+                            logger.error(f"解析话题数据出错: {str(e)}")
 
-            # 过滤出通过的话题
-            approved_topics = [
-                topic for topic in topics
-                if topic.status == "approved"
-            ]
+                # 确保我们有足够的话题
+                if not topic_list:
+                    logger.warning("未找到选定的话题，使用所有话题")
+                    for topic_data in topics.get("topics", [])[:count]:
+                        if isinstance(topic_data, dict):
+                            try:
+                                topic = Topic(**topic_data)
+                                topic.status = "approved"
+                                topic_list.append(topic)
+                            except Exception as e:
+                                logger.error(f"解析备选话题数据出错: {str(e)}")
+            else:
+                # 假设topics已经是Topic对象列表
+                topic_list = topics if isinstance(topics, list) else []
 
             # 更新进度
             self.current_progress.update_progress(
                 stage=ProductionStage.TOPIC_DISCOVERY,
-                completed_items=len(topics),
-                avg_score=sum(topic.score for topic in topics) / len(topics) if topics else 0
+                completed_items=len(topic_list),
+                avg_score=sum(getattr(topic, "score", 0) for topic in topic_list) / len(topic_list) if topic_list else 0
             )
-            self.current_progress.completed_topics = len(approved_topics)
+            self.current_progress.completed_topics = len(topic_list)
             self.current_progress.complete_stage(ProductionStage.TOPIC_DISCOVERY)
 
-            logger.info(f"话题发现完成，发现 {len(topics)} 个话题，通过 {len(approved_topics)} 个")
-            return approved_topics
+            logger.info(f"话题发现完成，发现 {len(topic_list)} 个话题")
+            return topic_list
 
         except Exception as e:
             logger.error(f"话题发现出错: {str(e)}")
@@ -143,17 +198,51 @@ class ContentController:
         logger.info(f"开始研究话题: {topic.title}")
 
         try:
-            # 进行研究
-            research_result = await self.research_crew.research_topic(topic)
-            logger.info(f"话题研究完成: {topic.title}")
-            return research_result
+            # 获取内容类型（如果存在）
+            content_type = None
+            if hasattr(topic, "metadata") and isinstance(topic.metadata, dict):
+                content_type = topic.metadata.get("content_type")
 
+            # 如果没有指定内容类型，但有平台信息，则根据平台分类确定内容类型
+            if not content_type and hasattr(topic, "platform") and topic.platform:
+                # 获取平台分类
+                platform_categories = get_platform_categories(topic.platform)
+                if platform_categories:
+                    # 根据平台分类确定内容类型
+                    content_type = get_content_type_from_categories(platform_categories)
+                    logger.info(f"根据平台 {topic.platform} 的分类 {platform_categories} 自动确定内容类型: {content_type}")
+
+                    # 更新topic元数据
+                    if not hasattr(topic, "metadata") or not topic.metadata:
+                        topic.metadata = {}
+                    topic.metadata["content_type"] = content_type
+
+            # 进行研究
+            research_result = await self.research_crew.research_topic(
+                topic.title,
+                content_type=content_type
+            )
+
+            # 返回结果
+            return {
+                "topic": topic,
+                "research_result": research_result,
+                "status": "success"
+            }
         except Exception as e:
-            logger.error(f"研究话题 '{topic.title}' 失败: {str(e)}")
-            raise
+            logger.error(f"研究话题出错: {str(e)}")
+            self.current_progress.add_error(
+                ProductionStage.TOPIC_RESEARCH,
+                f"研究话题 '{topic.title}' 出错: {str(e)}"
+            )
+            return {
+                "topic": topic,
+                "error": str(e),
+                "status": "failed"
+            }
 
     async def research_topics(self, topics: List[Topic]) -> List[Dict]:
-        """批量研究话题
+        """研究多个话题
 
         Args:
             topics: 要研究的话题列表
@@ -161,80 +250,144 @@ class ContentController:
         Returns:
             List[Dict]: 研究结果列表
         """
-        logger.info(f"开始批量研究话题，数量: {len(topics)}")
+        logger.info(f"开始研究 {len(topics)} 个话题")
+        is_auto = self.auto_stages[ProductionStage.TOPIC_RESEARCH]
+        logger.info(f"话题研究模式: {'自动' if is_auto else '人工辅助'}")
 
         # 更新进度
         self.current_progress.start_stage(ProductionStage.TOPIC_RESEARCH, len(topics))
 
-        research_results = []
-        completed_count = 0
-        total_score = 0
-        error_count = 0
-
-        for topic in topics:
-            try:
-                logger.info(f"研究话题: {topic.title}")
-
-                # 进行研究
-                research_result = await self.research_topic(topic)
-
-                # 获取人工反馈
-                research_result = self.research_crew.get_human_feedback(research_result)
-
-                # 更新统计
-                completed_count += 1
-                total_score += research_result.human_feedback["average_score"]
-
-                # 如果评分达标，生成文章大纲
-                if research_result.human_feedback["average_score"] >= 0.7:
-                    article = self.research_crew.generate_article_outline(research_result)
-                    research_results.append({
-                        "topic": topic,
-                        "research_result": research_result,
-                        "article_outline": article
-                    })
-
-            except Exception as e:
-                error_count += 1
-                logger.error(f"研究话题 '{topic.title}' 失败: {str(e)}")
-                self.current_progress.add_error(
-                    ProductionStage.TOPIC_RESEARCH,
-                    f"研究话题 '{topic.title}' 失败: {str(e)}"
-                )
-
-            # 更新进度
-            self.current_progress.update_progress(
-                stage=ProductionStage.TOPIC_RESEARCH,
-                completed_items=completed_count,
-                avg_score=total_score / completed_count if completed_count > 0 else 0,
-                error_count=error_count
-            )
-
-        self.current_progress.complete_stage(ProductionStage.TOPIC_RESEARCH)
-        logger.info(f"话题研究阶段完成，通过 {len(research_results)} 个话题")
-        return research_results
-
-    async def write_article(self, topic: Topic, research_result: Dict) -> Article:
-        """撰写单个文章
-
-        Args:
-            topic: 话题信息
-            research_result: 研究结果
-
-        Returns:
-            Article: 生成的文章
-        """
-        logger.info(f"开始撰写文章: {topic.title}")
+        if not topics:
+            logger.warning("没有话题需要研究")
+            self.current_progress.complete_stage(ProductionStage.TOPIC_RESEARCH)
+            return []
 
         try:
-            # 进行写作
-            article = await self.writing_crew.write_article(topic, research_result)
-            logger.info(f"文章撰写完成: {article.title}")
-            return article
+            # 用于存储研究结果
+            research_results = []
+
+            # 如果是自动模式，并行研究所有话题
+            if is_auto:
+                tasks = []
+                for topic in topics:
+                    task = self.research_topic(topic)
+                    tasks.append(task)
+
+                # 并行执行所有研究任务
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # 处理结果
+                for i, result in enumerate(results):
+                    if isinstance(result, Exception):
+                        logger.error(f"研究话题 '{topics[i].title}' 出错: {str(result)}")
+                        self.current_progress.add_error(
+                            ProductionStage.TOPIC_RESEARCH,
+                            f"研究话题 '{topics[i].title}' 出错: {str(result)}"
+                        )
+                        research_results.append({
+                            "topic": topics[i],
+                            "error": str(result),
+                            "status": "failed"
+                        })
+                    else:
+                        research_results.append(result)
+
+                        # 更新进度
+                        self.current_progress.update_progress(
+                            stage=ProductionStage.TOPIC_RESEARCH,
+                            completed_items=len(research_results)
+                        )
+
+            # 如果是人工辅助模式，串行研究话题
+            else:
+                for i, topic in enumerate(topics):
+                    result = await self.research_topic(topic)
+                    research_results.append(result)
+
+                    # 更新进度
+                    self.current_progress.update_progress(
+                        stage=ProductionStage.TOPIC_RESEARCH,
+                        completed_items=i+1
+                    )
+
+            # 完成阶段
+            self.current_progress.complete_stage(ProductionStage.TOPIC_RESEARCH)
+
+            logger.info(f"完成 {len(research_results)} 个话题的研究")
+            return research_results
 
         except Exception as e:
-            logger.error(f"撰写文章 '{topic.title}' 失败: {str(e)}")
+            logger.error(f"研究话题出错: {str(e)}")
+            self.current_progress.add_error(
+                ProductionStage.TOPIC_RESEARCH,
+                str(e)
+            )
             raise
+
+    async def write_article(self, article: Article, platform: Platform) -> Article:
+        """根据文章主题和内容创建全文
+
+        Args:
+            article: 文章信息对象，包含标题、主题、初始内容等
+            platform: 目标发布平台，决定了内容类型和受众定位（注意：不涉及风格调整）
+
+        Returns:
+            Article: 创作完成的文章（不包含风格调整）
+        """
+        if not article:
+            logger.error("无法创建文章：缺少文章对象")
+            raise ValueError("缺少文章对象")
+
+        if not platform:
+            logger.warning("未指定发布平台，使用默认平台")
+            platform = get_default_platform()
+
+        try:
+            # 获取content_type
+            content_type = None
+            if hasattr(article, "metadata") and isinstance(article.metadata, dict):
+                content_type = article.metadata.get("content_type")
+
+            # 如果没有指定内容类型，则根据平台分类确定内容类型
+            if not content_type and platform:
+                # 获取平台分类
+                platform_categories = get_platform_categories(platform.name)
+                if platform_categories:
+                    # 根据平台分类确定内容类型
+                    content_type = get_content_type_from_categories(platform_categories)
+                    logger.info(f"根据平台 {platform.name} 的分类 {platform_categories} 自动确定内容类型: {content_type}")
+
+                    # 更新article元数据
+                    if not hasattr(article, "metadata") or not article.metadata:
+                        article.metadata = {}
+                    article.metadata["content_type"] = content_type
+
+            logger.info(f"开始写作文章 '{article.title}'，平台: {platform.name}，内容类型: {content_type or '未指定'}")
+            logger.info("注意：写作阶段仅专注于内容质量和结构，不考虑风格调整")
+
+            # 初始化写作团队
+            if not self.writing_crew:
+                verbose = getattr(self, 'verbose', True)  # 如果self.verbose不存在，默认为True
+                self.writing_crew = WritingCrew(verbose=verbose)
+
+            # 执行写作流程，传递content_type参数
+            writing_result = await self.writing_crew.write_article(
+                article=article,
+                platform=platform,
+                content_type=content_type
+            )
+
+            # 处理写作结果
+            if writing_result and writing_result.article:
+                logger.info(f"文章写作完成: {writing_result.article.title}（内容质量和结构已完成，风格将在后续阶段调整）")
+                return writing_result.article
+            else:
+                logger.warning("写作结果不完整，返回原始文章")
+                return article
+
+        except Exception as e:
+            logger.error(f"写作过程发生错误: {str(e)}", exc_info=True)
+            return article
 
     async def write_articles(
         self,
@@ -251,6 +404,8 @@ class ContentController:
             List[Dict]: 写作结果列表
         """
         logger.info(f"开始批量写作文章，数量: {len(research_results)}")
+        is_auto = self.auto_stages[ProductionStage.ARTICLE_WRITING]
+        logger.info(f"文章写作模式: {'自动' if is_auto else '人工辅助'}")
 
         # 更新进度
         self.current_progress.start_stage(
@@ -268,20 +423,26 @@ class ContentController:
                 logger.info(f"写作文章: {result['article_outline'].title}")
 
                 # 进行写作
-                writing_result = await self.writing_crew.write_article(
+                writing_result = await self.write_article(
                     result["article_outline"],
                     platform
                 )
 
-                # 获取人工反馈
-                writing_result = self.writing_crew.get_human_feedback(writing_result)
+                # 获取人工反馈或自动评估
+                if not is_auto:
+                    writing_result = self.writing_crew.get_human_feedback(writing_result)
+                    feedback_score = writing_result.human_feedback["average_score"]
+                else:
+                    # 自动评估写作结果
+                    feedback_score = self.writing_crew.auto_evaluate_article(writing_result)
+                    writing_result.auto_feedback = {"average_score": feedback_score}
 
                 # 更新统计
                 completed_count += 1
-                total_score += writing_result.human_feedback["average_score"]
+                total_score += feedback_score
 
                 # 如果评分达标，更新文章
-                if writing_result.human_feedback["average_score"] >= 0.7:
+                if feedback_score >= 0.7:
                     article = self.writing_crew.update_article(writing_result)
                     writing_results.append({
                         "topic": result["topic"],
@@ -310,21 +471,22 @@ class ContentController:
         logger.info(f"文章写作阶段完成，通过 {len(writing_results)} 个文章")
         return writing_results
 
-    async def adapt_style(self, article: Article, platform: Platform) -> Article:
+    async def adapt_style(self, article: Article, style: str, platform: Optional[Platform] = None) -> Article:
         """适配单个文章风格
 
         Args:
             article: 原始文章
-            platform: 目标平台
+            style: 指定的写作风格
+            platform: 可选的目标平台，用于额外的平台特定约束
 
         Returns:
             Article: 风格适配后的文章
         """
-        logger.info(f"开始适配文章风格: {article.title}")
+        logger.info(f"开始适配文章风格: {article.title}, 风格: {style}")
 
         try:
-            # 进行风格适配
-            style_result = await self.style_crew.adapt_style(article, platform)
+            # 进行风格适配，传递style参数
+            style_result = await self.style_crew.adapt_style(article, style, platform)
             logger.info(f"文章风格适配完成: {article.title}")
             return style_result.final_article
 
@@ -335,18 +497,22 @@ class ContentController:
     async def adapt_articles(
         self,
         writing_results: List[Dict],
-        platform: Platform
+        style: str,
+        platform: Optional[Platform] = None
     ) -> List[Dict]:
         """批量适配文章风格
 
         Args:
             writing_results: 写作结果列表
-            platform: 目标平台
+            style: 指定的写作风格
+            platform: 可选的目标平台，用于额外的平台特定约束
 
         Returns:
             List[Dict]: 适配结果列表
         """
-        logger.info(f"开始批量适配文章风格，数量: {len(writing_results)}")
+        logger.info(f"开始批量适配文章风格，数量: {len(writing_results)}, 风格: {style}")
+        is_auto = self.auto_stages[ProductionStage.STYLE_ADAPTATION]
+        logger.info(f"风格适配模式: {'自动' if is_auto else '人工辅助'}")
 
         # 更新进度
         self.current_progress.start_stage(
@@ -363,11 +529,15 @@ class ContentController:
             try:
                 logger.info(f"适配文章: {result['article'].title}")
 
-                # 进行风格适配
-                adapted_article = await self.adapt_style(result["article"], platform)
+                # 进行风格适配，传递style参数
+                adapted_article = await self.adapt_style(result["article"], style, platform)
 
-                # 获取人工反馈
-                feedback_score = self.style_crew.get_human_feedback(adapted_article, platform)
+                # 获取人工反馈或自动评估
+                if not is_auto:
+                    feedback_score = self.style_crew.get_human_feedback(adapted_article, style, platform)
+                else:
+                    # 自动评估适配效果
+                    feedback_score = self.style_crew.auto_evaluate_style(adapted_article, style, platform)
 
                 # 更新统计
                 completed_count += 1
@@ -438,6 +608,8 @@ class ContentController:
             List[Dict]: 审核结果列表
         """
         logger.info(f"开始批量审核文章，数量: {len(writing_results)}")
+        is_auto = self.auto_stages[ProductionStage.ARTICLE_REVIEW]
+        logger.info(f"文章审核模式: {'自动' if is_auto else '人工辅助'}")
 
         # 更新进度
         self.current_progress.start_stage(
@@ -457,15 +629,21 @@ class ContentController:
                 # 进行审核
                 review_result = await self.review_article(result["article"])
 
-                # 获取人工反馈
-                review_result = self.review_crew.get_human_feedback(review_result)
+                # 获取人工反馈或自动评估
+                if not is_auto:
+                    review_result = self.review_crew.get_human_feedback(review_result)
+                    feedback_score = review_result.human_feedback["average_score"]
+                else:
+                    # 自动评估审核结果
+                    feedback_score = self.review_crew.auto_evaluate_review(review_result)
+                    review_result.auto_feedback = {"average_score": feedback_score}
 
                 # 更新统计
                 completed_count += 1
-                total_score += review_result.human_feedback["average_score"]
+                total_score += feedback_score
 
                 # 如果评分达标，更新文章状态
-                if review_result.human_feedback["average_score"] >= 0.7:
+                if feedback_score >= 0.7:
                     article = self.review_crew.update_article_status(review_result)
                     if article.status == "approved":
                         review_results.append({
@@ -502,11 +680,14 @@ class ContentController:
         category: Optional[str] = None,
         platform: Optional[Platform] = None,
         topic_count: int = 1,
-        progress_callback: Optional[Callable] = None
+        progress_callback: Optional[Callable] = None,
+        mode: str = 'human',
+        auto_stages: Optional[List[str]] = None,
+        style: Optional[str] = None
     ) -> Dict:
         """生产内容的完整流程
 
-        从选题到发布的完整流程，支持单篇和多篇模式。
+        从选题到发布的完整流程，支持单篇和多篇模式，可配置各阶段的自动化程度。
 
         Args:
             topic: 指定话题，如不提供则自动发现
@@ -514,10 +695,28 @@ class ContentController:
             platform: 目标平台，如不提供则使用默认平台
             topic_count: 话题数量，当topic不提供时使用
             progress_callback: 进度回调函数
+            mode: 生产模式，可选 'auto'(全自动), 'human'(全人工辅助), 'mixed'(混合模式)
+            auto_stages: 当mode为'mixed'时，指定自动执行的阶段列表
+            style: 指定的写作风格，如不提供则尝试从topic或platform中获取
 
         Returns:
             Dict: 生产结果，包含文章和各阶段数据
         """
+        # 设置自动化模式
+        if auto_stages and mode == 'mixed':
+            stage_map = {
+                "topic_discovery": ProductionStage.TOPIC_DISCOVERY,
+                "topic_research": ProductionStage.TOPIC_RESEARCH,
+                "article_writing": ProductionStage.ARTICLE_WRITING,
+                "style_adaptation": ProductionStage.STYLE_ADAPTATION,
+                "article_review": ProductionStage.ARTICLE_REVIEW
+            }
+            # 转换字符串阶段名为枚举
+            auto_stages_enum = [stage_map[s] for s in auto_stages if s in stage_map]
+            self.set_auto_mode(mode, auto_stages_enum)
+        else:
+            self.set_auto_mode(mode)
+
         # 初始化进度跟踪
         production_id = str(uuid.uuid4())
         self.current_progress = ProductionProgress(production_id)
@@ -529,7 +728,11 @@ class ContentController:
             "start_time": datetime.now().isoformat(),
             "process": "topic_discovery -> research -> writing -> style -> review",
             "stages": {},
+            "mode": mode
         }
+
+        # 记录自动化阶段
+        result["auto_stages"] = [s.value for s, v in self.auto_stages.items() if v]
 
         try:
             # 初始化各团队
@@ -538,6 +741,21 @@ class ContentController:
             # 确保平台参数
             if not platform:
                 platform = get_default_platform()
+
+            # 获取style参数
+            # 1. 如果直接提供了style参数，使用它
+            # 2. 尝试从topic.metadata中获取
+            # 3. 尝试从platform中获取一个默认风格
+            # 4. 使用"default"作为默认值
+            used_style = style
+            if not used_style and topic and hasattr(topic, "metadata") and isinstance(topic.metadata, dict):
+                used_style = topic.metadata.get("style")
+            if not used_style and platform and hasattr(platform, "style_type"):
+                used_style = platform.style_type
+            if not used_style:
+                used_style = "default"
+
+            logger.info(f"使用风格: {used_style}")
 
             # 单篇模式: 处理单个话题
             if topic:
@@ -565,7 +783,7 @@ class ContentController:
 
                 # 阶段3: 写作
                 self.current_progress.start_stage(ProductionStage.ARTICLE_WRITING, 1)
-                article = await self.write_article(topic, research_result)
+                article = await self.write_article(topic, platform)
                 self.current_progress.complete_stage(ProductionStage.ARTICLE_WRITING)
                 result["stages"]["writing"] = {
                     "article_summary": {
@@ -576,12 +794,13 @@ class ContentController:
                     "completed_at": datetime.now().isoformat()
                 }
 
-                # 阶段4: 风格适配
+                # 阶段4: 风格适配 - 使用提取的style参数
                 self.current_progress.start_stage(ProductionStage.STYLE_ADAPTATION, 1)
-                styled_article = await self.adapt_style(article, platform)
+                styled_article = await self.adapt_style(article, used_style, platform)
                 self.current_progress.complete_stage(ProductionStage.STYLE_ADAPTATION)
                 result["stages"]["style_adaptation"] = {
-                    "platform": platform.name,
+                    "style": used_style,
+                    "platform": platform.name if platform else None,
                     "changes_summary": {
                         "tone_adjusted": True,
                         "format_adjusted": True,
@@ -615,10 +834,11 @@ class ContentController:
                 # 加入最终结果
                 result["final_article"] = styled_article.to_dict() if hasattr(styled_article, "to_dict") else styled_article
                 result["review_result"] = review_result
+                result["style"] = used_style
 
             # 多篇模式: 批量处理多个话题
             else:
-                logger.info(f"开始批量生产内容，类别: {category}，数量: {topic_count}")
+                logger.info(f"开始批量生产内容，类别: {category}，数量: {topic_count}，模式: {mode}，风格: {used_style}")
 
                 # 阶段1: 话题发现
                 topics = await self.discover_topics(category or "technology", topic_count)
@@ -650,12 +870,13 @@ class ContentController:
                     "completed_at": datetime.now().isoformat()
                 }
 
-                # 阶段4: 风格适配
-                adaptation_results = await self.adapt_articles(writing_results, platform)
+                # 阶段4: 风格适配 - 使用提取的style参数
+                adaptation_results = await self.adapt_articles(writing_results, used_style, platform)
                 if not adaptation_results:
                     raise ValueError("风格适配未通过")
 
                 result["stages"]["style_adaptation"] = {
+                    "style": used_style,
                     "adapted_count": len(adaptation_results),
                     "completed_at": datetime.now().isoformat()
                 }
@@ -694,6 +915,7 @@ class ContentController:
                     res["review_result"].__dict__ if hasattr(res["review_result"], "__dict__") else res["review_result"]
                     for res in review_results
                 ]
+                result["style"] = used_style
 
             # 完成生产
             self.current_progress.complete()
@@ -704,7 +926,7 @@ class ContentController:
                                          datetime.fromisoformat(result["start_time"])).total_seconds()
             result["progress_summary"] = self.current_progress.get_summary()
 
-            logger.info(f"内容生产完成，状态: {result['status']}")
+            logger.info(f"内容生产完成，状态: {result['status']}, 模式: {mode}, 风格: {used_style}")
             return result
 
         except Exception as e:

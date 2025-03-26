@@ -41,7 +41,7 @@ export default function EditUser({ params }: { params: { id: string } }) {
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl mb-6">
             编辑用户
           </h1>
-          
+
           <UserForm userId={userId} isNew={false} />
         </div>
       </div>
