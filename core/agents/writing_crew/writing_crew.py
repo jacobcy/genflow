@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class WritingResult:
     """写作结果类
-    
+
     存储写作流程的各个阶段结果，包括大纲、内容、SEO优化和最终稿件。
     """
     def __init__(
@@ -41,7 +41,7 @@ class WritingResult:
         self.final_draft = final_draft or {}
         self.created_at = datetime.now()
         self.human_feedback: Optional[Dict] = None
-        
+
     def to_dict(self) -> Dict:
         """将结果转换为字典格式"""
         return {
@@ -54,47 +54,47 @@ class WritingResult:
             "created_at": self.created_at.isoformat(),
             "human_feedback": self.human_feedback
         }
-    
+
     def save_to_file(self, filename: Optional[str] = None) -> str:
         """保存结果到文件
-        
+
         Args:
             filename: 保存的文件名，默认使用文章ID和时间戳
-            
+
         Returns:
             str: 保存的文件路径
         """
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             filename = f"article_{self.article.id}_{timestamp}.json"
-        
+
         # 确保output目录存在
         output_dir = Path("output")
         output_dir.mkdir(exist_ok=True)
-        
+
         file_path = output_dir / filename
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
-        
+
         logger.info(f"写作结果已保存到: {file_path}")
         return str(file_path)
 
 class WritingCrew:
     """写作团队
-    
+
     管理文章写作的整个流程，包括大纲设计、内容创作、SEO优化和编辑。
     采用CrewAI框架实现智能体协作。
     """
 
     def __init__(self, verbose: bool = True):
         """初始化写作团队
-        
+
         Args:
             verbose: 是否启用详细日志输出
         """
         logger.info("初始化写作团队")
         self.verbose = verbose
-        
+
         # 智能体和任务将在执行时初始化
         self.agents = None
         self.outline_creator = None
@@ -102,12 +102,12 @@ class WritingCrew:
         self.seo_specialist = None
         self.editor = None
         self.fact_checker = None
-        
+
         logger.info("写作团队初始化完成")
 
     async def write_article(self, article: Article, platform: Platform) -> WritingResult:
         """实现文章写作流程
-        
+
         组织智能体团队，执行从大纲设计到最终编辑的完整文章写作流程。
 
         Args:
@@ -118,18 +118,18 @@ class WritingCrew:
             WritingResult: 完整的写作过程结果
         """
         logger.info(f"开始文章写作流程: {article.title}, 目标平台: {platform.name}")
-        
+
         try:
             # 初始化写作智能体团队
             self.agents = WritingAgents(platform)
-            
+
             # 创建所有需要的智能体
             self.outline_creator = self.agents.create_outline_creator(self.verbose)
             self.content_writer = self.agents.create_content_writer(self.verbose)
             self.seo_specialist = self.agents.create_seo_specialist(self.verbose)
             self.editor = self.agents.create_editor(self.verbose)
             self.fact_checker = self.agents.create_fact_checker(self.verbose)
-            
+
             logger.info("所有智能体创建完成，开始定义任务")
 
             # 1. 大纲设计任务
@@ -260,10 +260,10 @@ class WritingCrew:
                 seo_data=result.get("seo_task"),
                 final_draft=result.get("edit_task")
             )
-            
+
             logger.info(f"写作结果已整理，文章: {article.title}")
             return writing_result
-            
+
         except Exception as e:
             logger.error(f"写作过程发生错误: {str(e)}", exc_info=True)
             # 返回部分结果，如果有的话
@@ -348,16 +348,16 @@ async def main():
     """示例运行函数"""
     import json
     from pathlib import Path
-    
+
     # 配置日志
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s [%(levelname)s] %(name)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    
+
     logger.info("启动写作团队示例")
-    
+
     # 创建一个示例文章
     article = Article(
         id="article_001",
@@ -394,7 +394,7 @@ async def main():
         # 进行写作
         logger.info("开始写作流程")
         writing_result = await crew.write_article(article, platform)
-        
+
         # 保存原始结果
         result_path = writing_result.save_to_file()
         logger.info(f"原始写作结果已保存到: {result_path}")
@@ -406,11 +406,11 @@ async def main():
         if writing_result.human_feedback and writing_result.human_feedback.get("normalized_average_score", 0) >= 0.7:
             logger.info("评分达标，更新文章")
             article = crew.update_article(writing_result)
-            
+
             # 保存最终文章
             output_dir = Path("output")
             output_dir.mkdir(exist_ok=True)
-            
+
             article_path = output_dir / f"article_{article.id}_final.json"
             with open(article_path, "w", encoding="utf-8") as f:
                 # 将文章对象转换为字典
@@ -426,9 +426,9 @@ async def main():
                     "metadata": article.metadata
                 }
                 json.dump(article_dict, f, ensure_ascii=False, indent=2)
-            
+
             logger.info(f"最终文章已保存到: {article_path}")
-            
+
             # 打印文章摘要
             print("\n" + "="*50)
             print(" 更新后的文章 ".center(50, "="))
@@ -441,7 +441,7 @@ async def main():
                 print(f"  {section.content[:100]}..." if len(section.content) > 100 else section.content)
         else:
             logger.info("评分未达标，需要修改")
-            
+
     except Exception as e:
         logger.error(f"运行示例时发生错误: {str(e)}", exc_info=True)
 

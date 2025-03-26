@@ -13,19 +13,19 @@ graph TD
     C --> D[LLM 模型]
     C --> E[工具集成]
     B <--> F[数据存储]
-    
+
     subgraph "前端 (React)"
     A --> A1[编辑器组件]
     A --> A2[工作流界面]
     A --> A3[建议组件]
     end
-    
+
     subgraph "后端 (FastAPI)"
     B --> B1[API 接口]
     B --> B2[WebSocket 服务]
     B --> B3[任务管理]
     end
-    
+
     subgraph "CrewAI 引擎"
     C --> C1[选题团队]
     C --> C2[研究团队]
@@ -249,7 +249,7 @@ function WritingAssistant({ articleId }) {
   const [messages, setMessages] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [actions, setActions] = useState([]);
-  
+
   // 初始化写作会话
   useEffect(() => {
     async function initSession() {
@@ -263,19 +263,19 @@ function WritingAssistant({ articleId }) {
       setProgress(data.data.progress);
       setActions(data.data.availableActions);
     }
-    
+
     initSession();
   }, [articleId]);
-  
+
   // WebSocket 连接
   useEffect(() => {
     if (!session) return;
-    
+
     const ws = new WebSocket(`ws://api/ai-assistant/sessions/${session.sessionId}/realtime`);
-    
+
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      
+
       switch (data.type) {
         case 'suggestion.new':
           setSuggestions(prev => [...prev, data.data]);
@@ -286,10 +286,10 @@ function WritingAssistant({ articleId }) {
         // 处理其他事件类型...
       }
     };
-    
+
     return () => ws.close();
   }, [session]);
-  
+
   // 组件渲染...
 }
 ```
@@ -301,7 +301,7 @@ function WritingAssistant({ articleId }) {
 function Editor({ sessionId }) {
   const editorRef = useRef(null);
   const [suggestions, setSuggestions] = useState([]);
-  
+
   // 处理编辑器事件
   function handleChange(content, event) {
     // 发送编辑器变更
@@ -320,7 +320,7 @@ function Editor({ sessionId }) {
         }
       });
   }
-  
+
   // 应用建议
   function applySuggestion(suggestion) {
     // 应用建议到编辑器
@@ -345,7 +345,7 @@ function Editor({ sessionId }) {
         }
       });
   }
-  
+
   // 组件渲染...
 }
 ```
@@ -379,14 +379,14 @@ class Message(BaseModel):
 # API 路由
 @app.post("/api/ai-assistant/sessions")
 async def create_session(
-    session_data: SessionCreate, 
+    session_data: SessionCreate,
     token: str = Depends(oauth2_scheme)
 ):
     # 创建会话
     session_id = str(uuid.uuid4())
     # 初始化 CrewAI 处理流程
     # ...
-    
+
     return {
         "data": {
             "sessionId": session_id,
@@ -405,14 +405,14 @@ async def create_session(
 
 @app.post("/api/ai-assistant/sessions/{session_id}/messages")
 async def send_message(
-    session_id: str, 
-    message: Message, 
+    session_id: str,
+    message: Message,
     token: str = Depends(oauth2_scheme)
 ):
     # 处理消息
     # 调用相应的 CrewAI 功能
     # ...
-    
+
     return {
         "data": {
             "message": {
@@ -440,18 +440,18 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         if auth_message["type"] != "auth":
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
-            
+
         # 验证 token
         # ...
-        
+
         # 注册会话
         register_websocket(session_id, websocket)
-        
+
         # 接收和处理消息
         while True:
             data = await websocket.receive_json()
             await process_client_event(session_id, data, websocket)
-            
+
     except Exception as e:
         # 错误处理
         print(f"WebSocket error: {str(e)}")
@@ -472,34 +472,34 @@ class TopicCrew:
         self.config = config
         self.tools = TopicTools()
         self.agents = TopicAgents(self.tools)
-    
+
     async def discover_topics(self, category: str, count: int = 5) -> List[Dict]:
         # 创建智能体
         trend_analyzer = self.agents.create_trend_analyzer()
         topic_researcher = self.agents.create_topic_researcher()
         report_writer = self.agents.create_report_writer()
-        
+
         # 创建任务
         analyze_trends_task = Task(
             description=f"分析'{category}'领域的热门趋势，找出潜在的热门话题",
             agent=trend_analyzer,
             expected_output="热门趋势分析报告，包含关键词和热度数据"
         )
-        
+
         research_topics_task = Task(
             description="深入研究趋势分析中提到的话题，评估其价值和市场需求",
             agent=topic_researcher,
             expected_output="话题详细分析，包括受众分析和竞争情况",
             context=[analyze_trends_task]
         )
-        
+
         write_report_task = Task(
             description=f"整理分析结果，生成{count}个推荐话题及详细报告",
             agent=report_writer,
             expected_output="话题推荐报告，包含每个话题的详细分析",
             context=[research_topics_task]
         )
-        
+
         # 创建团队
         crew = Crew(
             agents=[trend_analyzer, topic_researcher, report_writer],
@@ -507,13 +507,13 @@ class TopicCrew:
             process=Process.sequential,
             verbose=True
         )
-        
+
         # 执行团队任务
         result = await crew.kickoff()
-        
+
         # 解析结果
         return self._parse_topics(result)
-    
+
     def _parse_topics(self, result: Any) -> List[Dict]:
         # 从结果中解析话题
         # ...
@@ -608,4 +608,4 @@ class TopicCrew:
 
 ---
 
-最后更新: 2024-05-15 
+最后更新: 2024-05-15

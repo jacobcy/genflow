@@ -33,10 +33,10 @@ async def run_topic_discovery(category=None, count=3, verbose=False):
     logger.info(f"初始化配置和团队...")
     config = Config()
     crew = TopicCrew(config=config)
-    
+
     logger.info(f"开始发现{category or '所有领域'}的热门话题...")
     topics = await crew.discover_topics(category=category, count=count)
-    
+
     logger.info(f"\n发现了 {len(topics)} 个话题\n")
     for topic in topics:
         logger.info(f"- {topic.title}: {topic.description}")
@@ -45,7 +45,7 @@ async def run_topic_discovery(category=None, count=3, verbose=False):
             logger.info(f"  标签: {', '.join(topic.tags)}")
             logger.info(f"  搜索量: {topic.metrics.search_volume}")
             logger.info(f"  趋势分数: {topic.metrics.trend_score:.2f}")
-    
+
     return topics
 
 async def run_full_workflow(category=None, count=3, verbose=False):
@@ -53,21 +53,21 @@ async def run_full_workflow(category=None, count=3, verbose=False):
     logger.info(f"初始化配置和团队...")
     config = Config()
     crew = TopicCrew(config=config)
-    
+
     logger.info(f"开始执行完整话题工作流...")
     result = await crew.run_full_workflow(category=category, count=count)
-    
+
     logger.info(f"\n完成! 总共发现 {result['total_topics']} 个话题，其中 {result['approved_topics']} 个获批")
-    
+
     # 保存结果
     output_dir = Path(project_root) / "output"
     output_dir.mkdir(exist_ok=True)
     output_file = output_dir / "topic_analysis_result.json"
-    
+
     import json
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2, default=str)
-    
+
     logger.info(f"结果已保存到 {output_file}")
     return result
 
@@ -76,15 +76,15 @@ async def main():
     parser = argparse.ArgumentParser(description='选题团队工作流')
     parser.add_argument('--mode', type=str, default='discover', choices=['discover', 'full'],
                         help='运行模式: discover(仅发现) 或 full(完整流程)')
-    parser.add_argument('--category', type=str, default=None, 
+    parser.add_argument('--category', type=str, default=None,
                         help='话题分类, 例如: 科技, 教育, 娱乐等')
-    parser.add_argument('--count', type=int, default=3, 
+    parser.add_argument('--count', type=int, default=3,
                         help='需要发现的话题数量')
     parser.add_argument('--verbose', action='store_true',
                         help='是否显示详细信息')
-    
+
     args = parser.parse_args()
-    
+
     logger.info(f"开始运行选题团队，模式: {args.mode}")
     try:
         if args.mode == 'discover':
@@ -97,4 +97,4 @@ async def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

@@ -174,4 +174,4 @@ python run_style_crew.py example_article.json output.json --platform zhihu --ver
 
 ---
 
-Last Updated: 2024-05-30 
+Last Updated: 2024-05-30

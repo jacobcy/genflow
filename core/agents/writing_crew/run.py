@@ -69,10 +69,10 @@ PLATFORM_PRESETS = {
 
 def get_platform(platform_name: str) -> Platform:
     """获取平台配置
-    
+
     Args:
         platform_name: 平台名称
-        
+
     Returns:
         Platform: 平台配置对象
     """
@@ -100,7 +100,7 @@ def get_platform(platform_name: str) -> Platform:
 
 async def run_writing_workflow(args):
     """运行写作工作流
-    
+
     Args:
         args: 命令行参数
     """
@@ -108,10 +108,10 @@ async def run_writing_workflow(args):
         # 获取平台
         platform = get_platform(args.platform)
         logger.info(f"使用平台: {platform.name}")
-        
+
         # 创建文章
         article_id = f"article_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        
+
         # 创建初始章节
         sections = []
         if args.outline:
@@ -119,7 +119,7 @@ async def run_writing_workflow(args):
             try:
                 with open(args.outline, 'r', encoding='utf-8') as f:
                     outline_data = json.load(f)
-                    
+
                 if isinstance(outline_data, list):
                     for i, item in enumerate(outline_data):
                         if isinstance(item, str):
@@ -144,7 +144,7 @@ async def run_writing_workflow(args):
                             ))
             except Exception as e:
                 logger.warning(f"读取大纲文件失败: {e}，将使用空大纲")
-        
+
         # 如果没有章节，创建一个默认章节
         if not sections:
             sections = [
@@ -154,7 +154,7 @@ async def run_writing_workflow(args):
                     order=1
                 )
             ]
-        
+
         # 创建文章对象
         article = Article(
             id=article_id,
@@ -164,41 +164,41 @@ async def run_writing_workflow(args):
             sections=sections,
             status="draft"
         )
-        
+
         logger.info(f"创建文章: {article.title}, ID: {article.id}")
-        
+
         # 创建写作团队
         crew = WritingCrew(verbose=args.verbose)
-        
+
         # 执行写作流程
         logger.info("开始执行写作流程")
         writing_result = await crew.write_article(article, platform)
-        
+
         # 保存原始结果
         output_path = args.output or "output"
         output_dir = Path(output_path)
         output_dir.mkdir(exist_ok=True, parents=True)
-        
+
         result_file = output_dir / f"{article_id}_result.json"
         writing_result.save_to_file(str(result_file))
         logger.info(f"写作结果已保存到: {result_file}")
-        
+
         # 是否需要人工反馈
         if not args.no_feedback:
             writing_result = get_human_feedback(writing_result)
-            
+
             # 更新反馈结果
             feedback_file = output_dir / f"{article_id}_feedback.json"
             with open(feedback_file, "w", encoding="utf-8") as f:
                 json.dump(writing_result.to_dict(), f, ensure_ascii=False, indent=2)
             logger.info(f"反馈结果已保存到: {feedback_file}")
-            
+
             # 如果评分达标，更新文章
             threshold = args.threshold or 0.7
             if writing_result.human_feedback and writing_result.human_feedback.get("normalized_average_score", 0) >= threshold:
                 logger.info(f"评分达标(>={threshold})，更新文章")
                 article = crew.update_article(writing_result)
-                
+
                 # 保存最终文章
                 final_file = output_dir / f"{article_id}_final.json"
                 with open(final_file, "w", encoding="utf-8") as f:
@@ -216,10 +216,10 @@ async def run_writing_workflow(args):
                     }
                     json.dump(article_dict, f, ensure_ascii=False, indent=2)
                 logger.info(f"最终文章已保存到: {final_file}")
-        
+
         logger.info("写作工作流完成")
         return 0
-        
+
     except Exception as e:
         logger.error(f"写作工作流失败: {e}", exc_info=True)
         return 1
@@ -227,10 +227,10 @@ async def run_writing_workflow(args):
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="运行写作团队")
-    
+
     # 必选参数
     parser.add_argument("--title", required=True, help="文章标题")
-    
+
     # 可选参数
     parser.add_argument("--platform", default="zhihu", help="目标平台，如zhihu, juejin, wechat等")
     parser.add_argument("--summary", help="文章摘要")
@@ -240,11 +240,11 @@ def main():
     parser.add_argument("--threshold", type=float, help="评分通过阈值，默认0.7")
     parser.add_argument("--no-feedback", action="store_true", help="跳过人工反馈")
     parser.add_argument("--verbose", action="store_true", help="显示详细日志")
-    
+
     args = parser.parse_args()
-    
+
     # 运行写作工作流
     return asyncio.run(run_writing_workflow(args))
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())

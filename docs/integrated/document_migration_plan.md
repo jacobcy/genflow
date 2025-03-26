@@ -58,7 +58,7 @@
 
 ```markdown
 > **⚠️ 文档已弃用**
-> 
+>
 > 本文档已经被新版文档替代，请访问最新文档：
 > - API 规范：[GenFlow API 规范](/docs/integrated/genflow_api_specification.md)
 > - 前端实现指南：[前端集成指南](/docs/integrated/frontend_integration_guide.md)
@@ -106,4 +106,4 @@
 
 ---
 
-最后更新: 2024-05-15 
+最后更新: 2024-05-15

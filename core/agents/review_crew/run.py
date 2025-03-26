@@ -72,10 +72,10 @@ PLATFORM_PRESETS = {
 
 def get_platform(platform_name: str) -> Platform:
     """获取平台配置
-    
+
     Args:
         platform_name: 平台名称
-        
+
     Returns:
         Platform: 平台配置对象
     """
@@ -104,17 +104,17 @@ def get_platform(platform_name: str) -> Platform:
 
 def load_article(article_file: str) -> Article:
     """从文件加载文章
-    
+
     Args:
         article_file: 文章JSON文件路径
-        
+
     Returns:
         Article: 文章对象
     """
     try:
         with open(article_file, 'r', encoding='utf-8') as f:
             article_data = json.load(f)
-        
+
         # 转换section格式
         sections = []
         if "sections" in article_data:
@@ -131,7 +131,7 @@ def load_article(article_file: str) -> Article:
                         content=section_data,
                         order=i+1
                     ))
-        
+
         # 创建文章对象
         return Article(
             id=article_data.get("id", f"article_{datetime.now().strftime('%Y%m%d%H%M%S')}"),
@@ -148,7 +148,7 @@ def load_article(article_file: str) -> Article:
 
 async def run_review_workflow(args):
     """运行审核工作流
-    
+
     Args:
         args: 命令行参数
     """
@@ -156,7 +156,7 @@ async def run_review_workflow(args):
         # 获取平台
         platform = get_platform(args.platform)
         logger.info(f"使用平台: {platform.name}")
-        
+
         # 获取文章
         if args.article_file:
             # 从文件加载文章
@@ -182,39 +182,39 @@ async def run_review_workflow(args):
             logger.info(f"创建示例文章: {article.title}, ID: {article.id}")
         else:
             raise ValueError("必须提供article_id或article_file参数")
-        
+
         # 创建审核团队
         crew = ReviewCrew(verbose=args.verbose)
-        
+
         # 执行审核流程
         logger.info("开始执行审核流程")
         review_result = await crew.review_article(article, platform)
-        
+
         # 保存原始结果
         output_path = args.output or "output"
         output_dir = Path(output_path)
         output_dir.mkdir(exist_ok=True, parents=True)
-        
+
         result_file = output_dir / f"review_{article.id}_result.json"
         review_result.save_to_file(str(result_file))
         logger.info(f"审核结果已保存到: {result_file}")
-        
+
         # 是否需要人工反馈
         if not args.no_feedback:
             review_result = get_human_feedback(review_result)
-            
+
             # 更新反馈结果
             feedback_file = output_dir / f"review_{article.id}_feedback.json"
             with open(feedback_file, "w", encoding="utf-8") as f:
                 json.dump(review_result.to_dict(), f, ensure_ascii=False, indent=2)
             logger.info(f"反馈结果已保存到: {feedback_file}")
-            
+
             # 如果评分达标，更新文章状态
             threshold = args.threshold or 0.7
             if review_result.human_feedback and review_result.human_feedback.get("normalized_average_score", 0) >= threshold:
                 logger.info(f"评分达标(>={threshold})，更新文章状态")
                 article = crew.update_article_status(review_result)
-                
+
                 # 保存最终文章
                 final_file = output_dir / f"article_{article.id}_reviewed.json"
                 with open(final_file, "w", encoding="utf-8") as f:
@@ -233,7 +233,7 @@ async def run_review_workflow(args):
                     }
                     json.dump(article_dict, f, ensure_ascii=False, indent=2)
                 logger.info(f"审核后的文章已保存到: {final_file}")
-                
+
                 # 打印审核结果摘要
                 print("\n" + "="*50)
                 print(" 审核结果摘要 ".center(50, "="))
@@ -243,7 +243,7 @@ async def run_review_workflow(args):
                 print(f"查重率: {article.review_data.get('plagiarism_rate', 'N/A')}")
                 print(f"AI分数: {article.review_data.get('ai_score', 'N/A')}")
                 print(f"风险等级: {article.review_data.get('risk_level', 'N/A')}")
-                
+
                 # 打印改进建议
                 if article.review_data.get("review_comments"):
                     print("\n改进建议:")
@@ -252,10 +252,10 @@ async def run_review_workflow(args):
                             print(f"{i}. {suggestion.get('aspect', '')}: {suggestion.get('suggestion', '')}")
                         else:
                             print(f"{i}. {suggestion}")
-        
+
         logger.info("审核工作流完成")
         return 0
-        
+
     except Exception as e:
         logger.error(f"审核工作流失败: {e}", exc_info=True)
         return 1
@@ -263,29 +263,29 @@ async def run_review_workflow(args):
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="运行审核团队")
-    
+
     # 文章来源参数（二选一）
     article_group = parser.add_mutually_exclusive_group(required=True)
     article_group.add_argument("--article-id", help="要审核的文章ID")
     article_group.add_argument("--article-file", help="要审核的文章JSON文件路径")
-    
+
     # 文章内容参数（与article-id一起使用）
     parser.add_argument("--title", help="文章标题，仅在使用--article-id时有效")
     parser.add_argument("--summary", help="文章摘要，仅在使用--article-id时有效")
     parser.add_argument("--content", help="文章内容，仅在使用--article-id时有效")
     parser.add_argument("--topic-id", help="相关主题ID，仅在使用--article-id时有效")
-    
+
     # 审核选项
     parser.add_argument("--platform", default="zhihu", help="目标平台，如zhihu, juejin, wechat等")
     parser.add_argument("--output", help="输出目录")
     parser.add_argument("--threshold", type=float, help="评分通过阈值，默认0.7")
     parser.add_argument("--no-feedback", action="store_true", help="跳过人工反馈")
     parser.add_argument("--verbose", action="store_true", help="显示详细日志")
-    
+
     args = parser.parse_args()
-    
+
     # 运行审核工作流
     return asyncio.run(run_review_workflow(args))
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())

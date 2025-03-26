@@ -93,7 +93,7 @@ class PerformanceMetrics:
         """
         if duration is None and self.start_time:
             duration = time.time() - self.start_time
-        
+
         if key in self.time_records:
             self.time_records[key].append(duration)
         else:
@@ -114,7 +114,7 @@ class PerformanceMetrics:
             "total_topics": self.total_topics,
             "platform_stats": self.platform_stats
         }
-        
+
         # 处理时间记录统计
         for key, times in self.time_records.items():
             if times:
@@ -124,7 +124,7 @@ class PerformanceMetrics:
                     "max": max(times),
                     "count": len(times)
                 }
-                
+
         return summary
 
 class APICollector:

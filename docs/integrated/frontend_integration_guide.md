@@ -70,11 +70,11 @@ export const WritingSessionProvider: React.FC = ({ children, articleId }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [availableActions, setAvailableActions] = useState<ActionButton[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  
+
   // 初始化会话
   useEffect(() => {
     if (!articleId) return;
-    
+
     const initSession = async () => {
       try {
         const newSession = await genflowClient.createSession({
@@ -84,7 +84,7 @@ export const WritingSessionProvider: React.FC = ({ children, articleId }) => {
             // 初始化上下文
           }
         });
-        
+
         setSession(newSession);
         setProgress(newSession.progress);
         setAvailableActions(newSession.availableActions);
@@ -92,14 +92,14 @@ export const WritingSessionProvider: React.FC = ({ children, articleId }) => {
         console.error('Failed to initialize session:', error);
       }
     };
-    
+
     initSession();
   }, [articleId]);
-  
+
   // 建立 WebSocket 连接
   useEffect(() => {
     if (!session?.sessionId) return;
-    
+
     const wsConnection = genflowClient.connectWebSocket(session.sessionId, {
       onOpen: () => setIsConnected(true),
       onClose: () => setIsConnected(false),
@@ -116,63 +116,63 @@ export const WritingSessionProvider: React.FC = ({ children, articleId }) => {
         }
       }
     });
-    
+
     return () => {
       wsConnection.close();
     };
   }, [session?.sessionId]);
-  
+
   // 发送消息
   const sendMessage = async (content: string, type = 'text', metadata = {}) => {
     if (!session?.sessionId) return;
-    
+
     try {
       const response = await genflowClient.sendMessage(session.sessionId, {
         content,
         type,
         metadata
       });
-      
+
       setMessages(prev => [...prev, response.message]);
       setProgress(response.progress);
     } catch (error) {
       console.error('Failed to send message:', error);
     }
   };
-  
+
   // 执行动作
   const executeAction = async (actionId: string, parameters = {}) => {
     if (!session?.sessionId) return;
-    
+
     try {
       const response = await genflowClient.executeAction(session.sessionId, {
         action: actionId,
         parameters
       });
-      
+
       setProgress(response.progress);
     } catch (error) {
       console.error('Failed to execute action:', error);
     }
   };
-  
+
   // 切换阶段
   const switchStage = async (stage: string, data = {}) => {
     if (!session?.sessionId) return;
-    
+
     try {
       const response = await genflowClient.switchStage(session.sessionId, {
         stage,
         data
       });
-      
+
       setProgress(response.progress);
       setAvailableActions(response.availableActions);
     } catch (error) {
       console.error('Failed to switch stage:', error);
     }
   };
-  
+
   return (
     <WritingSessionContext.Provider
       value={{
@@ -193,11 +193,11 @@ export const WritingSessionProvider: React.FC = ({ children, articleId }) => {
 
 export const useWritingSession = () => {
   const context = useContext(WritingSessionContext);
-  
+
   if (context === undefined) {
     throw new Error('useWritingSession must be used within a WritingSessionProvider');
   }
-  
+
   return context;
 };
 ```
@@ -213,16 +213,16 @@ import { useWritingSession } from '../contexts/WritingSessionContext';
 
 export const StageController: React.FC = () => {
   const { progress, availableActions, executeAction } = useWritingSession();
-  
+
   if (!progress) return null;
-  
+
   return (
     <div className="stage-controller">
       <div className="stage-info">
         <h3>当前阶段：{getStageLabel(progress.stage)}</h3>
         <div className="progress-bar">
-          <div 
-            className="progress-fill" 
+          <div
+            className="progress-fill"
             style={{ width: `${progress.progress}%` }}
           />
         </div>
@@ -233,7 +233,7 @@ export const StageController: React.FC = () => {
           </p>
         )}
       </div>
-      
+
       <div className="actions">
         {availableActions.map(action => (
           <button
@@ -284,15 +284,15 @@ export const ContentEditor: React.FC = () => {
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [suggestions, setSuggestions] = useState([]);
   const editorRef = useRef<HTMLTextAreaElement>(null);
-  
+
   // 处理内容变化
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
     setContent(newContent);
-    
+
     const { selectionStart, selectionEnd } = e.target;
     setSelection({ start: selectionStart, end: selectionEnd });
-    
+
     // 发送编辑器状态更新
     if (session?.sessionId && isConnected) {
       genflowClient.sendWebSocketEvent({
@@ -304,11 +304,11 @@ export const ContentEditor: React.FC = () => {
       });
     }
   };
-  
+
   // 获取实时建议
   useEffect(() => {
     if (!session?.sessionId || !isConnected) return;
-    
+
     const debounceTimer = setTimeout(async () => {
       try {
         const result = await genflowClient.getRealtimeSuggestions(session.sessionId, {
@@ -319,20 +319,20 @@ export const ContentEditor: React.FC = () => {
             after: content.substring(selection.end)
           }
         });
-        
+
         setSuggestions(result.suggestions);
       } catch (error) {
         console.error('Failed to get suggestions:', error);
       }
     }, 500); // 500ms 防抖
-    
+
     return () => clearTimeout(debounceTimer);
   }, [content, selection, session?.sessionId, isConnected]);
-  
+
   // 应用建议
   const applySuggestion = async (suggestion) => {
     if (!session?.sessionId || !editorRef.current) return;
-    
+
     try {
       const result = await genflowClient.applyEdit(session.sessionId, {
         operations: [
@@ -343,16 +343,16 @@ export const ContentEditor: React.FC = () => {
           }
         ]
       });
-      
+
       if (result.applied) {
         // 更新编辑器内容
-        const newContent = 
+        const newContent =
           content.substring(0, suggestion.position.start) +
           suggestion.content +
           content.substring(suggestion.position.end);
-          
+
         setContent(newContent);
-        
+
         // 重新定位光标
         const newPosition = suggestion.position.start + suggestion.content.length;
         editorRef.current.focus();
@@ -362,7 +362,7 @@ export const ContentEditor: React.FC = () => {
       console.error('Failed to apply suggestion:', error);
     }
   };
-  
+
   return (
     <div className="content-editor">
       <textarea
@@ -372,7 +372,7 @@ export const ContentEditor: React.FC = () => {
         className="editor-textarea"
         placeholder="开始写作..."
       />
-      
+
       {suggestions.length > 0 && (
         <div className="suggestions-panel">
           <h4>建议</h4>
@@ -404,27 +404,27 @@ export const ChatInterface: React.FC = () => {
   const { messages, sendMessage } = useWritingSession();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // 自动滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!input.trim()) return;
-    
+
     sendMessage(input);
     setInput('');
   };
-  
+
   return (
     <div className="chat-interface">
       <div className="messages-container">
         {messages.map((message) => (
-          <div 
-            key={message.id} 
+          <div
+            key={message.id}
             className={`message ${message.role}`}
           >
             <div className="message-content">
@@ -443,7 +443,7 @@ export const ChatInterface: React.FC = () => {
         ))}
         <div ref={messagesEndRef} />
       </div>
-      
+
       <form onSubmit={handleSubmit} className="message-input">
         <input
           type="text"
@@ -473,34 +473,34 @@ export const TopicDiscovery: React.FC = () => {
   const [count, setCount] = useState(5);
   const [topics, setTopics] = useState([]);
   const [selectedTopic, setSelectedTopic] = useState(null);
-  
+
   const handleDiscoverTopics = async () => {
     await executeAction('discover_topics', { category, count });
-    
+
     // 监听话题结果
     // 通常会通过 WebSocket 接收结果，这里简化处理
     // setTopics(receivedTopics);
   };
-  
+
   const handleSelectTopic = (topic) => {
     setSelectedTopic(topic);
   };
-  
+
   const handleConfirmTopic = async () => {
     if (!selectedTopic) return;
-    
+
     await switchStage('research', { selectedTopicId: selectedTopic.id });
   };
-  
+
   return (
     <div className="topic-discovery">
       <h2>选题发现</h2>
-      
+
       <div className="discovery-controls">
         <div className="form-group">
           <label>领域类别</label>
-          <select 
-            value={category} 
+          <select
+            value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
             <option value="技术">技术</option>
@@ -510,32 +510,32 @@ export const TopicDiscovery: React.FC = () => {
             <option value="教育">教育</option>
           </select>
         </div>
-        
+
         <div className="form-group">
           <label>话题数量</label>
-          <input 
-            type="number" 
-            min="1" 
-            max="10" 
-            value={count} 
-            onChange={(e) => setCount(parseInt(e.target.value))} 
+          <input
+            type="number"
+            min="1"
+            max="10"
+            value={count}
+            onChange={(e) => setCount(parseInt(e.target.value))}
           />
         </div>
-        
-        <button 
+
+        <button
           onClick={handleDiscoverTopics}
           disabled={progress?.status === 'processing'}
         >
           {progress?.status === 'processing' ? '正在发现话题...' : '发现热门话题'}
         </button>
       </div>
-      
+
       {topics.length > 0 && (
         <div className="topics-list">
           <h3>推荐话题</h3>
-          
+
           {topics.map((topic) => (
-            <div 
+            <div
               key={topic.id}
               className={`topic-card ${selectedTopic?.id === topic.id ? 'selected' : ''}`}
               onClick={() => handleSelectTopic(topic)}
@@ -548,9 +548,9 @@ export const TopicDiscovery: React.FC = () => {
               <p>{topic.summary}</p>
             </div>
           ))}
-          
+
           <div className="topic-actions">
-            <button 
+            <button
               onClick={handleConfirmTopic}
               disabled={!selectedTopic}
               className="btn btn-primary"
@@ -577,25 +577,25 @@ export const ArticleWriting: React.FC = () => {
   const { progress, executeAction, switchStage } = useWritingSession();
   const [outline, setOutline] = useState(null);
   const [activeSection, setActiveSection] = useState(0);
-  
+
   const handleGenerateOutline = async () => {
     await executeAction('generate_outline');
     // 同样通过 WebSocket 接收结果，此处简化
     // setOutline(receivedOutline);
   };
-  
+
   const handleCompleteWriting = async () => {
     await switchStage('styling');
   };
-  
+
   return (
     <div className="article-writing">
       <h2>文章写作</h2>
-      
+
       {!outline ? (
         <div className="outline-generation">
           <p>开始写作前，让我们先生成一个文章大纲</p>
-          <button 
+          <button
             onClick={handleGenerateOutline}
             disabled={progress?.status === 'processing'}
           >
@@ -608,7 +608,7 @@ export const ArticleWriting: React.FC = () => {
             <h3>文章大纲</h3>
             <ul>
               {outline.sections.map((section, index) => (
-                <li 
+                <li
                   key={index}
                   className={activeSection === index ? 'active' : ''}
                   onClick={() => setActiveSection(index)}
@@ -618,20 +618,20 @@ export const ArticleWriting: React.FC = () => {
               ))}
             </ul>
           </div>
-          
+
           <div className="content-area">
             <h3>{outline.sections[activeSection]?.title || '开始写作'}</h3>
             <ContentEditor />
-            
+
             <div className="section-navigation">
-              <button 
+              <button
                 disabled={activeSection === 0}
                 onClick={() => setActiveSection(prev => prev - 1)}
               >
                 上一节
               </button>
-              
-              <button 
+
+              <button
                 disabled={activeSection === outline.sections.length - 1}
                 onClick={() => setActiveSection(prev => prev + 1)}
               >
@@ -641,9 +641,9 @@ export const ArticleWriting: React.FC = () => {
           </div>
         </div>
       )}
-      
+
       <div className="writing-actions">
-        <button 
+        <button
           onClick={handleCompleteWriting}
           className="btn btn-primary"
         >
@@ -694,13 +694,13 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) {
         return this.props.fallback;
       }
-      
+
       return (
         <div className="error-boundary">
           <h2>出现错误</h2>
           <p>应用遇到了问题，请刷新页面重试。</p>
           <p className="error-message">{this.state.error?.message}</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="btn btn-primary"
           >
@@ -736,17 +736,17 @@ export function useRetry<T>(
     retryDelay = 1000,
     onRetry
   } = options;
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<any>(null);
   const [data, setData] = useState<T | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  
+
   const execute = useCallback(
     async (...args: any[]) => {
       setLoading(true);
       setError(null);
-      
+
       try {
         const result = await asyncFn(...args);
         setData(result);
@@ -757,7 +757,7 @@ export function useRetry<T>(
         if (retryCount < maxRetries) {
           setRetryCount(prev => prev + 1);
           onRetry?.(retryCount + 1, err);
-          
+
           // 延迟重试
           await new Promise(resolve => setTimeout(resolve, retryDelay));
           return execute(...args);
@@ -770,7 +770,7 @@ export function useRetry<T>(
     },
     [asyncFn, maxRetries, retryDelay, retryCount, onRetry]
   );
-  
+
   return {
     execute,
     loading,
@@ -860,4 +860,4 @@ export function useRetry<T>(
 
 ---
 
-最后更新: 2024-05-15 
+最后更新: 2024-05-15

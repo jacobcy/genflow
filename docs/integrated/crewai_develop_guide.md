@@ -38,11 +38,11 @@ class CustomSearchTool(BaseTool):
     name: str = "搜索工具"
     description: str = "搜索互联网获取信息，支持关键词查询。"
     args_schema: BaseModel = SearchInput  # 可选：定义输入参数模式
-    
+
     def __init__(self, api_key=None):
         self.api_key = api_key
         super().__init__()
-    
+
     def _run(self, query: str) -> str:
         """工具的执行逻辑"""
         # 实现搜索逻辑
@@ -82,12 +82,12 @@ class ProjectTools:
     def __init__(self):
         # 初始化所需的API客户端或资源
         self.search_client = SearchClient(api_key="your_api_key")
-    
+
     @tool("搜索工具")
     def search(self, query: str) -> str:
         """搜索互联网获取信息。"""
         return self.search_client.search(query)
-    
+
     @tool("数据分析工具")
     def analyze_data(self, data: str, method: str = "summary") -> str:
         """分析提供的数据。"""
@@ -218,12 +218,12 @@ class TopicTools:
         # 初始化资源
         self.search_engine = SearchEngine()
         self.trend_analyzer = TrendAnalyzer()
-    
+
     @tool("趋势分析")
     def analyze_trends(self, topic: str) -> str:
         """分析指定话题的流行趋势和热度变化。"""
         return self.trend_analyzer.analyze(topic)
-    
+
     @tool("内容搜索")
     def search_content(self, query: str, limit: int = 10) -> str:
         """搜索与查询相关的内容。"""

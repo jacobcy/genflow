@@ -13,23 +13,23 @@ logger = logging.getLogger(__name__)
 
 class ReviewAgents:
     """审核团队智能体管理类
-    
+
     负责创建和管理审核流程中的各个角色智能体。
     遵循CrewAI最佳实践，每个智能体都有明确的角色定位和合适的工具集。
     """
 
     def __init__(self, platform: Platform):
         """初始化审核智能体管理器
-        
+
         Args:
             platform: 目标发布平台，决定了内容规范和审核标准
         """
         logger.info(f"初始化审核智能体管理器，目标平台: {platform.name}")
         self.platform = platform
-        
+
         # 创建审核工具集
         self.tools = ReviewTools(platform)
-        
+
         # 智能体角色与能力配置
         self.role_configs = {
             "plagiarism_checker": {
@@ -91,7 +91,7 @@ class ReviewAgents:
                 ]
             }
         }
-        
+
         # 初始化智能体实例
         self.agents = {}
         logger.info("审核智能体配置完成")
@@ -99,21 +99,21 @@ class ReviewAgents:
     def create_agent(self, role_key: str, verbose: bool = True) -> Agent:
         """
         创建指定角色的智能体
-        
+
         Args:
             role_key: 角色键名，对应role_configs中的配置
             verbose: 是否启用详细日志
-            
+
         Returns:
             Agent: 创建的智能体实例
         """
         if role_key not in self.role_configs:
             logger.error(f"未找到角色配置: {role_key}")
             raise ValueError(f"未找到角色配置: {role_key}")
-        
+
         config = self.role_configs[role_key]
         logger.info(f"创建{config['role']}智能体")
-        
+
         agent = Agent(
             role=config["role"],
             goal=config["goal"],
@@ -122,43 +122,43 @@ class ReviewAgents:
             verbose=verbose,
             allow_delegation=True
         )
-        
+
         # 缓存创建的智能体
         self.agents[role_key] = agent
         logger.info(f"{config['role']}智能体创建完成，分配了{len(config['tools'])}个工具")
-        
+
         return agent
-    
+
     def create_plagiarism_checker(self, verbose: bool = True) -> Agent:
         """创建查重专员智能体"""
         return self.create_agent("plagiarism_checker", verbose)
-    
+
     def create_ai_detector(self, verbose: bool = True) -> Agent:
         """创建AI检测员智能体"""
         return self.create_agent("ai_detector", verbose)
-    
+
     def create_content_reviewer(self, verbose: bool = True) -> Agent:
         """创建内容审核员智能体"""
         return self.create_agent("content_reviewer", verbose)
-    
+
     def create_quality_assessor(self, verbose: bool = True) -> Agent:
         """创建质量评估师智能体"""
         return self.create_agent("quality_assessor", verbose)
-    
+
     def create_final_reviewer(self, verbose: bool = True) -> Agent:
         """创建终审专员智能体"""
         return self.create_agent("final_reviewer", verbose)
-    
+
     def create_all_agents(self, verbose: bool = True) -> Dict[str, Agent]:
         """创建所有智能体
-        
+
         Returns:
             Dict[str, Agent]: 所有创建的智能体
         """
         logger.info("创建所有审核智能体")
-        
+
         for role_key in self.role_configs.keys():
             self.create_agent(role_key, verbose)
-            
+
         logger.info(f"已创建{len(self.agents)}个审核智能体")
-        return self.agents 
+        return self.agents

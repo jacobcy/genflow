@@ -59,7 +59,7 @@ async def test_redis_stats():
     print("\n" + "="*50)
     print("【数据库统计】")
     print(f"总平台数: {len(all_platforms)}")
-    
+
     # 统计每个平台的数据
     platforms_with_data = []
     for platform in sorted(all_platforms):
@@ -77,7 +77,7 @@ async def test_redis_stats():
     # 打印统计信息
     print(f"有数据的平台数: {len(platform_stats)}/{len(all_platforms)}")
     print(f"话题总数: {total_topics}")
-    
+
     print("\n【各平台数据统计】")
     if platform_stats:
         for platform, count in sorted(platform_stats.items(), key=lambda x: x[1], reverse=True):
@@ -105,14 +105,14 @@ async def test_redis_stats():
     # 打印分类统计
     print("\n【各分类平台统计】")
     category_stats = {}
-    
+
     for category in CATEGORY_TAGS:
         platforms = get_platforms_by_category(category)
         if platforms:
             platform_count = len(platforms)
             active_count = len([p for p in platforms if p in platform_stats])
             category_stats[category] = (active_count, platform_count)
-    
+
     for category, (active, total) in sorted(category_stats.items(), key=lambda x: x[1][0]/max(x[1][1], 1), reverse=True):
         percentage = (active / total) * 100 if total > 0 else 0
         print(f"- {category}: {active}/{total} 个平台有数据 ({percentage:.1f}%)")
@@ -347,16 +347,16 @@ async def test_core_functions():
     print("\n1. 测试默认获取热点话题")
     print("\n【发送请求】默认参数")
     result = await tool.execute()
-    
+
     print("\n【响应数据】")
     print(f"- 状态: {'成功' if not result.get('error') else '失败'}")
     print(f"- 消息: {result.get('message')}")
     print(f"- 总数: {result.get('total')}")
     print(f"- 分类: {result.get('category')}")
-    
+
     topics = result.get('topics', [])
     print(f"\n获取到 {len(topics)} 条话题：")
-    
+
     for i, topic in enumerate(topics[:3], 1):
         print(f"\n话题 {i}:")
         print(f"  标题: {topic.get('title')}")
@@ -364,7 +364,7 @@ async def test_core_functions():
         print(f"  热度: {topic.get('hot')}")
         print(f"  优先级: {topic.get('priority_score')}")
         print(f"  时间戳: {topic.get('timestamp')}")
-        
+
     if len(topics) > 3:
         print(f"\n... 还有 {len(topics) - 3} 条话题 ...")
 
@@ -373,22 +373,22 @@ async def test_core_functions():
     print("\n2. 测试指定分类获取(科技类)")
     print("\n【发送请求】category='科技'")
     result = await tool.execute(category="科技")
-    
+
     print("\n【响应数据】")
     print(f"- 状态: {'成功' if not result.get('error') else '失败'}")
     print(f"- 消息: {result.get('message')}")
     print(f"- 总数: {result.get('total')}")
     print(f"- 分类: {result.get('category')}")
-    
+
     topics = result.get('topics', [])
     print(f"\n获取到 {len(topics)} 条科技类话题")
-    
+
     for i, topic in enumerate(topics[:3], 1):
         print(f"\n话题 {i}:")
         print(f"  标题: {topic.get('title')}")
         print(f"  平台: {topic.get('platform')}")
         print(f"  热度: {topic.get('hot')}")
-        
+
     if len(topics) > 3:
         print(f"\n... 还有 {len(topics) - 3} 条话题 ...")
 
@@ -397,23 +397,23 @@ async def test_core_functions():
     print("\n3. 测试关键词搜索(关键词: AI)")
     print("\n【发送请求】keywords='AI'")
     result = await tool.execute(keywords="AI")
-    
+
     print("\n【响应数据】")
     print(f"- 状态: {'成功' if not result.get('error') else '失败'}")
     print(f"- 消息: {result.get('message')}")
     print(f"- 总数: {result.get('total')}")
     print(f"- 分类: {result.get('category')}")
     print(f"- 平台: {', '.join(result.get('platforms', []))}")
-    
+
     topics = result.get('topics', [])
     print(f"\n搜索到 {len(topics)} 条相关话题")
-    
+
     for i, topic in enumerate(topics[:3], 1):
         print(f"\n话题 {i}:")
         print(f"  标题: {topic.get('title')}")
         print(f"  平台: {topic.get('platform')}")
         print(f"  热度: {topic.get('hot')}")
-        
+
     if len(topics) > 3:
         print(f"\n... 还有 {len(topics) - 3} 条话题 ...")
 
@@ -422,14 +422,14 @@ async def test_core_functions():
     print("\n4. 测试数量限制(限制5条)")
     print("\n【发送请求】limit=5")
     result = await tool.execute(limit=5)
-    
+
     print("\n【响应数据】")
     print(f"- 状态: {'成功' if not result.get('error') else '失败'}")
     print(f"- 消息: {result.get('message')}")
     print(f"- 总数: {result.get('total')}")
     print(f"- 分类: {result.get('category')}")
     print(f"- 平台: {', '.join(result.get('platforms', []))}")
-    
+
     topics = result.get('topics', [])
     if topics:
         print(f"\n限制返回 {len(topics)} 条话题:")
@@ -445,16 +445,16 @@ async def test_keyword_supplement():
     """测试关键词搜索结果不足时自动补充数据的功能"""
     print("\n" + "="*50)
     print("【测试数据自动补充】")
-    
+
     tool = TrendingTopics()
-    
+
     # 1. 使用非常稀少的关键词，确保结果少于limit
     rare_keyword = "量子计算"  # 或其他非常稀有的关键词
     limit = 10  # 设置一个合理的数量限制
-    
+
     print(f"\n【发送请求】keywords='{rare_keyword}', limit={limit}")
     result = await tool.execute(keywords=rare_keyword, limit=limit)
-    
+
     print("\n【响应数据】")
     if "error" in result:
         print(f"- 错误: {result.get('error')}")
@@ -470,30 +470,30 @@ async def test_keyword_supplement():
                 print(f"- 匹配结果数: {result.get('matched_count')}")
             if "supplemented_count" in result:
                 print(f"- 补充数量: {result.get('supplemented_count')}")
-        
+
         topics = result.get("topics", [])
         print(f"\n获取到 {len(topics)} 条话题:")
-        
+
         # 打印前几条结果
         for i, topic in enumerate(topics[:3]):
             print(f"\n话题 {i+1}:")
             print(f"  标题: {topic.get('title')}")
             print(f"  平台: {topic.get('platform')}")
             print(f"  热度: {topic.get('hot')}")
-        
+
         if len(topics) > 3:
             print(f"\n... 还有 {len(topics) - 3} 条话题 ...")
-    
+
     # 2. 使用关键词+分类，结果不足时补充
     print("\n" + "="*50)
     print("【测试分类内关键词不足补充】")
-    
+
     category = "科技"
     rare_keyword = "低代码"  # 或其他在科技分类中稀有的关键词
-    
+
     print(f"\n【发送请求】category='{category}', keywords='{rare_keyword}', limit={limit}")
     result = await tool.execute(category=category, keywords=rare_keyword, limit=limit)
-    
+
     print("\n【响应数据】")
     if "error" in result:
         print(f"- 错误: {result.get('error')}")
@@ -510,29 +510,29 @@ async def test_keyword_supplement():
                 print(f"- 匹配结果数: {result.get('matched_count')}")
             if "supplemented_count" in result:
                 print(f"- 补充数量: {result.get('supplemented_count')}")
-        
+
         topics = result.get("topics", [])
         print(f"\n获取到 {len(topics)} 条话题:")
-        
+
         # 打印前几条结果
         for i, topic in enumerate(topics[:3]):
             print(f"\n话题 {i+1}:")
             print(f"  标题: {topic.get('title')}")
             print(f"  平台: {topic.get('platform')}")
             print(f"  热度: {topic.get('hot')}")
-        
+
         if len(topics) > 3:
             print(f"\n... 还有 {len(topics) - 3} 条话题 ...")
 
 async def test_execute_with_params(param_string: str):
     """测试特定参数的执行结果
-    
+
     Args:
         param_string: 参数字符串，格式如：category=科技&keywords=AI&limit=10
     """
     print("\n" + "="*50)
     print(f"【测试特定参数】: {param_string}")
-    
+
     # 解析参数
     param_dict = {}
     parts = param_string.split("&")
@@ -544,11 +544,11 @@ async def test_execute_with_params(param_string: str):
                 param_dict[key] = int(value)
             else:
                 param_dict[key] = value
-    
+
     tool = TrendingTopics()
     print(f"\n【发送请求】{param_dict}")
     result = await tool.execute(**param_dict)
-    
+
     print("\n【响应数据】")
     if "error" in result:
         print(f"- 错误: {result.get('error')}")
@@ -557,31 +557,31 @@ async def test_execute_with_params(param_string: str):
         print(f"- 状态: 成功")
         print(f"- 消息: {result.get('message')}")
         print(f"- 总数: {result.get('total')}")
-        
+
         if "category" in result:
             print(f"- 分类: {result.get('category')}")
         if "keywords" in result:
             print(f"- 关键词: {result.get('keywords')}")
         if "platforms" in result and result["platforms"]:
             print(f"- 平台: {', '.join(result['platforms'])}")
-            
+
         if "is_supplemented" in result:
             print(f"- 是否补充: 是")
             if "matched_count" in result:
                 print(f"- 匹配结果数: {result.get('matched_count')}")
             if "supplemented_count" in result:
                 print(f"- 补充数量: {result.get('supplemented_count')}")
-        
+
         topics = result.get("topics", [])
         print(f"\n获取到 {len(topics)} 条话题:")
-        
+
         # 打印前几条结果
         for i, topic in enumerate(topics[:3]):
             print(f"\n话题 {i+1}:")
             print(f"  标题: {topic.get('title')}")
             print(f"  平台: {topic.get('platform')}")
             print(f"  热度: {topic.get('hot')}")
-        
+
         if len(topics) > 3:
             print(f"\n... 还有 {len(topics) - 3} 条话题 ...")
 
@@ -589,9 +589,9 @@ async def test_summary_feature():
     """测试话题摘要功能"""
     print("\n" + "="*50)
     print("【测试话题摘要功能】")
-    
+
     tool = TrendingTopics()
-    
+
     # 测试1: 强制使用摘要
     print("\n" + "-"*40)
     print("测试1: 强制使用摘要模式 (热点分类)")
@@ -601,11 +601,11 @@ async def test_summary_feature():
         limit=20,
         force_summarize=True
     )
-    
+
     if "summary" in result:
         print("\n📊 话题摘要:")
         print(f"➤ {result['summary']}")
-        
+
         # 展示统计信息
         if "stats" in result:
             stats = result["stats"]
@@ -613,21 +613,21 @@ async def test_summary_feature():
             print(f"➤ 话题总数: {stats['total_topics']}")
             print(f"➤ 平台数量: {stats['platform_count']}")
             print(f"➤ 平均热度: {stats['avg_hot']}")
-            
+
             print("\n主要平台:")
             for platform in stats['top_platforms'][:3]:
                 print(f"- {platform['name']}: {platform['count']}条")
-            
+
             print("\n热门关键词:")
             for keyword in stats['hot_keywords'][:5]:
                 print(f"- {keyword['word']}: 出现{keyword['freq']}次")
-        
+
         print(f"\n包含 {len(result.get('topics', []))} 条热门话题示例:")
         for i, topic in enumerate(result.get("topics", [])[:3], 1):
             print(f"{i}. {topic.get('title')} - {topic.get('platform')} (热度: {topic.get('hot')})")
     else:
         print("获取摘要失败")
-    
+
     # 测试2: 使用关键词并强制摘要
     print("\n" + "-"*40)
     print("测试2: 使用关键词搜索并强制摘要 (关键词: 游戏)")
@@ -637,11 +637,11 @@ async def test_summary_feature():
         limit=20,
         force_summarize=True
     )
-    
+
     if "summary" in result:
         print("\n📊 话题摘要:")
         print(f"➤ {result['summary']}")
-        
+
         # 展示统计信息
         if "stats" in result:
             stats = result["stats"]
@@ -649,21 +649,21 @@ async def test_summary_feature():
             print(f"➤ 话题总数: {stats['total_topics']}")
             print(f"➤ 平台数量: {stats['platform_count']}")
             print(f"➤ 平均热度: {stats['avg_hot']}")
-            
+
             print("\n主要平台:")
             for platform in stats['top_platforms'][:3]:
                 print(f"- {platform['name']}: {platform['count']}条")
-            
+
             print("\n热门关键词:")
             for keyword in stats['hot_keywords'][:5]:
                 print(f"- {keyword['word']}: 出现{keyword['freq']}次")
-        
+
         print(f"\n包含 {len(result.get('topics', []))} 条关键词相关话题示例:")
         for i, topic in enumerate(result.get("topics", [])[:3], 1):
             print(f"{i}. {topic.get('title')} - {topic.get('platform')} (热度: {topic.get('hot')})")
     else:
         print("获取摘要失败")
-    
+
     # 测试3: 调整字数限制
     print("\n" + "-"*40)
     print("测试3: 调整字数限制 (科技分类, 200字限制)")
@@ -673,12 +673,12 @@ async def test_summary_feature():
         limit=30,
         word_limit=200  # 降低字数限制，更容易触发摘要
     )
-    
+
     if "summary" in result:
         print("\n自动摘要模式 (数据量超过200字限制):")
         print(f"\n📊 话题摘要:")
         print(f"➤ {result['summary']}")
-        
+
         # 展示统计信息
         if "stats" in result:
             stats = result["stats"]
@@ -686,15 +686,15 @@ async def test_summary_feature():
             print(f"➤ 话题总数: {stats['total_topics']}")
             print(f"➤ 平台数量: {stats['platform_count']}")
             print(f"➤ 平均热度: {stats['avg_hot']}")
-            
+
             print("\n主要平台:")
             for platform in stats['top_platforms'][:3]:
                 print(f"- {platform['name']}: {platform['count']}条")
-            
+
             print("\n热门关键词:")
             for keyword in stats['hot_keywords'][:5]:
                 print(f"- {keyword['word']}: 出现{keyword['freq']}次")
-            
+
         # 计算压缩率
         total_topics = len(result.get("topics", []))
         if total_topics > 0:
@@ -709,12 +709,12 @@ async def test_summary_feature():
         print("\n话题示例:")
         for i, topic in enumerate(result.get("topics", [])[:3], 1):
             print(f"{i}. {topic.get('title')} - {topic.get('platform')} (热度: {topic.get('hot')})")
-    
+
     # 测试4: 对比原始数据与摘要数据
     print("\n" + "-"*40)
     print("测试4: 原始数据与摘要数据对比")
     print("-"*40)
-    
+
     # 获取原始数据
     print("\n获取原始数据...")
     original_result = await tool.execute(
@@ -722,7 +722,7 @@ async def test_summary_feature():
         limit=20,
         force_summarize=False
     )
-    
+
     # 获取摘要数据
     print("获取摘要数据...")
     summary_result = await tool.execute(
@@ -730,17 +730,17 @@ async def test_summary_feature():
         limit=20,
         force_summarize=True
     )
-    
+
     original_topics = original_result.get("topics", [])
     summary_topics = summary_result.get("topics", [])
-    
+
     print(f"\n原始数据: {len(original_topics)}条话题")
     print(f"摘要数据: {len(summary_topics)}条话题 + 摘要文本")
-    
+
     if "summary" in summary_result:
         print("\n📊 摘要文本:")
         print(f"➤ {summary_result['summary']}")
-        
+
         if "stats" in summary_result:
             stats = summary_result["stats"]
             print("\n摘要统计了以下信息:")
@@ -748,7 +748,7 @@ async def test_summary_feature():
             print(f"- 从{stats['platform_count']}个平台获取数据")
             print(f"- 提取了{len(stats['hot_keywords'])}个热门关键词")
             print(f"- 筛选出{len(summary_topics)}条最具代表性的话题")
-    
+
     # 测试5: 调整摘要压缩率
     print("\n" + "-"*40)
     print("测试5: 调整摘要压缩率")
@@ -757,23 +757,23 @@ async def test_summary_feature():
     # 测试不同压缩率
     compression_ratios = [0.1, 0.25, 0.5]
     results = {}
-    
+
     # 首先获取完整数据作为参考
     print("\n获取完整数据作为参考...")
     full_result = await tool.execute(
-        category="科技", 
+        category="科技",
         limit=30,
         force_summarize=False
     )
     full_topics = full_result.get("topics", [])
     print(f"完整数据: {len(full_topics)}条话题")
-    
+
     # 测试不同压缩率
     for ratio in compression_ratios:
         print(f"\n" + "="*30)
         print(f"压缩率 {ratio*100:.0f}% 的效果:")
         print("="*30)
-        
+
         result = await tool.execute(
             category="科技",
             limit=30,
@@ -781,60 +781,60 @@ async def test_summary_feature():
             compression_ratio=ratio
         )
         results[ratio] = result
-        
+
         if "stats" in result:
             stats = result["stats"]
             summary_count = len(result.get("topics", []))
             total = stats["total_topics"]
             actual_ratio = summary_count / total if total > 0 else 0
-            
+
             print(f"\n【摘要统计】")
             print(f"- 原始数据量: {total}条话题")
             print(f"- 摘要后数据量: {summary_count}条话题")
             print(f"- 实际压缩率: {actual_ratio*100:.1f}%")
             print(f"- 摘要文本长度: {len(result['summary'])}字符")
-            
+
             # 显示摘要的详细信息
             print(f"\n【摘要文本】")
             print(f"➤ {result['summary']}")
-            
+
             # 显示关键词统计差异
             print(f"\n【热门关键词】({len(stats['hot_keywords'])}个)")
             for kw in stats['hot_keywords']:
                 print(f"- {kw['word']}: 出现{kw['freq']}次")
-            
+
             # 显示代表性话题
             print(f"\n【代表性话题】({summary_count}条)")
             for i, topic in enumerate(result.get("topics", [])[:min(5, summary_count)], 1):
                 print(f"{i}. {topic.get('title')} - {topic.get('platform')} (热度: {topic.get('hot')})")
-            
+
             # 如果话题太多，只显示部分
             if summary_count > 5:
                 print(f"... 还有 {summary_count - 5} 条话题 ...")
-    
+
     # 比较不同压缩率的摘要差异
     if len(results) == 3:
         print("\n" + "="*40)
         print("【不同压缩率摘要对比】")
         print("="*40)
-        
+
         print("\n1. 返回话题数量对比")
         for ratio, result in sorted(results.items()):
             topics = result.get("topics", [])
             print(f"- 压缩率 {ratio*100:.0f}%: {len(topics)}条话题 ({len(topics)/len(full_topics)*100:.1f}%的原始数据)")
-            
+
         print("\n2. 摘要文本长度对比")
         for ratio, result in sorted(results.items()):
             summary = result.get("summary", "")
             print(f"- 压缩率 {ratio*100:.0f}%: {len(summary)}字符")
-        
+
         print("\n3. 关键词覆盖对比")
         for ratio, result in sorted(results.items()):
             if "stats" in result:
                 keywords = result["stats"].get("hot_keywords", [])
                 keyword_str = ", ".join([k["word"] for k in keywords])
                 print(f"- 压缩率 {ratio*100:.0f}%: {len(keywords)}个关键词 ({keyword_str})")
-                
+
         print("\n4. 话题热度分布对比")
         for ratio, result in sorted(results.items()):
             topics = result.get("topics", [])
@@ -844,7 +844,7 @@ async def test_summary_feature():
                 max_hot = max(hot_values) if hot_values else 0
                 min_hot = min(hot_values) if hot_values else 0
                 print(f"- 压缩率 {ratio*100:.0f}%: 平均热度 {avg_hot:.0f}, 最高热度 {max_hot}, 最低热度 {min_hot}")
-    
+
     return results
 
 async def main():
@@ -856,12 +856,12 @@ async def main():
     parser.add_argument('--test-execute-case', type=str, help='测试execute方法的特定案例，格式如：category=科技&keywords=AI&limit=10')
     parser.add_argument('--test-supplement', action='store_true', help='测试数据自动补充功能')
     parser.add_argument('--test-summary', action='store_true', help='测试摘要功能')
-    
+
     args = parser.parse_args()
-    
+
     print("\n" + "="*50)
     print("《热点话题工具测试》")
-    
+
     if args.test_execute_case:
         await test_execute_with_params(args.test_execute_case)
     elif args.test_summary:
@@ -874,13 +874,13 @@ async def main():
         if not args.skip_redis:
             # 1. 数据统计
             await test_redis_stats()
-        
+
         if not args.skip_core:
             # 2. 核心功能测试
             await test_core_functions()
-    
+
     print("\n" + "="*50)
     print("测试完成")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

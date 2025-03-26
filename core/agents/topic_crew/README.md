@@ -70,13 +70,13 @@ async def main():
     # 初始化配置和团队
     config = Config()
     crew = TopicCrew(config=config)
-    
+
     # 发现话题
     topics = await crew.discover_topics(category="科技", count=3)
-    
+
     # 获取人工反馈
     topics = crew.get_human_feedback(topics)
-    
+
     # 分析获批话题
     for topic in topics:
         if topic.status == "approved":
@@ -95,13 +95,13 @@ if __name__ == "__main__":
 ```python
 async def main():
     crew = TopicCrew()
-    
+
     # 运行完整工作流
     result = await crew.run_full_workflow(
         category="教育",
         count=5
     )
-    
+
     # 结果已包含所有话题和分析数据
     print(f"发现话题总数: {result['total_topics']}")
     print(f"获批话题数量: {result['approved_topics']}")
@@ -189,7 +189,7 @@ def create_new_agent(self) -> Agent:
    ```python
    import os
    import sys
-   
+
    # 添加项目根目录到 Python 路径
    current_dir = os.path.dirname(os.path.abspath(__file__))
    project_root = os.path.abspath(os.path.join(current_dir, "../../../"))
@@ -200,7 +200,7 @@ def create_new_agent(self) -> Agent:
    ```bash
    # Linux/Mac
    export PYTHONPATH=/path/to/your/project:$PYTHONPATH
-   
+
    # Windows
    set PYTHONPATH=C:\path\to\your\project;%PYTHONPATH%
    ```
@@ -209,4 +209,4 @@ def create_new_agent(self) -> Agent:
 
 - 查看 `example.py` 文件获取更多详细的使用示例
 - 运行 `python -m core.agents.topic_crew.run --help` 查看命令行选项
-- 更多API文档请参考各模块的文档字符串 
+- 更多API文档请参考各模块的文档字符串

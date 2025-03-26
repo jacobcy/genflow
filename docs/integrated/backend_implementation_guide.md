@@ -72,7 +72,7 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 @router.post("/", response_model=SessionResponse, status_code=201)
 async def create_session(
-    session_data: SessionCreate, 
+    session_data: SessionCreate,
     session_manager: SessionManager = Depends()
 ):
     """创建新的会话"""
@@ -88,7 +88,7 @@ async def create_session(
 
 @router.get("/{session_id}", response_model=SessionResponse)
 async def get_session(
-    session_id: str, 
+    session_id: str,
     session_manager: SessionManager = Depends()
 ):
     """获取会话状态"""
@@ -119,39 +119,39 @@ async def websocket_endpoint(
     event_dispatcher: EventDispatcher = Depends()
 ):
     await websocket.accept()
-    
+
     # 认证
     try:
         auth_message = await websocket.receive_text()
         auth_data = json.loads(auth_message)
-        
+
         if auth_data.get("type") != "auth" or not auth_data.get("token"):
             await websocket.close(code=1008, reason="Authentication required")
             return
-            
+
         token = auth_data["token"].replace("Bearer ", "")
         # 验证token...
     except Exception as e:
         await websocket.close(code=1011, reason=f"Authentication error: {str(e)}")
         return
-        
+
     # 注册客户端
     client_id = f"client_{session_id}_{id(websocket)}"
     await event_dispatcher.register_client(session_id, client_id, websocket)
-    
+
     try:
         # 处理客户端消息
         while websocket.client_state != WebSocketState.DISCONNECTED:
             message = await websocket.receive_text()
             data = json.loads(message)
-            
+
             # 处理各类客户端事件
             if data.get("type") == "request.suggestion":
                 await session_manager.request_suggestion(session_id, data.get("data", {}))
             elif data.get("type") == "feedback":
                 await session_manager.process_feedback(session_id, data.get("data", {}))
             # 处理其他事件类型...
-            
+
     except WebSocketDisconnect:
         pass
     finally:
@@ -175,28 +175,28 @@ logger = logging.getLogger("topic_manager")
 
 class TopicManager:
     """选题管理器，负责调用选题智能体团队"""
-    
+
     def __init__(self, config: Dict):
         self.config = config
-        
+
     async def discover_topics(self, category: str, count: int = 5) -> List[Dict]:
         """发现热门话题"""
         logger.info(f"开始发现话题，类别：{category}，数量：{count}")
-        
+
         # 创建任务ID用于跟踪
         task_id = str(uuid.uuid4())
-        
+
         try:
             # 初始化选题团队
             topic_crew = TopicCrew(self.config)
-            
+
             # 调用CrewAI执行话题发现
             # 这里不关心具体实现，只关心接口调用
             topics = await topic_crew.discover_topics(category, count)
-            
+
             logger.info(f"话题发现完成，任务ID: {task_id}，共发现{len(topics)}个话题")
             return topics
-            
+
         except Exception as e:
             logger.error(f"话题发现失败，任务ID: {task_id}, 错误: {str(e)}")
             raise
@@ -225,9 +225,9 @@ logger = logging.getLogger("session_manager")
 
 class SessionManager:
     """会话管理器，负责会话生命周期和状态管理"""
-    
+
     def __init__(
-        self, 
+        self,
         config: Dict,
         event_dispatcher: EventDispatcher,
         session_repo,
@@ -238,22 +238,22 @@ class SessionManager:
         self.session_repo = session_repo
         self.message_repo = message_repo
         self.active_sessions = {}
-        
+
         # 初始化智能体管理器
         self.topic_manager = TopicManager(config)
         self.research_manager = ResearchManager(config)
         self.writing_manager = WritingManager(config)
         self.review_manager = ReviewManager(config)
-        
+
     async def create_session(
-        self, 
-        article_id: str, 
+        self,
+        article_id: str,
         initial_stage: str = "topic",
         context: Dict = None
     ) -> Dict:
         """创建新会话"""
         session_id = f"session_{uuid.uuid4().hex[:10]}"
-        
+
         # 创建会话记录
         session = {
             "id": session_id,
@@ -266,13 +266,13 @@ class SessionManager:
             "updatedAt": datetime.utcnow(),
             "expiresAt": datetime.utcnow() + timedelta(hours=2)
         }
-        
+
         # 保存到数据库
         await self.session_repo.create(session)
-        
+
         # 获取可用操作
         available_actions = self._get_stage_actions(initial_stage)
-        
+
         # 构造响应
         response = {
             "sessionId": session_id,
@@ -284,18 +284,18 @@ class SessionManager:
             "availableActions": available_actions,
             "capabilities": self._get_capabilities(initial_stage)
         }
-        
+
         return response
-        
+
     async def get_session(self, session_id: str) -> Optional[Dict]:
         """获取会话状态"""
         session = await self.session_repo.find_by_id(session_id)
         if not session:
             return None
-            
+
         # 组装响应
         last_message = await self.message_repo.get_latest(session_id)
-        
+
         return {
             "progress": {
                 "stage": session["stage"],
@@ -307,22 +307,22 @@ class SessionManager:
             "availableActions": self._get_stage_actions(session["stage"], session["status"]),
             "lastMessage": last_message
         }
-        
+
     async def execute_action(self, session_id: str, action: str, parameters: Dict = None) -> Dict:
         """执行会话动作"""
         session = await self.session_repo.find_by_id(session_id)
         if not session:
             raise ValueError("Session not found")
-            
+
         # 更新会话状态
         await self.session_repo.update(
-            session_id, 
+            session_id,
             {"status": "processing", "updatedAt": datetime.utcnow()}
         )
-        
+
         # 发送状态更新事件
         await self.event_dispatcher.dispatch_event(
-            session_id, 
+            session_id,
             "stage.change",
             {
                 "stage": session["stage"],
@@ -331,12 +331,12 @@ class SessionManager:
                 "currentStep": f"开始执行动作: {action}"
             }
         )
-        
+
         # 异步执行动作
         asyncio.create_task(
             self._process_action(session_id, session["stage"], action, parameters or {})
         )
-        
+
         # 返回初始状态
         return {
             "actionId": f"action_{uuid.uuid4().hex[:8]}",
@@ -348,7 +348,7 @@ class SessionManager:
                 "currentStep": f"开始执行动作: {action}"
             }
         }
-        
+
     async def _process_action(self, session_id: str, stage: str, action: str, parameters: Dict):
         """处理动作执行"""
         try:
@@ -358,7 +358,7 @@ class SessionManager:
             elif stage == "research" and action == "research_topic":
                 await self._run_topic_research(session_id, parameters)
             # 其他动作类型处理...
-            
+
         except Exception as e:
             logger.error(f"执行动作失败: {str(e)}")
             # 更新会话状态为错误
@@ -372,21 +372,21 @@ class SessionManager:
                 "error",
                 {"message": f"执行动作失败: {str(e)}"}
             )
-            
+
     async def _run_topic_discovery(self, session_id: str, parameters: Dict):
         """执行话题发现"""
         session = await self.session_repo.find_by_id(session_id)
-        
+
         # 更新进度
         await self._update_progress(session_id, 10, "正在分析热门趋势")
-        
+
         try:
             # 调用智能体管理器执行话题发现
             topics = await self.topic_manager.discover_topics(
                 parameters.get("category", "技术"),
                 parameters.get("count", 5)
             )
-            
+
             # 保存结果
             await self.session_repo.update(
                 session_id,
@@ -397,25 +397,25 @@ class SessionManager:
                     "currentStep": "话题发现完成"
                 }
             )
-            
+
             # 发送结果事件
             await self.event_dispatcher.dispatch_event(
                 session_id,
                 "topics.discovered",
                 {"topics": topics}
             )
-            
+
         except Exception as e:
             logger.error(f"话题发现失败: {str(e)}")
             raise
-            
+
     # 其他内部方法实现...
-            
+
     def _get_stage_actions(self, stage: str, status: str = "idle") -> List[Dict]:
         """获取当前阶段可用的操作按钮"""
         if status != "idle":
             return []  # 处理中不可执行新操作
-            
+
         actions = {
             "topic": [
                 {
@@ -435,9 +435,9 @@ class SessionManager:
             ],
             # 其他阶段操作...
         }
-        
+
         return actions.get(stage, [])
-        
+
     def _get_capabilities(self, stage: str) -> List[str]:
         """获取当前阶段的功能列表"""
         # 根据不同阶段返回不同的功能集
@@ -448,21 +448,21 @@ class SessionManager:
             "styling": ["suggestions", "autoComplete", "grammarCheck"],
             "review": ["suggestions", "grammarCheck"]
         }
-        
+
         return capabilities.get(stage, [])
-        
+
     async def _update_progress(self, session_id: str, progress: int, current_step: str = None):
         """更新会话进度"""
         update_data = {
             "progress": progress,
             "updatedAt": datetime.utcnow()
         }
-        
+
         if current_step:
             update_data["currentStep"] = current_step
-            
+
         await self.session_repo.update(session_id, update_data)
-        
+
         # 发送进度更新事件
         await self.event_dispatcher.dispatch_event(
             session_id,
@@ -488,34 +488,34 @@ logger = logging.getLogger("event_dispatcher")
 
 class EventDispatcher:
     """事件分发器，处理WebSocket实时通信"""
-    
+
     def __init__(self):
         self.clients = {}  # session_id -> {client_id: websocket}
-        
+
     async def register_client(self, session_id: str, client_id: str, websocket: WebSocket):
         """注册新客户端连接"""
         if session_id not in self.clients:
             self.clients[session_id] = {}
-            
+
         self.clients[session_id][client_id] = websocket
         logger.info(f"客户端 {client_id} 已连接到会话 {session_id}")
-        
+
     async def unregister_client(self, session_id: str, client_id: str):
         """注销客户端连接"""
         if session_id in self.clients and client_id in self.clients[session_id]:
             del self.clients[session_id][client_id]
             logger.info(f"客户端 {client_id} 已断开与会话 {session_id} 的连接")
-            
+
             # 如果没有客户端，清理会话记录
             if not self.clients[session_id]:
                 del self.clients[session_id]
-                
+
     async def dispatch_event(self, session_id: str, event_type: str, data: Dict):
         """向会话的所有客户端分发事件"""
         if session_id not in self.clients:
             logger.warning(f"会话 {session_id} 没有连接的客户端")
             return
-            
+
         event = {
             "type": event_type,
             "data": data,
@@ -525,17 +525,17 @@ class EventDispatcher:
                 "sessionId": session_id
             }
         }
-        
+
         message = json.dumps(event)
         disconnected_clients = []
-        
+
         for client_id, websocket in self.clients[session_id].items():
             try:
                 await websocket.send_text(message)
             except Exception as e:
                 logger.error(f"向客户端 {client_id} 发送事件失败: {str(e)}")
                 disconnected_clients.append(client_id)
-                
+
         # 清理断开连接的客户端
         for client_id in disconnected_clients:
             await self.unregister_client(session_id, client_id)
@@ -636,7 +636,7 @@ services:
     depends_on:
       - mongo
       - redis
-      
+
   worker:
     build: .
     command: celery -A worker.celery_app worker --loglevel=info
@@ -646,21 +646,21 @@ services:
     depends_on:
       - mongo
       - redis
-      
+
   mongo:
     image: mongo:4.4
     volumes:
       - mongo_data:/data/db
     ports:
       - "27017:27017"
-      
+
   redis:
     image: redis:6
     volumes:
       - redis_data:/data
     ports:
       - "6379:6379"
-      
+
 volumes:
   mongo_data:
   redis_data:
@@ -683,7 +683,7 @@ def mock_event_dispatcher():
     dispatcher = AsyncMock()
     dispatcher.dispatch_event = AsyncMock()
     return dispatcher
-    
+
 @pytest.fixture
 def mock_session_repo():
     repo = AsyncMock()
@@ -691,18 +691,18 @@ def mock_session_repo():
     repo.find_by_id = AsyncMock()
     repo.update = AsyncMock()
     return repo
-    
+
 @pytest.fixture
 def mock_message_repo():
     repo = AsyncMock()
     repo.get_latest = AsyncMock(return_value=None)
     return repo
-    
+
 @pytest.fixture
 def session_manager(mock_event_dispatcher, mock_session_repo, mock_message_repo):
     config = {"API_KEY": "test_key"}
     manager = SessionManager(
-        config, 
+        config,
         mock_event_dispatcher,
         mock_session_repo,
         mock_message_repo
@@ -716,12 +716,12 @@ def session_manager(mock_event_dispatcher, mock_session_repo, mock_message_repo)
 async def test_create_session(session_manager, mock_session_repo):
     # 执行测试
     result = await session_manager.create_session("article_123", "topic")
-    
+
     # 验证结果
     assert "sessionId" in result
     assert result["progress"]["stage"] == "topic"
     assert result["progress"]["status"] == "idle"
-    
+
     # 验证调用
     mock_session_repo.create.assert_called_once()
 ```
@@ -744,4 +744,4 @@ async def test_create_session(session_manager, mock_session_repo):
 
 ---
 
-最后更新: 2024-05-15 
+最后更新: 2024-05-15

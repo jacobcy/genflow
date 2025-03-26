@@ -16,7 +16,7 @@ try:
     logger.info("成功导入工具基类")
 except ImportError:
     logger.warning("导入工具基类失败，使用模拟版本")
-    
+
     @dataclass
     class ToolResult:
         """工具执行结果（模拟版本）"""
@@ -24,21 +24,21 @@ except ImportError:
         data: Any
         error: Optional[str] = None
         metadata: Optional[Dict] = None
-    
+
     class BaseTool:
         """工具基类（模拟版本）"""
         name: str = "mock_tool"
         description: str = "模拟工具"
-        
+
         def __init__(self, config: Dict = None):
             self.config = config or {}
             logger.info(f"初始化模拟工具: {self.name}")
-        
+
         async def execute(self, *args, **kwargs) -> ToolResult:
             """执行工具功能"""
             logger.info(f"执行模拟工具: {self.name}")
             return ToolResult(success=True, data="模拟数据", metadata={"mock": True})
-        
+
         def get_description(self) -> Dict:
             """获取工具描述"""
             return {
@@ -52,16 +52,16 @@ class MockAggregator(BaseTool):
     """模拟聚合工具基类"""
     name = "mock_aggregator"
     description = "模拟聚合工具"
-    
+
     def __init__(self, config: Dict = None):
         super().__init__(config)
-        
+
     async def execute(self, *args, **kwargs) -> ToolResult:
         """模拟执行"""
         logger.info(f"执行模拟聚合工具: {kwargs}")
         return ToolResult(
-            success=True, 
-            data="模拟聚合结果", 
+            success=True,
+            data="模拟聚合结果",
             metadata={"args": args, "kwargs": str(kwargs)}
         )
 
@@ -84,4 +84,4 @@ class NLPAggregator(MockAggregator):
 class TrendingTopics(MockAggregator):
     """趋势话题工具（模拟版本）"""
     name = "trending_topics"
-    description = "趋势话题工具" 
+    description = "趋势话题工具"

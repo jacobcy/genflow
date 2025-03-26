@@ -13,23 +13,23 @@ logger = logging.getLogger(__name__)
 
 class WritingAgents:
     """写作团队智能体管理类
-    
+
     负责创建和管理写作流程中的各个角色智能体。
     遵循CrewAI最佳实践，每个智能体都有明确的角色定位和合适的工具集。
     """
 
     def __init__(self, platform: Platform):
         """初始化写作智能体管理器
-        
+
         Args:
             platform: 目标发布平台，决定了内容风格和格式要求
         """
         logger.info(f"初始化写作智能体管理器，目标平台: {platform.name}")
         self.platform = platform
-        
+
         # 创建写作工具集
         self.tools = WritingTools(platform)
-        
+
         # 智能体角色与能力配置
         self.role_configs = {
             "outline_creator": {
@@ -89,7 +89,7 @@ class WritingAgents:
                 ]
             }
         }
-        
+
         # 初始化智能体实例
         self.agents = {}
         logger.info("写作智能体配置完成")
@@ -97,21 +97,21 @@ class WritingAgents:
     def create_agent(self, role_key: str, verbose: bool = True) -> Agent:
         """
         创建指定角色的智能体
-        
+
         Args:
             role_key: 角色键名，对应role_configs中的配置
             verbose: 是否启用详细日志
-            
+
         Returns:
             Agent: 创建的智能体实例
         """
         if role_key not in self.role_configs:
             logger.error(f"未找到角色配置: {role_key}")
             raise ValueError(f"未找到角色配置: {role_key}")
-        
+
         config = self.role_configs[role_key]
         logger.info(f"创建{config['role']}智能体")
-        
+
         agent = Agent(
             role=config["role"],
             goal=config["goal"],
@@ -120,39 +120,39 @@ class WritingAgents:
             verbose=verbose,
             allow_delegation=True
         )
-        
+
         # 缓存创建的智能体
         self.agents[role_key] = agent
         logger.info(f"{config['role']}智能体创建完成，分配了{len(config['tools'])}个工具")
-        
+
         return agent
-    
+
     def create_outline_creator(self, verbose: bool = True) -> Agent:
         """创建大纲设计师智能体"""
         return self.create_agent("outline_creator", verbose)
-    
+
     def create_content_writer(self, verbose: bool = True) -> Agent:
         """创建内容创作者智能体"""
         return self.create_agent("content_writer", verbose)
-    
+
     def create_seo_specialist(self, verbose: bool = True) -> Agent:
         """创建SEO优化专家智能体"""
         return self.create_agent("seo_specialist", verbose)
-    
+
     def create_editor(self, verbose: bool = True) -> Agent:
         """创建内容编辑智能体"""
         return self.create_agent("editor", verbose)
-    
+
     def create_fact_checker(self, verbose: bool = True) -> Agent:
         """创建事实核查员智能体"""
         return self.create_agent("fact_checker", verbose)
-    
+
     def create_all_agents(self, verbose: bool = True) -> Dict[str, Agent]:
         """创建所有智能体"""
         logger.info("创建所有写作智能体")
-        
+
         for role_key in self.role_configs.keys():
             self.create_agent(role_key, verbose)
-            
+
         logger.info(f"已创建{len(self.agents)}个写作智能体")
         return self.agents

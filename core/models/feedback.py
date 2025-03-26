@@ -9,7 +9,7 @@ from datetime import datetime
 @dataclass
 class ResearchFeedback:
     """研究反馈
-    
+
     用于收集对研究结果的反馈，可以来自人类或者系统。
     """
     feedback_text: str
@@ -17,7 +17,7 @@ class ResearchFeedback:
     completeness_rating: Optional[float] = None  # 1-10的完整性评分
     suggested_improvements: List[str] = field(default_factory=list)
     feedback_source: str = "system"  # system或human
-    
+
     def to_dict(self) -> Dict:
         """转换为字典表示"""
         return {
@@ -27,7 +27,7 @@ class ResearchFeedback:
             "suggested_improvements": self.suggested_improvements,
             "feedback_source": self.feedback_source
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> 'ResearchFeedback':
         """从字典创建实例"""
@@ -42,7 +42,7 @@ class ResearchFeedback:
 @dataclass
 class ContentFeedback:
     """内容反馈
-    
+
     用于收集对生成内容的反馈。
     """
     content_id: str
@@ -51,7 +51,7 @@ class ContentFeedback:
     feedback_categories: List[str] = field(default_factory=list)  # 例如：'clarity', 'relevance', 'accuracy'
     created_at: datetime = field(default_factory=datetime.now)
     user_id: Optional[str] = None
-    
+
     def to_dict(self) -> Dict:
         """转换为字典表示"""
         return {
@@ -62,7 +62,7 @@ class ContentFeedback:
             "created_at": self.created_at.isoformat(),
             "user_id": self.user_id
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> 'ContentFeedback':
         """从字典创建实例"""
@@ -73,8 +73,8 @@ class ContentFeedback:
             feedback_categories=data.get("feedback_categories", []),
             user_id=data.get("user_id")
         )
-        
+
         if "created_at" in data:
             feedback.created_at = datetime.fromisoformat(data["created_at"])
-            
-        return feedback 
+
+        return feedback

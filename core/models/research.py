@@ -22,7 +22,7 @@ class ArticleSectionType(Enum):
 @dataclass
 class ArticleSection:
     """文章部分结构
-    
+
     表示文章的一个部分或一个段落，包含标题、内容和类型。
     """
     title: str
@@ -30,7 +30,7 @@ class ArticleSection:
     section_type: ArticleSectionType
     subsections: List['ArticleSection'] = field(default_factory=list)
     order: int = 0
-    
+
     def to_dict(self) -> Dict:
         """转换为字典表示"""
         return {
@@ -40,7 +40,7 @@ class ArticleSection:
             "order": self.order,
             "subsections": [s.to_dict() for s in self.subsections]
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> 'ArticleSection':
         """从字典创建实例"""
@@ -50,16 +50,16 @@ class ArticleSection:
             section_type=ArticleSectionType(data["section_type"]),
             order=data.get("order", 0)
         )
-        
+
         if "subsections" in data:
             section.subsections = [cls.from_dict(s) for s in data["subsections"]]
-            
+
         return section
 
 @dataclass
 class Source:
     """信息来源
-    
+
     表示研究过程中使用的信息来源，包括来源名称、URL和可靠性评分。
     """
     name: str
@@ -68,7 +68,7 @@ class Source:
     publish_date: Optional[str] = None
     reliability_score: float = 0.0
     content_snippet: Optional[str] = None
-    
+
     def to_dict(self) -> Dict:
         """转换为字典表示"""
         return {
@@ -79,7 +79,7 @@ class Source:
             "reliability_score": self.reliability_score,
             "content_snippet": self.content_snippet
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> 'Source':
         """从字典创建实例"""
@@ -95,7 +95,7 @@ class Source:
 @dataclass
 class ExpertInsight:
     """专家见解
-    
+
     表示从专家那里收集到的见解或观点。
     """
     expert_name: str
@@ -103,7 +103,7 @@ class ExpertInsight:
     field: Optional[str] = None
     credentials: Optional[str] = None
     source: Optional[Source] = None
-    
+
     def to_dict(self) -> Dict:
         """转换为字典表示"""
         return {
@@ -113,7 +113,7 @@ class ExpertInsight:
             "credentials": self.credentials,
             "source": self.source.to_dict() if self.source else None
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> 'ExpertInsight':
         """从字典创建实例"""
@@ -128,13 +128,13 @@ class ExpertInsight:
 @dataclass
 class KeyFinding:
     """关键发现
-    
+
     表示研究过程中的一个关键发现或结论。
     """
     content: str
     importance: float = 0.0  # 0.0-1.0的重要性评分
     sources: List[Source] = field(default_factory=list)
-    
+
     def to_dict(self) -> Dict:
         """转换为字典表示"""
         return {
@@ -142,7 +142,7 @@ class KeyFinding:
             "importance": self.importance,
             "sources": [s.to_dict() for s in self.sources]
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> 'KeyFinding':
         """从字典创建实例"""
@@ -150,16 +150,16 @@ class KeyFinding:
             content=data["content"],
             importance=data.get("importance", 0.0)
         )
-        
+
         if "sources" in data:
             finding.sources = [Source.from_dict(s) for s in data["sources"]]
-            
+
         return finding
 
 @dataclass
 class ResearchResult:
     """研究结果
-    
+
     表示完整的研究结果，包含背景信息、专家见解、关键发现等。
     """
     topic: str
@@ -169,7 +169,7 @@ class ResearchResult:
     sources: List[Source] = field(default_factory=list)
     data_analysis: Optional[str] = None
     research_timestamp: datetime = field(default_factory=datetime.now)
-    
+
     def to_dict(self) -> Dict:
         """转换为字典表示"""
         return {
@@ -181,7 +181,7 @@ class ResearchResult:
             "data_analysis": self.data_analysis,
             "research_timestamp": self.research_timestamp.isoformat()
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> 'ResearchResult':
         """从字典创建实例"""
@@ -190,25 +190,25 @@ class ResearchResult:
             background=data.get("background"),
             data_analysis=data.get("data_analysis")
         )
-        
+
         if "expert_insights" in data:
             result.expert_insights = [ExpertInsight.from_dict(e) for e in data["expert_insights"]]
-            
+
         if "key_findings" in data:
             result.key_findings = [KeyFinding.from_dict(f) for f in data["key_findings"]]
-            
+
         if "sources" in data:
             result.sources = [Source.from_dict(s) for s in data["sources"]]
-            
+
         if "research_timestamp" in data:
             result.research_timestamp = datetime.fromisoformat(data["research_timestamp"])
-            
+
         return result
 
 @dataclass
 class Article:
     """文章结构
-    
+
     表示完整的文章结构，由多个部分组成。
     """
     title: str
@@ -218,7 +218,7 @@ class Article:
     author: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
     word_count: int = 0
-    
+
     def to_dict(self) -> Dict:
         """转换为字典表示"""
         return {
@@ -230,7 +230,7 @@ class Article:
             "created_at": self.created_at.isoformat(),
             "word_count": self.word_count
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> 'Article':
         """从字典创建实例"""
@@ -241,11 +241,11 @@ class Article:
             author=data.get("author"),
             word_count=data.get("word_count", 0)
         )
-        
+
         if "sections" in data:
             article.sections = [ArticleSection.from_dict(s) for s in data["sections"]]
-            
+
         if "created_at" in data:
             article.created_at = datetime.fromisoformat(data["created_at"])
-            
-        return article 
+
+        return article

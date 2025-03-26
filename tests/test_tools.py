@@ -46,7 +46,7 @@ Python是动态类型的，并且具有垃圾回收功能。
 
 class BaseToolTest:
     """工具测试基类"""
-    
+
     @pytest.fixture(autouse=True)
     async def setup_tool(self):
         """设置工具实例"""
@@ -54,11 +54,11 @@ class BaseToolTest:
         yield
         if hasattr(self.tool, 'cleanup'):
             await self.tool.cleanup()
-    
+
     def get_tool_instance(self) -> BaseTool:
         """获取工具实例，子类必须实现"""
         raise NotImplementedError
-    
+
     async def verify_tool_result(self, result: ToolResult):
         """验证工具执行结果"""
         logger.info(f"验证工具执行结果: {result}")
@@ -71,10 +71,10 @@ class BaseToolTest:
 @pytest.mark.asyncio
 class TestContentTools(BaseToolTest):
     """内容采集工具测试"""
-    
+
     def get_tool_instance(self) -> ContentCollector:
         return ContentCollector()
-    
+
     async def test_content_collector(self):
         """测试内容采集聚合工具"""
         logger.info("开始测试内容采集器")
@@ -83,7 +83,7 @@ class TestContentTools(BaseToolTest):
             await self.tool.execute(TEST_NEWS_URL)
         )
         assert "tool_used" in result.metadata
-        
+
         # 测试普通网页
         await self.verify_tool_result(
             await self.tool.execute(TEST_URL)
@@ -93,10 +93,10 @@ class TestContentTools(BaseToolTest):
 @pytest.mark.asyncio
 class TestSearchTools(BaseToolTest):
     """搜索工具测试"""
-    
+
     def get_tool_instance(self) -> SearchAggregator:
         return SearchAggregator()
-    
+
     async def test_search_aggregator(self):
         """测试搜索聚合工具"""
         logger.info("开始测试搜索聚合器")
@@ -110,10 +110,10 @@ class TestSearchTools(BaseToolTest):
 @pytest.mark.asyncio
 class TestNLPTools(BaseToolTest):
     """NLP工具测试"""
-    
+
     def get_tool_instance(self) -> NLPAggregator:
         return NLPAggregator()
-    
+
     async def test_nlp_aggregator(self):
         """测试 NLP 聚合工具"""
         logger.info("开始测试NLP聚合器")
@@ -127,7 +127,7 @@ class TestNLPTools(BaseToolTest):
 @pytest.mark.asyncio
 class TestStyleTools(BaseToolTest):
     """样式工具测试"""
-    
+
     def get_tool_instance(self) -> StyleAdapter:
         platform = Platform(
             id="wechat",
@@ -157,7 +157,7 @@ class TestStyleTools(BaseToolTest):
             )
         )
         return StyleAdapter.get_instance(platform)
-    
+
     async def test_style_adapter(self):
         """测试样式适配器基本功能"""
         logger.info("开始测试样式适配器")
@@ -172,7 +172,7 @@ class TestStyleTools(BaseToolTest):
 @pytest.mark.asyncio
 class TestContentController:
     """内容生成团队测试"""
-    
+
     @pytest.fixture(autouse=True)
     async def setup_controller(self):
         """设置内容生成控制器"""
@@ -180,7 +180,7 @@ class TestContentController:
         yield
         if hasattr(self.controller, 'cleanup'):
             await self.controller.cleanup()
-    
+
     async def test_content_controller_initialization(self):
         """测试内容生成控制器初始化"""
         logger.info("开始测试内容生成控制器初始化")
@@ -190,7 +190,7 @@ class TestContentController:
         assert self.controller.style_crew is not None
         assert self.controller.review_crew is not None
         logger.info("内容生成控制器初始化测试完成")
-    
+
     async def test_content_creation(self):
         """测试内容生成流程"""
         logger.info("开始测试内容生成流程")
@@ -203,7 +203,7 @@ class TestContentController:
         assert "status" in result
         assert result["status"] == "success"
         logger.info(f"内容生成完成，状态: {result['status']}")
-    
+
     async def test_error_handling(self):
         """测试错误处理"""
         logger.info("开始测试错误处理")
@@ -218,13 +218,13 @@ class TestContentController:
 @pytest.mark.asyncio
 class TestTopicTools:
     """选题工具测试"""
-    
+
     @pytest.fixture(autouse=True)
     async def setup_tool(self):
         """设置工具实例"""
         self.tool = TopicTools()
         yield
-    
+
     async def test_tool_initialization(self):
         """测试工具初始化"""
         logger.info("开始测试选题工具初始化")
@@ -234,7 +234,7 @@ class TestTopicTools:
         assert self.tool.nlp_tools is not None
         assert self.tool.trending_tools is not None
         logger.info("选题工具初始化测试完成")
-    
+
     async def test_bound_methods(self):
         """测试方法绑定"""
         logger.info("开始测试工具方法绑定")
@@ -248,12 +248,12 @@ class TestTopicTools:
         assert callable(self.tool.analyze_text)
         assert callable(self.tool.analyze_topic_potential)
         assert callable(self.tool.analyze_competition)
-        
+
         # 确认工具信息和装饰器属性已正确传递
         assert hasattr(self.tool.search_web, "_crewai_tool")
-        
+
         logger.info("工具方法绑定测试完成")
-    
+
     async def test_search_web_functionality(self):
         """测试网络搜索功能"""
         logger.info("开始测试网络搜索功能")
@@ -264,7 +264,7 @@ class TestTopicTools:
             data="模拟搜索结果",
             metadata={"tool_used": "mock_search"}
         )
-        
+
         try:
             # 测试方法是否可调用而不抛出绑定错误
             result = self.tool.search_web("测试查询")
@@ -282,4 +282,4 @@ if __name__ == "__main__":
         format='%(asctime)s [%(levelname)s] %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    pytest.main(["-v", "--log-cli-level=INFO"]) 
+    pytest.main(["-v", "--log-cli-level=INFO"])

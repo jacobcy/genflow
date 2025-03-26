@@ -14,45 +14,45 @@ logger = logging.getLogger("research_agents")
 
 class ResearchAgents:
     """研究团队智能体定义
-    
+
     该类负责创建和管理研究团队的各个智能体，包括背景研究员、专家发现者、
     数据分析师和研究报告撰写员。
     """
-    
+
     _instance: ClassVar[Optional['ResearchAgents']] = None
-    
+
     @classmethod
     def get_instance(cls, config: Optional[Config] = None) -> 'ResearchAgents':
         """获取ResearchAgents单例实例
-        
+
         Args:
             config: 可选的配置对象
-            
+
         Returns:
             ResearchAgents: 单例实例
         """
         if cls._instance is None:
             cls._instance = cls(config=config)
         return cls._instance
-    
+
     @classmethod
     def clear_instance(cls):
         """清除缓存的单例实例"""
         cls._instance = None
-    
+
     def __init__(self, config: Optional[Config] = None):
         """初始化智能体管理器
-        
+
         Args:
             config: 可选的配置对象，如果为None则使用默认配置
         """
         # 加载配置
         self.config = config or Config()
-        
+
         # 初始化工具集
         logger.info("初始化研究团队工具集...")
         self.tools = ResearchTools(config=self.config)
-        
+
         # 根据角色创建智能体工具映射
         self.agent_tools = {
             "background_researcher": [
@@ -79,7 +79,7 @@ class ResearchAgents:
                 self.tools.extract_key_findings
             ]
         }
-        
+
         # 智能体角色配置
         self.agent_configs = {
             "background_researcher": {
@@ -116,12 +116,12 @@ class ResearchAgents:
                 为决策提供有力支持。"""
             }
         }
-        
+
         logger.info("研究团队智能体配置初始化完成")
-    
+
     def create_all_agents(self) -> Dict[str, Agent]:
         """创建所有智能体
-        
+
         Returns:
             Dict[str, Agent]: 名称到智能体对象的映射
         """
@@ -134,10 +134,10 @@ class ResearchAgents:
         }
         logger.info(f"成功创建 {len(agents)} 个研究团队智能体")
         return agents
-    
+
     def create_background_researcher(self) -> Agent:
         """创建背景研究员智能体
-        
+
         Returns:
             Agent: 背景研究员智能体
         """
@@ -152,10 +152,10 @@ class ResearchAgents:
         )
         logger.info(f"背景研究员智能体创建完成，工具数量: {len(self.agent_tools['background_researcher'])}")
         return agent
-    
+
     def create_expert_finder(self) -> Agent:
         """创建专家发现者智能体
-        
+
         Returns:
             Agent: 专家发现者智能体
         """
@@ -170,10 +170,10 @@ class ResearchAgents:
         )
         logger.info(f"专家发现者智能体创建完成，工具数量: {len(self.agent_tools['expert_finder'])}")
         return agent
-    
+
     def create_data_analyst(self) -> Agent:
         """创建数据分析师智能体
-        
+
         Returns:
             Agent: 数据分析师智能体
         """
@@ -188,10 +188,10 @@ class ResearchAgents:
         )
         logger.info(f"数据分析师智能体创建完成，工具数量: {len(self.agent_tools['data_analyst'])}")
         return agent
-    
+
     def create_research_writer(self) -> Agent:
         """创建研究报告撰写员智能体
-        
+
         Returns:
             Agent: 研究报告撰写员智能体
         """
@@ -205,4 +205,4 @@ class ResearchAgents:
             verbose=self.config.AGENT_VERBOSE
         )
         logger.info(f"研究报告撰写员智能体创建完成，工具数量: {len(self.agent_tools['research_writer'])}")
-        return agent 
+        return agent

@@ -6,4 +6,4 @@
 
 from .style_crew import StyleCrew
 
-__all__ = ['StyleCrew'] 
+__all__ = ['StyleCrew']

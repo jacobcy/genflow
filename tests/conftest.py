@@ -26,7 +26,7 @@ def pytest_configure(config):
         format='%(asctime)s [%(levelname)s] %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    
+
     # 设置pytest-asyncio模式
     config.option.asyncio_mode = "auto"
 
@@ -47,4 +47,4 @@ def pytest_collection_modifyitems(items):
     """自动添加异步标记"""
     for item in items:
         if asyncio.iscoroutinefunction(item.function):
-            item.add_marker(pytest.mark.asyncio) 
+            item.add_marker(pytest.mark.asyncio)

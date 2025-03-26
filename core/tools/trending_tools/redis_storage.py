@@ -422,10 +422,10 @@ class RedisStorage:
                 platform = key_str.split(':')[-2]
                 if platform:
                     platforms.append(platform)
-            
+
             logger.info(f"找到 {len(platforms)} 个平台")
             return platforms
-            
+
         except Exception as e:
             logger.error(f"获取平台列表失败: {e}")
             return []

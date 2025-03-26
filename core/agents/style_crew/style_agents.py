@@ -13,22 +13,22 @@ logger = logging.getLogger(__name__)
 
 class PlatformAnalystAgent:
     """平台分析师智能体
-    
+
     负责分析平台特点和风格规范，为后续风格化提供基础。
     """
-    
+
     def __init__(self, style_adapter: StyleAdapter):
         """初始化平台分析师智能体
-        
+
         Args:
             style_adapter: 风格适配器
         """
         self.style_adapter = style_adapter
         self.agent = None
-        
+
     def get_agent(self) -> Agent:
         """获取智能体实例
-        
+
         Returns:
             Agent: CrewAI智能体实例
         """
@@ -48,22 +48,22 @@ class PlatformAnalystAgent:
 
 class StyleExpertAgent:
     """风格专家智能体
-    
+
     负责根据平台特点和原始内容，制定风格改写策略。
     """
-    
+
     def __init__(self, style_adapter: StyleAdapter):
         """初始化风格专家智能体
-        
+
         Args:
             style_adapter: 风格适配器
         """
         self.style_adapter = style_adapter
         self.agent = None
-        
+
     def get_agent(self) -> Agent:
         """获取智能体实例
-        
+
         Returns:
             Agent: CrewAI智能体实例
         """
@@ -82,22 +82,22 @@ class StyleExpertAgent:
 
 class ContentAdapterAgent:
     """内容适配器智能体
-    
+
     负责根据风格建议对内容进行实际改写。
     """
-    
+
     def __init__(self, style_adapter: StyleAdapter):
         """初始化内容适配器智能体
-        
+
         Args:
             style_adapter: 风格适配器
         """
         self.style_adapter = style_adapter
         self.agent = None
-        
+
     def get_agent(self) -> Agent:
         """获取智能体实例
-        
+
         Returns:
             Agent: CrewAI智能体实例
         """
@@ -116,22 +116,22 @@ class ContentAdapterAgent:
 
 class QualityCheckerAgent:
     """质量检查员智能体
-    
+
     负责检查改写后内容的质量和合规性。
     """
-    
+
     def __init__(self, style_adapter: StyleAdapter):
         """初始化质量检查员智能体
-        
+
         Args:
             style_adapter: 风格适配器
         """
         self.style_adapter = style_adapter
         self.agent = None
-        
+
     def get_agent(self) -> Agent:
         """获取智能体实例
-        
+
         Returns:
             Agent: CrewAI智能体实例
         """
@@ -145,4 +145,4 @@ class QualityCheckerAgent:
                 allow_delegation=False,
                 tools=[self.style_adapter.execute]
             )
-        return self.agent 
+        return self.agent
