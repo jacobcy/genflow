@@ -405,3 +405,27 @@ class RedisStorage:
         except Exception as e:
             logger.error(f"获取键列表失败: {e}")
             return []
+
+    async def get_all_platforms(self) -> List[str]:
+        """获取所有有数据的平台名称列表
+
+        Returns:
+            List[str]: 平台名称列表
+        """
+        try:
+            platforms = []
+            # 查找所有平台索引键
+            pattern = f"{self.KEY_PREFIX['platform']}*:topics"
+            for key in self.redis.scan_iter(pattern):
+                key_str = key.decode('utf-8')
+                # 从键名提取平台名称
+                platform = key_str.split(':')[-2]
+                if platform:
+                    platforms.append(platform)
+            
+            logger.info(f"找到 {len(platforms)} 个平台")
+            return platforms
+            
+        except Exception as e:
+            logger.error(f"获取平台列表失败: {e}")
+            return []

@@ -1,4 +1,8 @@
-"""工具包"""
+"""
+GenFlow Tools Package
+
+This package contains various utility tools and helpers for the GenFlow system.
+"""
 
 from core.tools.base import BaseTool, ToolResult
 from core.tools.content_collectors import ContentCollector

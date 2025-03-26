@@ -1,35 +1,20 @@
+"""
+GenFlow 测试包
+
+本包包含GenFlow项目的测试代码。
+测试用例主要针对以下几个方面：
+1. 工具功能测试
+2. 代理通信测试 
+3. 主题工具测试
+4. 集成测试
+
+框架使用 pytest 作为测试框架。
+"""
+
 import os
-import tempfile
-import pytest
-from app import create_app, db
+import sys
 
-@pytest.fixture
-def app():
-    """创建测试应用"""
-    db_fd, db_path = tempfile.mkstemp()
-    app = create_app('testing')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-    app.config['TESTING'] = True
-    
-    with app.app_context():
-        db.create_all()
-        yield app
-    
-    os.close(db_fd)
-    os.unlink(db_path)
-
-@pytest.fixture
-def client(app):
-    """创建测试客户端"""
-    return app.test_client()
-
-@pytest.fixture
-def auth_headers(client):
-    """获取认证头"""
-    response = client.post('/api/auth/register', json={
-        'username': 'testuser',
-        'email': 'test@example.com',
-        'password': 'password123'
-    })
-    token = response.json['access_token']
-    return {'Authorization': f'Bearer {token}'}
+# 确保将GenFlow项目根目录添加到Python路径
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root) 

@@ -1,3 +1,15 @@
+> **⚠️ 文档已弃用**
+> 
+> 本文档已经被新版文档替代，请访问最新文档：
+> - API 规范：[GenFlow API 规范](/docs/integrated/genflow_api_specification.md)
+> - 前端实现指南：[前端集成指南](/docs/integrated/frontend_integration_guide.md)
+> - 后端实现指南：[后端实现指南](/docs/integrated/backend_implementation_guide.md)
+> - CrewAI开发指南：[CrewAI开发指南](/docs/integrated/crewai_develop_guide.md)
+> - CrewAI架构指南：[CrewAI架构指南](/docs/integrated/crewai_architecture_guide.md)
+> - 术语表：[GenFlow 术语表](/docs/integrated/terminology_glossary.md)
+>
+> 本文档将在下一个版本发布时移除。
+
 # GenFlow AI 写作工具 API
 
 ## 1. 概述

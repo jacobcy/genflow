@@ -63,6 +63,7 @@ class PerformanceMetrics:
         self.failed_requests = 0
         self.total_topics = 0
         self.platform_stats = {}
+        self.time_records = {}
 
     def start(self):
         """开始计时"""
@@ -83,6 +84,21 @@ class PerformanceMetrics:
         self.total_topics += count
         self.platform_stats[platform] = count
 
+    def record_time(self, key: str, duration: float = None):
+        """记录特定操作的时间
+
+        Args:
+            key: 操作标识符
+            duration: 如果提供，直接使用此持续时间，否则计算当前时间和开始时间的差值
+        """
+        if duration is None and self.start_time:
+            duration = time.time() - self.start_time
+        
+        if key in self.time_records:
+            self.time_records[key].append(duration)
+        else:
+            self.time_records[key] = [duration]
+
     def get_duration(self) -> float:
         """获取执行时长（秒）"""
         if not self.start_time or not self.end_time:
@@ -91,13 +107,25 @@ class PerformanceMetrics:
 
     def get_summary(self) -> Dict:
         """获取性能统计摘要"""
-        return {
+        summary = {
             "duration": self.get_duration(),
             "total_requests": self.total_requests,
             "failed_requests": self.failed_requests,
             "total_topics": self.total_topics,
             "platform_stats": self.platform_stats
         }
+        
+        # 处理时间记录统计
+        for key, times in self.time_records.items():
+            if times:
+                summary[key] = {
+                    "avg": sum(times) / len(times),
+                    "min": min(times),
+                    "max": max(times),
+                    "count": len(times)
+                }
+                
+        return summary
 
 class APICollector:
     """API数据收集器，专注于从API获取原始数据"""
@@ -152,7 +180,7 @@ class APICollector:
         """
         try:
             # 构建API URL
-            url = f"{self.api_base_url}/config"
+            url = f"{self.api_base_url}/all"
             logger.info(f"开始获取平台配置: {url}")
 
             # 发送请求
@@ -340,17 +368,23 @@ class APICollector:
             # 记录性能指标
             metrics_summary = self.metrics.get_summary()
             logger.info("\n性能指标总结:")
-            for op, stats in metrics_summary.items():
-                logger.info(f"- {op}:")
-                logger.info(f"  平均: {stats['avg']:.3f}秒")
-                logger.info(f"  最小: {stats['min']:.3f}秒")
-                logger.info(f"  最大: {stats['max']:.3f}秒")
-                logger.info(f"  次数: {stats['count']}")
+            for metric_name, metric_value in metrics_summary.items():
+                if isinstance(metric_value, dict):
+                    logger.info(f"- {metric_name}:")
+                    for k, v in metric_value.items():
+                        if isinstance(v, float):
+                            logger.info(f"  {k}: {v:.3f}")
+                        else:
+                            logger.info(f"  {k}: {v}")
+                elif isinstance(metric_value, float):
+                    logger.info(f"- {metric_name}: {metric_value:.3f}秒")
+                else:
+                    logger.info(f"- {metric_name}: {metric_value}")
 
             return all_data
 
         finally:
-            self.metrics.record_time("get_all_topics", start_time)
+            self.metrics.record_time("get_all_topics", time.time() - start_time)
             if self.session:
                 await self.session.close()
                 self.session = None

@@ -5,6 +5,8 @@ from core.models.platform import PLATFORM_CONFIGS
 
 async def main():
     """主程序入口"""
+    # 先初始化controller为None，避免在异常处理中出现未定义错误
+    controller = None
     try:
         # 创建内容控制器
         controller = ContentController()
@@ -66,11 +68,12 @@ async def main():
 
     except KeyboardInterrupt:
         print("\n已取消生产")
-        controller.pause_production()
+        if controller:
+            controller.pause_production()
     except Exception as e:
         print(f"\n发生错误: {str(e)}")
         # 打印错误日志
-        if hasattr(controller, 'current_progress'):
+        if controller and hasattr(controller, 'current_progress'):
             print("\n错误日志:")
             for error in controller.current_progress.error_logs:
                 print(f"- [{error['stage']}] {error['time']}: {error['error']}")

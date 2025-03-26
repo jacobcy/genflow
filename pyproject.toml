@@ -73,17 +73,17 @@ dev = [
     "pytest-asyncio>=0.23.5",
     "pytest-cov>=4.1.0",
     "ruff>=0.3.0",
-    "pre-commit>=3.6.2",
-    "faker>=24.2.0",  # 用于生成测试数据
-    "locust>=2.24.0", # 用于性能测试
+    "pre-commit>=4.2.0",
+    "faker>=24.2.0",
+    "locust>=2.24.0",
 ]
 
 backend = [
-    "aiofiles>=23.2.1",       # 异步文件操作
+    "aiofiles>=23.2.1",
 ]
 
 all = [
-    "pre-commit>=3.6.2",
+    "pre-commit>=4.2.0",
 ]
 
 [project.scripts]

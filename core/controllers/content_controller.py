@@ -1,20 +1,26 @@
-"""内容生产主控制器"""
-from typing import List, Dict, Optional
+"""内容生产主控制器
+
+该模块实现了内容生产的总体协调流程，整合各个专业团队完成从选题到发布的全流程。
+"""
+
+from typing import List, Dict, Optional, Any, Callable
 from datetime import datetime
 import asyncio
 import uuid
+import logging
+
 from core.models.topic import Topic
 from core.models.article import Article
-from core.models.platform import Platform
+from core.models.platform import Platform, get_default_platform
 from core.models.progress import ProductionProgress, ProductionStage, StageStatus
-from core.agents.topic_crew.topic_crew import TopicCrew
-from core.agents.research_crew.research_crew import ResearchCrew
-from core.agents.writing_crew.writing_crew import WritingCrew
-from core.agents.review_crew.review_crew import ReviewCrew
-from core.tools.style_tools.adapter import StyleAdapter
-from core.tools.content_collectors.collector import ContentCollector
-from core.tools.trending_tools.topic_trends import TrendingTopics
-from core.tools.writing_tools.article_writer import ArticleWriter
+from core.agents.topic_crew import TopicCrew
+from core.agents.research_crew import ResearchCrew
+from core.agents.writing_crew import WritingCrew
+from core.agents.review_crew import ReviewCrew
+from core.agents.style_crew import StyleCrew
+from core.tools.style_tools import StyleAdapter
+
+logger = logging.getLogger(__name__)
 
 class ContentProductionResult:
     """内容生产结果"""
@@ -33,30 +39,60 @@ class ContentProductionResult:
         self.platform = platform
         self.created_at = datetime.now()
         self.status = "pending"
+        
+    def to_dict(self) -> Dict:
+        """转换为字典"""
+        return {
+            "topic": self.topic.to_dict() if hasattr(self.topic, "to_dict") else self.topic,
+            "research_data": self.research_data,
+            "article": self.article.to_dict() if hasattr(self.article, "to_dict") else self.article,
+            "review_data": self.review_data,
+            "platform": self.platform.to_dict() if hasattr(self.platform, "to_dict") else self.platform.name,
+            "created_at": self.created_at.isoformat(),
+            "status": self.status
+        }
 
 class ContentController:
-    """内容生产主控制器"""
+    """内容生产主控制器
+    
+    协调各个专业团队，完成从选题到发布的全流程内容生产。
+    支持多话题批量处理、进度跟踪、人工反馈和生产流程控制。
+    """
     
     def __init__(self):
-        """初始化团队"""
+        """初始化内容生产控制器"""
         self.topic_crew = TopicCrew()
         self.research_crew = ResearchCrew()
         self.writing_crew = WritingCrew()
+        self.style_crew = StyleCrew()
         self.review_crew = ReviewCrew()
-        self.production_results: List[ContentProductionResult] = []
-        self.current_progress: Optional[ProductionProgress] = None
+        self.style_adapter = StyleAdapter.get_instance()
+        self.production_results = []
+        self.current_progress = None
+    
+    async def initialize(self, platform: Optional[Platform] = None):
+        """初始化各个团队
+        
+        Args:
+            platform: 目标平台，如果不提供则使用默认配置
+        """
+        await self.topic_crew.initialize()
+        await self.research_crew.initialize()
+        await self.writing_crew.initialize()
+        await self.style_crew.initialize(platform)
+        await self.review_crew.initialize()
     
     async def discover_topics(self, category: str, count: int = 3) -> List[Topic]:
         """发现话题
         
         Args:
             category: 话题类别
-            count: 话题数量
+            count: 需要的话题数量
             
         Returns:
             List[Topic]: 发现的话题列表
         """
-        print("\n=== 话题发现阶段 ===")
+        logger.info(f"开始发现话题，类别: {category}，数量: {count}")
         
         # 更新进度
         self.current_progress.start_stage(ProductionStage.TOPIC_DISCOVERY, count)
@@ -84,17 +120,40 @@ class ContentController:
             self.current_progress.completed_topics = len(approved_topics)
             self.current_progress.complete_stage(ProductionStage.TOPIC_DISCOVERY)
             
+            logger.info(f"话题发现完成，发现 {len(topics)} 个话题，通过 {len(approved_topics)} 个")
             return approved_topics
             
         except Exception as e:
+            logger.error(f"话题发现出错: {str(e)}")
             self.current_progress.add_error(
                 ProductionStage.TOPIC_DISCOVERY,
                 str(e)
             )
             raise
     
+    async def research_topic(self, topic: Topic) -> Dict:
+        """研究单个话题
+        
+        Args:
+            topic: 要研究的话题
+            
+        Returns:
+            Dict: 研究结果
+        """
+        logger.info(f"开始研究话题: {topic.title}")
+        
+        try:
+            # 进行研究
+            research_result = await self.research_crew.research_topic(topic)
+            logger.info(f"话题研究完成: {topic.title}")
+            return research_result
+            
+        except Exception as e:
+            logger.error(f"研究话题 '{topic.title}' 失败: {str(e)}")
+            raise
+    
     async def research_topics(self, topics: List[Topic]) -> List[Dict]:
-        """研究话题
+        """批量研究话题
         
         Args:
             topics: 要研究的话题列表
@@ -102,7 +161,7 @@ class ContentController:
         Returns:
             List[Dict]: 研究结果列表
         """
-        print("\n=== 话题研究阶段 ===")
+        logger.info(f"开始批量研究话题，数量: {len(topics)}")
         
         # 更新进度
         self.current_progress.start_stage(ProductionStage.TOPIC_RESEARCH, len(topics))
@@ -114,9 +173,10 @@ class ContentController:
         
         for topic in topics:
             try:
-                print(f"\n研究话题: {topic.title}")
+                logger.info(f"研究话题: {topic.title}")
+                
                 # 进行研究
-                research_result = await self.research_crew.research_topic(topic)
+                research_result = await self.research_topic(topic)
                 
                 # 获取人工反馈
                 research_result = self.research_crew.get_human_feedback(research_result)
@@ -136,6 +196,7 @@ class ContentController:
                 
             except Exception as e:
                 error_count += 1
+                logger.error(f"研究话题 '{topic.title}' 失败: {str(e)}")
                 self.current_progress.add_error(
                     ProductionStage.TOPIC_RESEARCH,
                     f"研究话题 '{topic.title}' 失败: {str(e)}"
@@ -150,14 +211,37 @@ class ContentController:
             )
         
         self.current_progress.complete_stage(ProductionStage.TOPIC_RESEARCH)
+        logger.info(f"话题研究阶段完成，通过 {len(research_results)} 个话题")
         return research_results
+    
+    async def write_article(self, topic: Topic, research_result: Dict) -> Article:
+        """撰写单个文章
+        
+        Args:
+            topic: 话题信息
+            research_result: 研究结果
+            
+        Returns:
+            Article: 生成的文章
+        """
+        logger.info(f"开始撰写文章: {topic.title}")
+        
+        try:
+            # 进行写作
+            article = await self.writing_crew.write_article(topic, research_result)
+            logger.info(f"文章撰写完成: {article.title}")
+            return article
+            
+        except Exception as e:
+            logger.error(f"撰写文章 '{topic.title}' 失败: {str(e)}")
+            raise
     
     async def write_articles(
         self,
         research_results: List[Dict],
         platform: Platform
     ) -> List[Dict]:
-        """写作文章
+        """批量写作文章
         
         Args:
             research_results: 研究结果列表
@@ -166,7 +250,7 @@ class ContentController:
         Returns:
             List[Dict]: 写作结果列表
         """
-        print("\n=== 文章写作阶段 ===")
+        logger.info(f"开始批量写作文章，数量: {len(research_results)}")
         
         # 更新进度
         self.current_progress.start_stage(
@@ -181,7 +265,8 @@ class ContentController:
         
         for result in research_results:
             try:
-                print(f"\n写作文章: {result['article_outline'].title}")
+                logger.info(f"写作文章: {result['article_outline'].title}")
+                
                 # 进行写作
                 writing_result = await self.writing_crew.write_article(
                     result["article_outline"],
@@ -207,6 +292,7 @@ class ContentController:
                 
             except Exception as e:
                 error_count += 1
+                logger.error(f"写作文章失败: {str(e)}")
                 self.current_progress.add_error(
                     ProductionStage.ARTICLE_WRITING,
                     f"写作文章 '{result['article_outline'].title}' 失败: {str(e)}"
@@ -221,14 +307,37 @@ class ContentController:
             )
         
         self.current_progress.complete_stage(ProductionStage.ARTICLE_WRITING)
+        logger.info(f"文章写作阶段完成，通过 {len(writing_results)} 个文章")
         return writing_results
+    
+    async def adapt_style(self, article: Article, platform: Platform) -> Article:
+        """适配单个文章风格
+        
+        Args:
+            article: 原始文章
+            platform: 目标平台
+            
+        Returns:
+            Article: 风格适配后的文章
+        """
+        logger.info(f"开始适配文章风格: {article.title}")
+        
+        try:
+            # 进行风格适配
+            style_result = await self.style_crew.adapt_style(article, platform)
+            logger.info(f"文章风格适配完成: {article.title}")
+            return style_result.final_article
+            
+        except Exception as e:
+            logger.error(f"适配文章风格 '{article.title}' 失败: {str(e)}")
+            raise
     
     async def adapt_articles(
         self,
         writing_results: List[Dict],
         platform: Platform
     ) -> List[Dict]:
-        """适配文章风格
+        """批量适配文章风格
         
         Args:
             writing_results: 写作结果列表
@@ -237,7 +346,7 @@ class ContentController:
         Returns:
             List[Dict]: 适配结果列表
         """
-        print("\n=== 风格适配阶段 ===")
+        logger.info(f"开始批量适配文章风格，数量: {len(writing_results)}")
         
         # 更新进度
         self.current_progress.start_stage(
@@ -250,24 +359,15 @@ class ContentController:
         total_score = 0
         error_count = 0
         
-        # 创建风格适配器
-        adapter = StyleAdapter(platform)
-        
         for result in writing_results:
             try:
-                print(f"\n适配文章: {result['article'].title}")
+                logger.info(f"适配文章: {result['article'].title}")
+                
                 # 进行风格适配
-                adapted_article = await adapter.adapt_article(result["article"])
+                adapted_article = await self.adapt_style(result["article"], platform)
                 
                 # 获取人工反馈
-                print("\n请对风格适配结果进行评分(0-1):")
-                print("- 语气是否符合平台风格")
-                print("- 格式是否符合平台要求")
-                print("- 结构是否合理")
-                print("- SEO优化是否到位")
-                
-                # 模拟人工反馈(实际应该由用户输入)
-                feedback_score = 0.8
+                feedback_score = self.style_crew.get_human_feedback(adapted_article, platform)
                 
                 # 更新统计
                 completed_count += 1
@@ -284,6 +384,7 @@ class ContentController:
                 
             except Exception as e:
                 error_count += 1
+                logger.error(f"适配文章风格失败: {str(e)}")
                 self.current_progress.add_error(
                     ProductionStage.STYLE_ADAPTATION,
                     f"适配文章 '{result['article'].title}' 失败: {str(e)}"
@@ -298,14 +399,36 @@ class ContentController:
             )
         
         self.current_progress.complete_stage(ProductionStage.STYLE_ADAPTATION)
+        logger.info(f"文章风格适配阶段完成，通过 {len(adaptation_results)} 个文章")
         return adaptation_results
+    
+    async def review_article(self, article: Article) -> Dict:
+        """审核单个文章
+        
+        Args:
+            article: 要审核的文章
+            
+        Returns:
+            Dict: 审核结果
+        """
+        logger.info(f"开始审核文章: {article.title}")
+        
+        try:
+            # 进行审核
+            review_result = await self.review_crew.review_article(article)
+            logger.info(f"文章审核完成: {article.title}")
+            return review_result
+            
+        except Exception as e:
+            logger.error(f"审核文章 '{article.title}' 失败: {str(e)}")
+            raise
     
     async def review_articles(
         self,
         writing_results: List[Dict],
         platform: Platform
     ) -> List[Dict]:
-        """审核文章
+        """批量审核文章
         
         Args:
             writing_results: 写作结果列表
@@ -314,7 +437,7 @@ class ContentController:
         Returns:
             List[Dict]: 审核结果列表
         """
-        print("\n=== 文章审核阶段 ===")
+        logger.info(f"开始批量审核文章，数量: {len(writing_results)}")
         
         # 更新进度
         self.current_progress.start_stage(
@@ -329,12 +452,10 @@ class ContentController:
         
         for result in writing_results:
             try:
-                print(f"\n审核文章: {result['article'].title}")
+                logger.info(f"审核文章: {result['article'].title}")
+                
                 # 进行审核
-                review_result = await self.review_crew.review_article(
-                    result["article"],
-                    platform
-                )
+                review_result = await self.review_article(result["article"])
                 
                 # 获取人工反馈
                 review_result = self.review_crew.get_human_feedback(review_result)
@@ -357,6 +478,7 @@ class ContentController:
                 
             except Exception as e:
                 error_count += 1
+                logger.error(f"审核文章失败: {str(e)}")
                 self.current_progress.add_error(
                     ProductionStage.ARTICLE_REVIEW,
                     f"审核文章 '{result['article'].title}' 失败: {str(e)}"
@@ -371,86 +493,238 @@ class ContentController:
             )
         
         self.current_progress.complete_stage(ProductionStage.ARTICLE_REVIEW)
+        logger.info(f"文章审核阶段完成，通过 {len(review_results)} 个文章")
         return review_results
     
     async def produce_content(
         self,
-        category: str,
-        platform: Platform,
-        topic_count: int = 3
-    ) -> List[ContentProductionResult]:
-        """生产内容
+        topic: Optional[Topic] = None,
+        category: Optional[str] = None,
+        platform: Optional[Platform] = None,
+        topic_count: int = 1,
+        progress_callback: Optional[Callable] = None
+    ) -> Dict:
+        """生产内容的完整流程
+        
+        从选题到发布的完整流程，支持单篇和多篇模式。
         
         Args:
-            category: 话题类别
-            platform: 目标平台
-            topic_count: 话题数量
+            topic: 指定话题，如不提供则自动发现
+            category: 话题类别，当topic不提供时使用
+            platform: 目标平台，如不提供则使用默认平台
+            topic_count: 话题数量，当topic不提供时使用
+            progress_callback: 进度回调函数
             
         Returns:
-            List[ContentProductionResult]: 内容生产结果列表
+            Dict: 生产结果，包含文章和各阶段数据
         """
         # 初始化进度跟踪
         production_id = str(uuid.uuid4())
         self.current_progress = ProductionProgress(production_id)
         
+        # 初始化结果数据
+        result = {
+            "status": "success",
+            "production_id": production_id,
+            "start_time": datetime.now().isoformat(),
+            "process": "topic_discovery -> research -> writing -> style -> review",
+            "stages": {},
+        }
+        
         try:
-            # 1. 发现话题
-            topics = await self.discover_topics(category, topic_count)
-            if not topics:
-                print("\n未发现合适的话题")
-                self.current_progress.fail()
-                return []
+            # 初始化各团队
+            await self.initialize(platform)
             
-            # 2. 研究话题
-            research_results = await self.research_topics(topics)
-            if not research_results:
-                print("\n话题研究未通过")
-                self.current_progress.fail()
-                return []
-            
-            # 3. 写作文章
-            writing_results = await self.write_articles(research_results, platform)
-            if not writing_results:
-                print("\n文章写作未通过")
-                self.current_progress.fail()
-                return []
-            
-            # 4. 风格适配
-            adaptation_results = await self.adapt_articles(writing_results, platform)
-            if not adaptation_results:
-                print("\n风格适配未通过")
-                self.current_progress.fail()
-                return []
-            
-            # 5. 审核文章
-            review_results = await self.review_articles(adaptation_results, platform)
-            if not review_results:
-                print("\n文章审核未通过")
-                self.current_progress.fail()
-                return []
-            
-            # 6. 整理生产结果
-            production_results = []
-            for result in review_results:
+            # 确保平台参数
+            if not platform:
+                platform = get_default_platform()
+                
+            # 单篇模式: 处理单个话题
+            if topic:
+                logger.info(f"开始处理单个话题: {topic.title}")
+                
+                # 阶段1: 话题准备
+                self.current_progress.start_stage(ProductionStage.TOPIC_DISCOVERY, 1)
+                self.current_progress.complete_stage(ProductionStage.TOPIC_DISCOVERY)
+                result["stages"]["topic_discovery"] = {
+                    "topic": topic.to_dict() if hasattr(topic, "to_dict") else {"title": topic.title},
+                    "completed_at": datetime.now().isoformat()
+                }
+                
+                # 阶段2: 研究
+                self.current_progress.start_stage(ProductionStage.TOPIC_RESEARCH, 1)
+                research_result = await self.research_topic(topic)
+                self.current_progress.complete_stage(ProductionStage.TOPIC_RESEARCH)
+                result["stages"]["research"] = {
+                    "result_summary": {
+                        "key_findings_count": len(research_result.get("key_findings", [])),
+                        "sources_count": len(research_result.get("sources", [])),
+                    },
+                    "completed_at": datetime.now().isoformat()
+                }
+                
+                # 阶段3: 写作
+                self.current_progress.start_stage(ProductionStage.ARTICLE_WRITING, 1)
+                article = await self.write_article(topic, research_result)
+                self.current_progress.complete_stage(ProductionStage.ARTICLE_WRITING)
+                result["stages"]["writing"] = {
+                    "article_summary": {
+                        "title": article.title,
+                        "word_count": article.word_count,
+                        "sections_count": len(article.sections)
+                    },
+                    "completed_at": datetime.now().isoformat()
+                }
+                
+                # 阶段4: 风格适配
+                self.current_progress.start_stage(ProductionStage.STYLE_ADAPTATION, 1)
+                styled_article = await self.adapt_style(article, platform)
+                self.current_progress.complete_stage(ProductionStage.STYLE_ADAPTATION)
+                result["stages"]["style_adaptation"] = {
+                    "platform": platform.name,
+                    "changes_summary": {
+                        "tone_adjusted": True,
+                        "format_adjusted": True,
+                        "structure_adjusted": True
+                    },
+                    "completed_at": datetime.now().isoformat()
+                }
+                
+                # 阶段5: 审核
+                self.current_progress.start_stage(ProductionStage.ARTICLE_REVIEW, 1)
+                review_result = await self.review_article(styled_article)
+                self.current_progress.complete_stage(ProductionStage.ARTICLE_REVIEW)
+                result["stages"]["review"] = {
+                    "score": review_result.get("overall_score", 0),
+                    "passed": review_result.get("passed", False),
+                    "improvement_suggestions": review_result.get("improvement_suggestions", []),
+                    "completed_at": datetime.now().isoformat()
+                }
+                
+                # 保存生产结果
                 production_result = ContentProductionResult(
-                    topic=result["topic"],
-                    research_data=result["research_result"].__dict__,
-                    article=result["article"],
-                    review_data=result["review_result"].__dict__,
+                    topic=topic,
+                    research_data=research_result,
+                    article=styled_article,
+                    review_data=review_result,
                     platform=platform
                 )
                 production_result.status = "completed"
                 self.production_results.append(production_result)
-                production_results.append(production_result)
+                
+                # 加入最终结果
+                result["final_article"] = styled_article.to_dict() if hasattr(styled_article, "to_dict") else styled_article
+                result["review_result"] = review_result
+                
+            # 多篇模式: 批量处理多个话题
+            else:
+                logger.info(f"开始批量生产内容，类别: {category}，数量: {topic_count}")
+                
+                # 阶段1: 话题发现
+                topics = await self.discover_topics(category or "technology", topic_count)
+                if not topics:
+                    raise ValueError(f"未能在类别 {category} 中发现合适话题")
+                    
+                result["stages"]["topic_discovery"] = {
+                    "topics": [topic.to_dict() if hasattr(topic, "to_dict") else {"title": topic.title} for topic in topics],
+                    "completed_at": datetime.now().isoformat()
+                }
+                
+                # 阶段2: 话题研究
+                research_results = await self.research_topics(topics)
+                if not research_results:
+                    raise ValueError("话题研究未通过")
+                    
+                result["stages"]["research"] = {
+                    "results_count": len(research_results),
+                    "completed_at": datetime.now().isoformat()
+                }
+                
+                # 阶段3: 文章写作
+                writing_results = await self.write_articles(research_results, platform)
+                if not writing_results:
+                    raise ValueError("文章写作未通过")
+                    
+                result["stages"]["writing"] = {
+                    "articles_count": len(writing_results),
+                    "completed_at": datetime.now().isoformat()
+                }
+                
+                # 阶段4: 风格适配
+                adaptation_results = await self.adapt_articles(writing_results, platform)
+                if not adaptation_results:
+                    raise ValueError("风格适配未通过")
+                    
+                result["stages"]["style_adaptation"] = {
+                    "adapted_count": len(adaptation_results),
+                    "completed_at": datetime.now().isoformat()
+                }
+                
+                # 阶段5: 文章审核
+                review_results = await self.review_articles(adaptation_results, platform)
+                if not review_results:
+                    raise ValueError("文章审核未通过")
+                    
+                result["stages"]["review"] = {
+                    "reviewed_count": len(review_results),
+                    "passed_count": len([r for r in review_results if r["article"].status == "approved"]),
+                    "completed_at": datetime.now().isoformat()
+                }
+                
+                # 保存生产结果
+                production_results = []
+                for res in review_results:
+                    prod_result = ContentProductionResult(
+                        topic=res["topic"],
+                        research_data=res["research_result"].__dict__,
+                        article=res["article"],
+                        review_data=res["review_result"].__dict__,
+                        platform=platform
+                    )
+                    prod_result.status = "completed"
+                    self.production_results.append(prod_result)
+                    production_results.append(prod_result)
+                
+                # 加入最终结果
+                result["final_articles"] = [
+                    res["article"].to_dict() if hasattr(res["article"], "to_dict") else res["article"]
+                    for res in review_results
+                ]
+                result["review_results"] = [
+                    res["review_result"].__dict__ if hasattr(res["review_result"], "__dict__") else res["review_result"]
+                    for res in review_results
+                ]
             
             # 完成生产
             self.current_progress.complete()
-            return production_results
+            
+            # 最终结果
+            result["end_time"] = datetime.now().isoformat()
+            result["duration_seconds"] = (datetime.fromisoformat(result["end_time"]) - 
+                                         datetime.fromisoformat(result["start_time"])).total_seconds()
+            result["progress_summary"] = self.current_progress.get_summary()
+            
+            logger.info(f"内容生产完成，状态: {result['status']}")
+            return result
             
         except Exception as e:
-            print(f"\n生产过程出错: {str(e)}")
+            logger.error(f"内容生产过程出错: {str(e)}")
             self.current_progress.fail()
-            raise
+            
+            result["status"] = "error"
+            result["error"] = str(e)
+            result["end_time"] = datetime.now().isoformat()
+            result["duration_seconds"] = (datetime.fromisoformat(result["end_time"]) - 
+                                         datetime.fromisoformat(result["start_time"])).total_seconds()
+            
+            # 记录中断时的阶段
+            if self.current_progress and self.current_progress.current_stage:
+                result["interrupted_stage"] = self.current_progress.current_stage.value
+                
+            # 添加错误日志
+            result["error_logs"] = self.current_progress.error_logs if self.current_progress else []
+            
+            return result
     
     def get_progress(self) -> Dict:
         """获取当前进度
@@ -466,37 +740,38 @@ class ContentController:
         """暂停生产"""
         if self.current_progress:
             self.current_progress.pause()
-            print("\n已暂停生产")
+            logger.info("已暂停生产")
     
     def resume_production(self):
         """恢复生产"""
         if self.current_progress:
             self.current_progress.resume()
-            print("\n已恢复生产")
+            logger.info("已恢复生产")
 
 # 使用示例
 async def main():
-    # 创建一个示例平台
-    platform = Platform(
-        id="platform_001",
-        name="掘金",
-        url="https://juejin.cn",
-        content_rules={
-            "min_words": 1000,
-            "max_words": 5000,
-            "allowed_tags": ["Python", "编程", "技术"]
-        }
-    )
-    
-    # 创建控制器
-    controller = ContentController()
-    
+    """主函数"""
     try:
+        # 创建一个示例平台
+        platform = Platform(
+            id="zhihu",
+            name="知乎",
+            url="https://www.zhihu.com",
+            content_rules={
+                "min_words": 1000,
+                "max_words": 5000,
+                "allowed_tags": ["Python", "编程", "技术"]
+            }
+        )
+        
+        # 创建控制器
+        controller = ContentController()
+        
         # 生产内容
         results = await controller.produce_content(
             category="技术",
             platform=platform,
-            topic_count=3
+            topic_count=1
         )
         
         # 打印进度摘要
@@ -507,35 +782,20 @@ async def main():
         print(f"阶段状态: {progress['stage_status']}")
         print(f"总进度: {progress['progress_percentage']}%")
         print(f"总耗时: {progress['duration']:.2f}秒")
-        print(f"话题数: {progress['total_topics']}")
-        print(f"完成数: {progress['completed_topics']}")
-        print(f"错误数: {progress['error_count']}")
-        
-        print("\n各阶段统计:")
-        for stage, stats in progress["stages"].items():
-            print(f"\n{stage}:")
-            print(f"- 状态: {stats['status']}")
-            print(f"- 耗时: {stats['duration']:.2f}秒")
-            print(f"- 完成项目: {stats['completed_items']}/{stats['total_items']}")
-            print(f"- 成功率: {stats['success_rate']*100:.2f}%")
-            print(f"- 平均评分: {stats['avg_score']:.2f}")
-            print(f"- 错误数: {stats['error_count']}")
         
         # 打印生产结果
         print("\n=== 生产结果 ===")
-        for result in results:
-            print(f"\n文章: {result.article.title}")
-            print(f"平台: {result.platform.name}")
-            print(f"状态: {result.status}")
-            print(f"创建时间: {result.created_at}")
+        if "final_article" in results:
+            print(f"文章: {results['final_article']['title']}")
+        elif "final_articles" in results:
+            for idx, article in enumerate(results["final_articles"]):
+                print(f"\n文章 {idx+1}: {article['title']}")
+        
+        print(f"状态: {results['status']}")
+        print(f"耗时: {results['duration_seconds']:.2f}秒")
     
     except Exception as e:
         print(f"\n生产失败: {str(e)}")
-        # 打印错误日志
-        if controller.current_progress:
-            print("\n错误日志:")
-            for error in controller.current_progress.error_logs:
-                print(f"- [{error['stage'].value}] {error['time']}: {error['error']}")
 
 if __name__ == "__main__":
     asyncio.run(main()) 

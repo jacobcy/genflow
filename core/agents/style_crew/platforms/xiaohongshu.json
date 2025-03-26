@@ -1,0 +1,100 @@
+{
+    "id": "xiaohongshu",
+    "name": "小红书",
+    "type": "lifestyle",
+    "url": "https://www.xiaohongshu.com",
+    "description": "国内知名的生活方式分享社区，用户主要为年轻女性，偏好种草、体验分享、图文并茂的内容",
+    "target_audience": "18-35岁年轻女性为主，对时尚、美妆、生活品质、旅行等领域感兴趣",
+    "content_types": [
+        "lifestyle",
+        "review",
+        "experience",
+        "guide",
+        "recommendation"
+    ],
+    "primary_language": "zh-CN",
+    "content_rules": {
+        "min_length": 500,
+        "max_length": 6000,
+        "allowed_formats": [
+            "text",
+            "image",
+            "list",
+            "emoji"
+        ],
+        "forbidden_words": [
+            "敏感词1",
+            "敏感词2",
+            "敏感词3"
+        ],
+        "required_sections": [
+            "开篇",
+            "体验",
+            "推荐"
+        ]
+    },
+    "style_rules": {
+        "tone": "enthusiastic",
+        "formality": 2,
+        "emotion": true,
+        "code_block": false,
+        "emoji": true,
+        "image_text_ratio": 0.4,
+        "max_image_count": 30,
+        "min_paragraph_length": 20,
+        "max_paragraph_length": 200,
+        "paragraph_count_range": [
+            5,
+            20
+        ],
+        "section_count_range": [
+            3,
+            8
+        ],
+        "title_length_range": [
+            15,
+            40
+        ],
+        "keyword_density": 0.025,
+        "heading_required": true,
+        "tag_count_range": [
+            5,
+            20
+        ]
+    },
+    "style_guide": {
+        "tone": "enthusiastic",
+        "format": "图文并茂",
+        "target_audience": "18-35岁年轻女性为主，对时尚、美妆、生活品质、旅行等领域感兴趣",
+        "writing_style": "亲切种草",
+        "language_level": "simple",
+        "content_approach": "个人体验分享",
+        "recommended_patterns": [
+            "使用第一人称叙述，强调个人感受",
+            "多用感官词汇和具体描述",
+            "多使用「超爱」「绝绝子」「yyds」等网络流行语",
+            "图文结合，每段重点配图说明",
+            "使用排行榜、TOP榜单等方式组织内容",
+            "使用对比和前后效果展示"
+        ],
+        "examples": [
+            "不愧是Python必学技能！这个异步编程方法也太好用了吧！❤️",
+            "程序员必备！这份 Python 学习笔记让我效率提升300%（附实操步骤）",
+            "入门Python的第一天，就学会了这个高级技巧，同事都惊呆了！"
+        ]
+    },
+    "seo_requirements": {
+        "title_length": 50,
+        "description_length": 100,
+        "keyword_count": 5,
+        "meta_requirements": {
+            "title_format": "我发现了{主题}超赞的{特点}！",
+            "description_format": "分享一下关于{主题}的个人体验，含{关键词}等干货~"
+        }
+    },
+    "publish_settings": {
+        "auto_publish": false,
+        "review_required": true,
+        "publish_time": "immediate"
+    }
+}

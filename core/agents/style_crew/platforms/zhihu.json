@@ -1,0 +1,107 @@
+{
+    "id": "zhihu",
+    "name": "知乎",
+    "type": "knowledge_sharing",
+    "url": "https://www.zhihu.com",
+    "description": "国内知名的问答社区与专业内容平台，用户以知识分享为主，偏好深度、通俗易懂、有见解的科普内容",
+    "target_audience": "20-40岁的高学历人群，主要对科技、人文、社科、职场等领域内容感兴趣，期望获得专业但易懂的解读",
+    "content_types": [
+        "popular_science",
+        "professional_analysis",
+        "industry_insight",
+        "knowledge_explanation",
+        "conceptual_understanding"
+    ],
+    "primary_language": "zh-CN",
+    "content_rules": {
+        "min_length": 1000,
+        "max_length": 20000,
+        "allowed_formats": [
+            "text",
+            "image",
+            "code",
+            "table",
+            "link"
+        ],
+        "forbidden_words": [
+            "敏感词1",
+            "敏感词2",
+            "敏感词3"
+        ],
+        "required_sections": [
+            "引言",
+            "主体",
+            "结论"
+        ]
+    },
+    "style_rules": {
+        "tone": "conversational_professional",
+        "formality": 3,
+        "emotion": false,
+        "code_block": true,
+        "emoji": false,
+        "image_text_ratio": 0.1,
+        "max_image_count": 30,
+        "min_paragraph_length": 50,
+        "max_paragraph_length": 400,
+        "paragraph_count_range": [
+            8,
+            40
+        ],
+        "section_count_range": [
+            4,
+            15
+        ],
+        "title_length_range": [
+            20,
+            80
+        ],
+        "keyword_density": 0.01,
+        "heading_required": true,
+        "tag_count_range": [
+            3,
+            8
+        ]
+    },
+    "style_guide": {
+        "tone": "conversational_professional",
+        "format": "图文并茂",
+        "target_audience": "20-40岁的高学历人群，期望获得专业但不艰涩的解读",
+        "writing_style": "科普式专业解析，带有轻微优越感",
+        "language_level": "intermediate",
+        "content_approach": "从概念到应用，略带装逼感",
+        "recommended_patterns": [
+            "使用类比和比喻解释复杂概念",
+            "少量简单代码点到为止，重在解释原理",
+            "多用图表和示意图辅助理解",
+            "从历史背景和发展脉络入手",
+            "建立与读者已有知识的连接",
+            "分析原理和应用场景，而非实现细节",
+            "使用问答体增强互动感",
+            "总结关键点和常见误区",
+            "适当引入个人见解，展示独特视角",
+            "不经意间展示自己的学识广度"
+        ],
+        "examples": [
+            "深度解析：为什么说99%的程序员其实不懂多线程",
+            "你以为你知道的HTTP协议，可能都是错的（附RFC原理解读）",
+            "从量子力学到分布式系统：一个程序员的知识跨界指南",
+            "那些斯坦福教授不会告诉你的算法思维训练法",
+            "用星巴克的排队机制，彻底讲清操作系统的进程调度"
+        ]
+    },
+    "seo_requirements": {
+        "title_length": 100,
+        "description_length": 200,
+        "keyword_count": 5,
+        "meta_requirements": {
+            "title_format": "{主题}：{副标题} - 知乎",
+            "description_format": "关于{主题}的科普解析，帮助你理解{关键词}等核心概念"
+        }
+    },
+    "publish_settings": {
+        "auto_publish": false,
+        "review_required": true,
+        "publish_time": "immediate"
+    }
+}

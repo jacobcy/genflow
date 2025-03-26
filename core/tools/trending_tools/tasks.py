@@ -35,7 +35,22 @@ async def update_trending_data() -> bool:
 
         # 获取最新数据
         logger.info("开始获取最新数据...")
-        all_topics = await tool.fetch_topics()
+        
+        # 使用async with确保APICollector正确初始化并在任务完成后关闭
+        from .api_collector import APICollector
+        all_topics = {}
+        
+        async with APICollector() as collector:
+            logger.info("API收集器初始化完成")
+            
+            # 加载平台配置
+            config_loaded = await collector._load_platforms_config()
+            if not config_loaded:
+                logger.error("加载平台配置失败")
+                return False
+                
+            all_topics = await collector.get_all_topics()
+            
         if not all_topics:
             logger.error("未获取到任何数据")
             return False
@@ -71,5 +86,5 @@ async def update_trending_data() -> bool:
         return True
 
     except Exception as e:
-        logger.error(f"更新热点数据失败: {e}")
+        logger.error(f"更新热点数据失败: {e}", exc_info=True)
         return False

@@ -27,8 +27,10 @@ from core.tools.review_tools import (
     OpenAIDetector,
     SensitiveWordChecker
 )
-from core.agents.content_crew import ContentCrew
+from core.controllers.content_controller import ContentController
 from core.models.platform import Platform, StyleRules, ContentRules, StyleGuide, SEORequirements
+# 导入选题工具
+from core.agents.topic_crew.topic_tools import TopicTools
 
 # 测试数据
 TEST_URL = "https://www.python.org"
@@ -168,46 +170,111 @@ class TestStyleTools(BaseToolTest):
         logger.info("样式适配器测试完成")
 
 @pytest.mark.asyncio
-class TestContentCrew:
+class TestContentController:
     """内容生成团队测试"""
     
     @pytest.fixture(autouse=True)
-    async def setup_crew(self):
-        """设置内容生成团队"""
-        self.crew = ContentCrew()
+    async def setup_controller(self):
+        """设置内容生成控制器"""
+        self.controller = ContentController()
         yield
-        if hasattr(self.crew, 'cleanup'):
-            await self.crew.cleanup()
+        if hasattr(self.controller, 'cleanup'):
+            await self.controller.cleanup()
     
-    async def test_content_crew_initialization(self):
-        """测试内容生成团队初始化"""
-        logger.info("开始测试内容生成团队初始化")
-        assert self.crew.researcher is not None
-        assert self.crew.writer is not None
-        assert self.crew.stylist is not None
-        assert self.crew.reviewer is not None
-        assert self.crew.editor is not None
-        logger.info("内容生成团队初始化测试完成")
+    async def test_content_controller_initialization(self):
+        """测试内容生成控制器初始化"""
+        logger.info("开始测试内容生成控制器初始化")
+        assert self.controller.topic_crew is not None
+        assert self.controller.research_crew is not None
+        assert self.controller.writing_crew is not None
+        assert self.controller.style_crew is not None
+        assert self.controller.review_crew is not None
+        logger.info("内容生成控制器初始化测试完成")
     
     async def test_content_creation(self):
         """测试内容生成流程"""
         logger.info("开始测试内容生成流程")
-        result = await self.crew.create_content(
-            topic="Python测试最佳实践",
-            platform="zhihu"
+        result = await self.controller.produce_content(
+            category="Python测试最佳实践",
+            platform="zhihu",
+            topic_count=1
         )
         assert isinstance(result, dict)
-        assert "content" in result
-        assert "metadata" in result
-        assert result["metadata"]["status"] == "success"
-        logger.info(f"内容生成完成，元数据: {result['metadata']}")
+        assert "status" in result
+        assert result["status"] == "success"
+        logger.info(f"内容生成完成，状态: {result['status']}")
     
     async def test_error_handling(self):
         """测试错误处理"""
         logger.info("开始测试错误处理")
-        with pytest.raises(RuntimeError) as exc_info:
-            await self.crew.create_content(topic="", platform="invalid_platform")
-        logger.info(f"错误处理测试完成，捕获到异常: {exc_info.value}")
+        result = await self.controller.produce_content(
+            category="",
+            platform="invalid_platform"
+        )
+        assert result["status"] == "error"
+        assert "error" in result
+        logger.info(f"错误处理测试完成，捕获到错误: {result['error']}")
+
+@pytest.mark.asyncio
+class TestTopicTools:
+    """选题工具测试"""
+    
+    @pytest.fixture(autouse=True)
+    async def setup_tool(self):
+        """设置工具实例"""
+        self.tool = TopicTools()
+        yield
+    
+    async def test_tool_initialization(self):
+        """测试工具初始化"""
+        logger.info("开始测试选题工具初始化")
+        # 验证核心工具实例是否正确初始化
+        assert self.tool.search_tools is not None
+        assert self.tool.content_collector is not None
+        assert self.tool.nlp_tools is not None
+        assert self.tool.trending_tools is not None
+        logger.info("选题工具初始化测试完成")
+    
+    async def test_bound_methods(self):
+        """测试方法绑定"""
+        logger.info("开始测试工具方法绑定")
+        # 验证所有工具方法都已正确绑定
+        assert callable(self.tool.analyze_trends)
+        assert callable(self.tool.fetch_trending_topics)
+        assert callable(self.tool.search_web)
+        assert callable(self.tool.search_professional)
+        assert callable(self.tool.collect_content)
+        assert callable(self.tool.collect_comments)
+        assert callable(self.tool.analyze_text)
+        assert callable(self.tool.analyze_topic_potential)
+        assert callable(self.tool.analyze_competition)
+        
+        # 确认工具信息和装饰器属性已正确传递
+        assert hasattr(self.tool.search_web, "_crewai_tool")
+        
+        logger.info("工具方法绑定测试完成")
+    
+    async def test_search_web_functionality(self):
+        """测试网络搜索功能"""
+        logger.info("开始测试网络搜索功能")
+        # 模拟调用，不期望实际执行，只验证方法可调用
+        # 我们会模拟search_tools.execute的返回，避免真实网络调用
+        self.tool.search_tools.execute = lambda **kwargs: ToolResult(
+            success=True,
+            data="模拟搜索结果",
+            metadata={"tool_used": "mock_search"}
+        )
+        
+        try:
+            # 测试方法是否可调用而不抛出绑定错误
+            result = self.tool.search_web("测试查询")
+            assert result is not None
+            logger.info("网络搜索功能测试成功")
+        except TypeError as e:
+            if "missing required argument" in str(e):
+                pytest.fail(f"方法绑定错误: {e}")
+            else:
+                pytest.fail(f"测试失败: {e}")
 
 if __name__ == "__main__":
     logging.basicConfig(
