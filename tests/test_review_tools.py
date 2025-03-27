@@ -9,7 +9,7 @@ import asyncio
 from unittest.mock import patch, MagicMock
 from crewai import Agent, Task, Crew
 from functools import wraps
-
+from crewai.tools import BaseTool
 # 导入审核团队工具
 from core.agents.review_crew.review_tools import ReviewTools
 from core.models.platform import Platform
@@ -47,6 +47,7 @@ def mock_external_services(func):
 @pytest.fixture
 def test_platform():
     return Platform(
+        id="test_platform_id",
         name="测试平台",
         type="test",
         url="https://test.com",
@@ -84,7 +85,7 @@ async def test_check_plagiarism_with_crewai(test_platform):
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_detect_ai_content_with_crewai(test_platform):
@@ -112,7 +113,7 @@ async def test_detect_ai_content_with_crewai(test_platform):
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_check_sensitive_content_with_crewai(test_platform):
@@ -140,7 +141,7 @@ async def test_check_sensitive_content_with_crewai(test_platform):
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_analyze_content_quality_with_crewai(test_platform):
@@ -168,7 +169,7 @@ async def test_analyze_content_quality_with_crewai(test_platform):
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_evaluate_compliance_with_crewai(test_platform):
@@ -196,7 +197,7 @@ async def test_evaluate_compliance_with_crewai(test_platform):
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_generate_review_report_with_crewai(test_platform):
@@ -224,7 +225,7 @@ async def test_generate_review_report_with_crewai(test_platform):
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_all_review_tools_with_crewai(test_platform):
@@ -263,7 +264,7 @@ async def test_all_review_tools_with_crewai(test_platform):
     assert hasattr(agent, "tools")
     assert len(agent.tools) == len(all_tools)
     for tool in agent.tools:
-        assert callable(tool)
+        assert isinstance(tool, BaseTool)
 
 if __name__ == "__main__":
     # 执行所有测试

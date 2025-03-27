@@ -8,6 +8,7 @@ import pytest
 import asyncio
 from unittest.mock import patch, MagicMock
 from crewai import Agent, Task, Crew
+from crewai.tools import BaseTool
 
 # 导入研究团队工具
 from core.agents.research_crew.research_tools import ResearchTools
@@ -62,7 +63,7 @@ async def test_collect_content_with_crewai():
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_search_expert_opinions_with_crewai():
@@ -90,7 +91,7 @@ async def test_search_expert_opinions_with_crewai():
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_analyze_data_with_crewai():
@@ -118,7 +119,7 @@ async def test_analyze_data_with_crewai():
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_generate_research_report_with_crewai():
@@ -146,7 +147,7 @@ async def test_generate_research_report_with_crewai():
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_extract_key_findings_with_crewai():
@@ -174,7 +175,7 @@ async def test_extract_key_findings_with_crewai():
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_validate_facts_with_crewai():
@@ -202,7 +203,7 @@ async def test_validate_facts_with_crewai():
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_search_related_resources_with_crewai():
@@ -230,7 +231,7 @@ async def test_search_related_resources_with_crewai():
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_compare_perspectives_with_crewai():
@@ -258,7 +259,7 @@ async def test_compare_perspectives_with_crewai():
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_analyze_statistics_with_crewai():
@@ -286,7 +287,7 @@ async def test_analyze_statistics_with_crewai():
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
     assert len(agent.tools) == 1
-    assert callable(agent.tools[0])
+    assert isinstance(agent.tools[0], BaseTool)
 
 @mock_external_services
 async def test_all_research_tools_with_crewai():
@@ -328,7 +329,7 @@ async def test_all_research_tools_with_crewai():
     assert hasattr(agent, "tools")
     assert len(agent.tools) == len(all_tools)
     for tool in agent.tools:
-        assert callable(tool)
+        assert isinstance(tool, BaseTool)
 
 if __name__ == "__main__":
     # 执行所有测试

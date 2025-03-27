@@ -14,8 +14,9 @@ class MockTool(BaseTool):
     """CrewAI兼容的模拟工具基类"""
     name: str = "mock_tool"
     description: str = "模拟工具"
+    config: Optional[Dict[str, Any]] = None
 
-    def __init__(self, config: Dict = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__()
         self.config = config or {}
         logger.info(f"初始化模拟工具: {self.name}")
@@ -28,8 +29,8 @@ class MockTool(BaseTool):
 # 模拟聚合工具类
 class MockAggregator(MockTool):
     """模拟聚合工具基类"""
-    name = "mock_aggregator"
-    description = "模拟聚合工具"
+    name: str = "mock_aggregator"
+    description: str = "模拟聚合工具"
 
     def _run(self, **kwargs) -> str:
         """模拟执行"""
@@ -39,20 +40,20 @@ class MockAggregator(MockTool):
 # 创建模拟版工具类
 class SearchAggregator(MockAggregator):
     """搜索聚合工具"""
-    name = "search_aggregator"
-    description = "搜索聚合工具"
+    name: str = "search_aggregator"
+    description: str = "搜索聚合工具"
 
 class ContentCollector(MockAggregator):
     """内容收集工具"""
-    name = "content_collector"
-    description = "内容收集工具"
+    name: str = "content_collector"
+    description: str = "内容收集工具"
 
 class NLPAggregator(MockAggregator):
     """NLP聚合工具"""
-    name = "nlp_aggregator"
-    description = "NLP聚合工具"
+    name: str = "nlp_aggregator"
+    description: str = "NLP聚合工具"
 
 class TrendingTopics(MockAggregator):
     """趋势话题工具"""
-    name = "trending_topics"
-    description = "趋势话题工具"
+    name: str = "trending_topics"
+    description: str = "趋势话题工具"
