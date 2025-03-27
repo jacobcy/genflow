@@ -242,7 +242,9 @@ jiter==0.8.2
 joblib==1.4.2
     # via nltk
 json-repair==0.40.0
-    # via crewai
+    # via
+    #   genflow (pyproject.toml)
+    #   crewai
 json5==0.10.0
     # via crewai
 jsonpickle==4.0.2

@@ -1,0 +1,54 @@
+{
+    "id": "news",
+    "name": "新闻",
+    "category": "NEWS",
+    "description": "客观报道事实的新闻内容",
+    "format": "standard",
+    "primary_purpose": "inform",
+    "structure_templates": [
+        {
+            "name": "新闻报道",
+            "description": "倒金字塔结构的新闻报道",
+            "sections": ["标题", "导语", "主体", "背景", "结语"],
+            "outline_template": {
+                "headline": "吸引注意的标题",
+                "lead": "包含关键信息的导语",
+                "body": "详细事实和引述",
+                "background": "事件背景和相关信息",
+                "conclusion": "总结或展望"
+            },
+            "examples": ["时事新闻", "科技新闻"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 1000,
+        "max_length": 1500,
+        "min_section_count": 3,
+        "max_section_count": 5,
+        "recommended_section_length": 300,
+        "title_guidelines": {
+            "min_length": 10,
+            "max_length": 50,
+            "format": "headline"
+        },
+        "requires_images": true,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": false,
+        "is_creative": false,
+        "is_formal": true,
+        "is_timely": true,
+        "is_narrative": false,
+        "is_instructional": false,
+        "audience_level": "general",
+        "multimedia_focus": false,
+        "research_intensity": 3
+    },
+    "compatible_styles": ["objective", "factual", "concise"],
+    "example_topics": ["时事新闻", "科技动态", "行业发展"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

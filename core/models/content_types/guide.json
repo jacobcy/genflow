@@ -1,0 +1,56 @@
+{
+    "id": "guide",
+    "name": "指南",
+    "category": "GUIDE",
+    "description": "全面而深入的指导内容",
+    "format": "long-form",
+    "primary_purpose": "educate",
+    "structure_templates": [
+        {
+            "name": "综合指南",
+            "description": "全面的主题指导",
+            "sections": ["介绍", "背景知识", "核心内容", "实践建议", "进阶内容", "常见问题", "资源推荐"],
+            "outline_template": {
+                "introduction": "主题介绍和指南目的",
+                "background": "背景知识和基本概念",
+                "core_content": "主要指导内容和方法",
+                "practical_tips": "实用建议和技巧",
+                "advanced": "进阶内容和深入探讨",
+                "faq": "常见问题解答",
+                "resources": "相关资源和推荐"
+            },
+            "examples": ["旅游指南", "职业发展指南"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 2000,
+        "max_length": 4000,
+        "min_section_count": 5,
+        "max_section_count": 12,
+        "recommended_section_length": 500,
+        "title_guidelines": {
+            "min_length": 10,
+            "max_length": 80,
+            "format": "descriptive"
+        },
+        "requires_images": true,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": false,
+        "is_creative": false,
+        "is_formal": true,
+        "is_timely": false,
+        "is_narrative": false,
+        "is_instructional": true,
+        "audience_level": "intermediate",
+        "multimedia_focus": true,
+        "research_intensity": 4
+    },
+    "compatible_styles": ["comprehensive", "authoritative", "helpful"],
+    "example_topics": ["旅游指南", "职业发展", "生活方式指南"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

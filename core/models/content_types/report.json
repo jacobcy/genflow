@@ -1,0 +1,56 @@
+{
+    "id": "report",
+    "name": "研究报告",
+    "category": "REPORT",
+    "description": "基于数据和研究的深度分析报告",
+    "format": "long-form",
+    "primary_purpose": "analyze",
+    "structure_templates": [
+        {
+            "name": "研究报告",
+            "description": "数据驱动的分析报告",
+            "sections": ["摘要", "引言", "研究方法", "数据分析", "发现", "结论", "建议"],
+            "outline_template": {
+                "summary": "简明扼要的报告摘要",
+                "introduction": "背景和研究目的",
+                "methodology": "研究方法和数据来源",
+                "analysis": "数据分析和解读",
+                "findings": "主要发现和结果",
+                "conclusions": "结论与启示",
+                "recommendations": "基于发现的建议"
+            },
+            "examples": ["行业分析报告", "市场研究报告"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 2500,
+        "max_length": 5000,
+        "min_section_count": 5,
+        "max_section_count": 10,
+        "recommended_section_length": 600,
+        "title_guidelines": {
+            "min_length": 10,
+            "max_length": 100,
+            "format": "descriptive"
+        },
+        "requires_images": true,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": true,
+        "is_creative": false,
+        "is_formal": true,
+        "is_timely": false,
+        "is_narrative": false,
+        "is_instructional": false,
+        "audience_level": "professional",
+        "multimedia_focus": false,
+        "research_intensity": 5
+    },
+    "compatible_styles": ["analytical", "data-driven", "professional"],
+    "example_topics": ["行业趋势", "市场分析", "技术发展报告"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

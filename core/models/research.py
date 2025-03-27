@@ -1,251 +1,152 @@
 """研究结果模型
 
-该模块定义了与研究团队相关的数据模型，包括研究结果、文章结构和反馈等。
-这些模型用于在系统中表示和传递研究过程中产生的数据。
+该模块定义了与研究过程相关的数据模型，包括研究结果和反馈等。
+这些模型用于表示和传递研究过程中产生的数据，与话题模型紧密关联。
 """
 from typing import List, Dict, Optional, Any
-from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from pydantic import BaseModel, Field, field_validator
+from .enums import ArticleSectionType
 
-class ArticleSectionType(Enum):
-    """文章部分类型"""
-    INTRODUCTION = "introduction"  # 引言
-    BACKGROUND = "background"      # 背景
-    MAIN_POINT = "main_point"      # 主要观点
-    ANALYSIS = "analysis"          # 分析
-    EXAMPLE = "example"            # 示例
-    COMPARISON = "comparison"      # 对比
-    CONCLUSION = "conclusion"      # 结论
-    REFERENCE = "reference"        # 参考资料
-
-@dataclass
-class ArticleSection:
+class ArticleSection(BaseModel):
     """文章部分结构
 
     表示文章的一个部分或一个段落，包含标题、内容和类型。
     """
-    title: str
-    content: str
-    section_type: ArticleSectionType
-    subsections: List['ArticleSection'] = field(default_factory=list)
-    order: int = 0
+    title: str = Field(..., description="部分标题")
+    content: str = Field(..., description="部分内容")
+    section_type: ArticleSectionType = Field(..., description="部分类型")
+    subsections: List['ArticleSection'] = Field(default_factory=list, description="子部分列表")
+    order: int = Field(default=0, description="排序序号")
 
-    def to_dict(self) -> Dict:
-        """转换为字典表示"""
-        return {
-            "title": self.title,
-            "content": self.content,
-            "section_type": self.section_type.value,
-            "order": self.order,
-            "subsections": [s.to_dict() for s in self.subsections]
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'ArticleSection':
-        """从字典创建实例"""
-        section = cls(
-            title=data["title"],
-            content=data["content"],
-            section_type=ArticleSectionType(data["section_type"]),
-            order=data.get("order", 0)
-        )
-
-        if "subsections" in data:
-            section.subsections = [cls.from_dict(s) for s in data["subsections"]]
-
-        return section
-
-@dataclass
-class Source:
+class Source(BaseModel):
     """信息来源
 
     表示研究过程中使用的信息来源，包括来源名称、URL和可靠性评分。
     """
-    name: str
-    url: Optional[str] = None
-    author: Optional[str] = None
-    publish_date: Optional[str] = None
-    reliability_score: float = 0.0
-    content_snippet: Optional[str] = None
+    name: str = Field(..., description="来源名称")
+    url: Optional[str] = Field(default=None, description="来源URL")
+    author: Optional[str] = Field(default=None, description="作者")
+    publish_date: Optional[str] = Field(default=None, description="发布日期")
+    reliability_score: float = Field(default=0.0, description="可靠性评分(0-1)")
+    content_snippet: Optional[str] = Field(default=None, description="内容摘要")
 
-    def to_dict(self) -> Dict:
-        """转换为字典表示"""
-        return {
-            "name": self.name,
-            "url": self.url,
-            "author": self.author,
-            "publish_date": self.publish_date,
-            "reliability_score": self.reliability_score,
-            "content_snippet": self.content_snippet
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'Source':
-        """从字典创建实例"""
-        return cls(
-            name=data["name"],
-            url=data.get("url"),
-            author=data.get("author"),
-            publish_date=data.get("publish_date"),
-            reliability_score=data.get("reliability_score", 0.0),
-            content_snippet=data.get("content_snippet")
-        )
-
-@dataclass
-class ExpertInsight:
+class ExpertInsight(BaseModel):
     """专家见解
 
     表示从专家那里收集到的见解或观点。
     """
-    expert_name: str
-    content: str
-    field: Optional[str] = None
-    credentials: Optional[str] = None
-    source: Optional[Source] = None
+    expert_name: str = Field(..., description="专家姓名")
+    content: str = Field(..., description="见解内容")
+    field: Optional[str] = Field(default=None, description="专业领域")
+    credentials: Optional[str] = Field(default=None, description="资质证明")
+    source: Optional[Source] = Field(default=None, description="来源信息")
 
-    def to_dict(self) -> Dict:
-        """转换为字典表示"""
-        return {
-            "expert_name": self.expert_name,
-            "content": self.content,
-            "field": self.field,
-            "credentials": self.credentials,
-            "source": self.source.to_dict() if self.source else None
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'ExpertInsight':
-        """从字典创建实例"""
-        return cls(
-            expert_name=data["expert_name"],
-            content=data["content"],
-            field=data.get("field"),
-            credentials=data.get("credentials"),
-            source=Source.from_dict(data["source"]) if data.get("source") else None
-        )
-
-@dataclass
-class KeyFinding:
+class KeyFinding(BaseModel):
     """关键发现
 
     表示研究过程中的一个关键发现或结论。
     """
-    content: str
-    importance: float = 0.0  # 0.0-1.0的重要性评分
-    sources: List[Source] = field(default_factory=list)
+    content: str = Field(..., description="发现内容")
+    importance: float = Field(default=0.0, description="重要性评分(0-1)")
+    sources: List[Source] = Field(default_factory=list, description="支持此发现的来源列表")
 
-    def to_dict(self) -> Dict:
-        """转换为字典表示"""
-        return {
-            "content": self.content,
-            "importance": self.importance,
-            "sources": [s.to_dict() for s in self.sources]
-        }
+class ArticleOutlineItem(BaseModel):
+    """文章大纲项
 
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'KeyFinding':
-        """从字典创建实例"""
-        finding = cls(
-            content=data["content"],
-            importance=data.get("importance", 0.0)
-        )
+    表示文章大纲中的一个项目，包含标题、内容摘要和类型。
+    """
+    title: str = Field(..., description="标题")
+    summary: str = Field(default="", description="内容摘要")
+    section_type: ArticleSectionType = Field(..., description="部分类型")
+    subsections: List['ArticleOutlineItem'] = Field(default_factory=list, description="子项列表")
+    order: int = Field(default=0, description="排序序号")
 
-        if "sources" in data:
-            finding.sources = [Source.from_dict(s) for s in data["sources"]]
-
-        return finding
-
-@dataclass
-class ResearchResult:
-    """研究结果
+class TopicResearch(BaseModel):
+    """话题研究结果
 
     表示完整的研究结果，包含背景信息、专家见解、关键发现等。
+    与特定话题和内容类型相关联。
     """
-    topic: str
-    background: Optional[str] = None
-    expert_insights: List[ExpertInsight] = field(default_factory=list)
-    key_findings: List[KeyFinding] = field(default_factory=list)
-    sources: List[Source] = field(default_factory=list)
-    data_analysis: Optional[str] = None
-    research_timestamp: datetime = field(default_factory=datetime.now)
+    topic_id: str = Field(..., description="关联的话题ID")
+    content_type: str = Field(..., description="内容类型")
 
-    def to_dict(self) -> Dict:
-        """转换为字典表示"""
-        return {
-            "topic": self.topic,
-            "background": self.background,
-            "expert_insights": [e.to_dict() for e in self.expert_insights],
-            "key_findings": [f.to_dict() for f in self.key_findings],
-            "sources": [s.to_dict() for s in self.sources],
-            "data_analysis": self.data_analysis,
-            "research_timestamp": self.research_timestamp.isoformat()
-        }
+    title: str = Field(..., description="研究标题")
+    background: Optional[str] = Field(default=None, description="背景信息")
 
+    expert_insights: List[ExpertInsight] = Field(default_factory=list, description="专家见解列表")
+    key_findings: List[KeyFinding] = Field(default_factory=list, description="关键发现列表")
+    sources: List[Source] = Field(default_factory=list, description="信息来源列表")
+
+    data_analysis: Optional[str] = Field(default=None, description="数据分析结果")
+    research_timestamp: datetime = Field(default_factory=datetime.now, description="研究时间")
+
+    article_outline: Optional[List[ArticleOutlineItem]] = Field(default=None, description="文章大纲")
+
+    @field_validator("content_type")
     @classmethod
-    def from_dict(cls, data: Dict) -> 'ResearchResult':
-        """从字典创建实例"""
-        result = cls(
-            topic=data["topic"],
-            background=data.get("background"),
-            data_analysis=data.get("data_analysis")
-        )
+    def validate_content_type(cls, v):
+        """验证内容类型"""
+        # 此处可添加内容类型验证逻辑
+        # 例如检查ContentType.get_content_type(v)是否返回有效实例
+        return v
 
-        if "expert_insights" in data:
-            result.expert_insights = [ExpertInsight.from_dict(e) for e in data["expert_insights"]]
-
-        if "key_findings" in data:
-            result.key_findings = [KeyFinding.from_dict(f) for f in data["key_findings"]]
-
-        if "sources" in data:
-            result.sources = [Source.from_dict(s) for s in data["sources"]]
-
-        if "research_timestamp" in data:
-            result.research_timestamp = datetime.fromisoformat(data["research_timestamp"])
-
-        return result
-
-@dataclass
-class Article:
-    """文章结构
-
-    表示完整的文章结构，由多个部分组成。
-    """
-    title: str
-    description: str
-    sections: List[ArticleSection] = field(default_factory=list)
-    tags: List[str] = field(default_factory=list)
-    author: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.now)
-    word_count: int = 0
-
-    def to_dict(self) -> Dict:
-        """转换为字典表示"""
-        return {
-            "title": self.title,
-            "description": self.description,
-            "sections": [s.to_dict() for s in self.sections],
-            "tags": self.tags,
-            "author": self.author,
-            "created_at": self.created_at.isoformat(),
-            "word_count": self.word_count
+    class Config:
+        """模型配置"""
+        json_schema_extra = {
+            "example": {
+                "topic_id": "topic_001",
+                "content_type": "tech_tutorial",
+                "title": "Python异步编程最佳实践",
+                "background": "异步编程是现代应用开发中的重要技术，尤其在IO密集型应用中...",
+                "expert_insights": [
+                    {
+                        "expert_name": "David Beazley",
+                        "content": "异步编程最大的挑战在于思维模式的转变...",
+                        "field": "Python开发",
+                        "credentials": "知名Python演讲者，著有多本Python图书",
+                        "source": {
+                            "name": "PyCon 2023演讲",
+                            "url": "https://example.com/pycon2023",
+                            "reliability_score": 0.9
+                        }
+                    }
+                ],
+                "key_findings": [
+                    {
+                        "content": "asyncio在IO密集型应用中可提升性能5-10倍",
+                        "importance": 0.8,
+                        "sources": [
+                            {
+                                "name": "Python官方文档",
+                                "url": "https://docs.python.org/3/library/asyncio.html",
+                                "reliability_score": 1.0
+                            }
+                        ]
+                    }
+                ],
+                "research_timestamp": "2023-08-15T14:30:00",
+                "article_outline": [
+                    {
+                        "title": "引言",
+                        "summary": "介绍异步编程的重要性和Python中的演变历程",
+                        "section_type": "introduction",
+                        "order": 1
+                    },
+                    {
+                        "title": "异步编程基础概念",
+                        "summary": "解释协程、事件循环等核心概念",
+                        "section_type": "background",
+                        "order": 2,
+                        "subsections": [
+                            {
+                                "title": "协程详解",
+                                "summary": "深入解释协程的工作原理",
+                                "section_type": "analysis",
+                                "order": 1
+                            }
+                        ]
+                    }
+                ]
+            }
         }
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'Article':
-        """从字典创建实例"""
-        article = cls(
-            title=data["title"],
-            description=data["description"],
-            tags=data.get("tags", []),
-            author=data.get("author"),
-            word_count=data.get("word_count", 0)
-        )
-
-        if "sections" in data:
-            article.sections = [ArticleSection.from_dict(s) for s in data["sections"]]
-
-        if "created_at" in data:
-            article.created_at = datetime.fromisoformat(data["created_at"])
-
-        return article

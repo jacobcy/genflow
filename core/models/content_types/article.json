@@ -1,0 +1,52 @@
+{
+    "id": "article",
+    "name": "普通文章",
+    "category": "ARTICLE",
+    "description": "标准文章格式，适合各类主题",
+    "format": "long-form",
+    "primary_purpose": "inform",
+    "structure_templates": [
+        {
+            "name": "标准文章",
+            "description": "常规文章结构",
+            "sections": ["引言", "主体", "结论"],
+            "outline_template": {
+                "intro": "引入主题和背景",
+                "main_body": "分析和讨论主题",
+                "conclusion": "总结和展望"
+            },
+            "examples": ["一般性解说文章", "主题研究文章"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 1000,
+        "max_length": 5000,
+        "min_section_count": 3,
+        "max_section_count": 10,
+        "recommended_section_length": 500,
+        "title_guidelines": {
+            "min_length": 10,
+            "max_length": 100,
+            "format": "descriptive"
+        },
+        "requires_images": false,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": false,
+        "is_creative": false,
+        "is_formal": true,
+        "is_timely": false,
+        "is_narrative": false,
+        "is_instructional": false,
+        "audience_level": "general",
+        "multimedia_focus": false,
+        "research_intensity": 3
+    },
+    "compatible_styles": ["formal", "informative", "analytical"],
+    "example_topics": ["行业分析", "产品评测", "科学研究"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

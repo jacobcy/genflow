@@ -1,0 +1,54 @@
+{
+    "id": "tutorial",
+    "name": "教程",
+    "category": "TUTORIAL",
+    "description": "教学性质内容，提供步骤清晰的指导和说明",
+    "format": "instructional",
+    "primary_purpose": "educate",
+    "structure_templates": [
+        {
+            "name": "标准教程",
+            "description": "步骤清晰的教学内容",
+            "sections": ["介绍", "准备工作", "步骤说明", "常见问题", "总结"],
+            "outline_template": {
+                "intro": "介绍教程目标和背景",
+                "prerequisites": "所需准备和基础知识",
+                "steps": "详细步骤说明",
+                "troubleshooting": "常见问题解答",
+                "conclusion": "总结和进阶建议"
+            },
+            "examples": ["软件使用教程", "技能学习指南"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 1500,
+        "max_length": 3000,
+        "min_section_count": 4,
+        "max_section_count": 12,
+        "recommended_section_length": 300,
+        "title_guidelines": {
+            "min_length": 10,
+            "max_length": 80,
+            "format": "instructional"
+        },
+        "requires_images": true,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": true,
+        "is_creative": false,
+        "is_formal": false,
+        "is_timely": false,
+        "is_narrative": false,
+        "is_instructional": true,
+        "audience_level": "beginner",
+        "multimedia_focus": true,
+        "research_intensity": 2
+    },
+    "compatible_styles": ["instructional", "clear", "step-by-step"],
+    "example_topics": ["软件教程", "手工制作", "烹饪教学"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

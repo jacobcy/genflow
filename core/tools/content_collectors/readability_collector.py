@@ -20,3 +20,7 @@ class ReadabilityCollector(BaseCollector):
             })
         except Exception as e:
             return self._create_error_result(str(e))
+
+    async def _run(self, url: str) -> ToolResult:
+        """CrewAI 所需的内部执行方法"""
+        return await self.execute(url)

@@ -1,0 +1,52 @@
+{
+    "id": "entertainment",
+    "name": "娱乐",
+    "category": "OTHER",
+    "description": "轻松活泼的娱乐内容",
+    "format": "standard",
+    "primary_purpose": "entertain",
+    "structure_templates": [
+        {
+            "name": "娱乐内容",
+            "description": "有趣轻松的内容",
+            "sections": ["亮点", "主体内容", "趣味延伸"],
+            "outline_template": {
+                "highlights": "引人注目的亮点介绍",
+                "main_content": "核心娱乐内容",
+                "extensions": "有趣的延伸和互动"
+            },
+            "examples": ["游戏资讯", "娱乐新闻"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 800,
+        "max_length": 1500,
+        "min_section_count": 2,
+        "max_section_count": 5,
+        "recommended_section_length": 250,
+        "title_guidelines": {
+            "min_length": 8,
+            "max_length": 50,
+            "format": "engaging"
+        },
+        "requires_images": true,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": false,
+        "is_creative": true,
+        "is_formal": false,
+        "is_timely": true,
+        "is_narrative": false,
+        "is_instructional": false,
+        "audience_level": "general",
+        "multimedia_focus": true,
+        "research_intensity": 1
+    },
+    "compatible_styles": ["fun", "engaging", "casual"],
+    "example_topics": ["游戏资讯", "娱乐新闻", "趣味话题"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

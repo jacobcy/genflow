@@ -150,6 +150,65 @@ class TopicCrew:
 
             return selected_topics
 
+    async def evaluate_topic(self, topic: Topic, **options) -> Dict[str, Any]:
+        """评估单个话题的价值
+
+        Args:
+            topic: 要评估的话题对象
+            **options: 额外的评估选项
+
+        Returns:
+            Dict[str, Any]: 评估结果
+        """
+        logger.info(f"开始评估话题: {topic.title}")
+
+        # 使用已有的评估任务评估单个话题
+        evaluation_task = self._create_topic_evaluation_task([topic])
+
+        # 创建工作流
+        crew = Crew(
+            agents=[self.topic_advisor],
+            tasks=[evaluation_task],
+            process=Process.sequential,
+            verbose=True
+        )
+
+        # 执行工作流
+        logger.info("启动话题评估流程...")
+        result = await self._execute_crew(crew)
+
+        # 处理评估结果
+        if "evaluations" in result and isinstance(result["evaluations"], list) and len(result["evaluations"]) > 0:
+            # 获取第一个也是唯一一个评估结果
+            evaluation = result["evaluations"][0]
+
+            # 更新话题对象
+            topic.auto_score = evaluation.get("score", 0)
+            topic.selection_reason = evaluation.get("reason", "")
+            topic.updated_at = datetime.now()
+
+            logger.info(f"话题 '{topic.title}' 评估完成，评分: {topic.auto_score}")
+
+            # 返回评估结果
+            return {
+                "topic_id": topic.id,
+                "title": topic.title,
+                "score": topic.auto_score,
+                "reason": topic.selection_reason,
+                "evaluation_time": datetime.now().isoformat()
+            }
+        else:
+            # 如果评估失败
+            logger.warning(f"话题 '{topic.title}' 评估失败")
+            return {
+                "topic_id": topic.id,
+                "title": topic.title,
+                "score": 0,
+                "reason": "评估失败",
+                "evaluation_time": datetime.now().isoformat(),
+                "error": "无法获取评估结果"
+            }
+
     async def get_topic_details(self, topic_id: str) -> Dict:
         """获取话题详情
 
@@ -468,7 +527,7 @@ class TopicCrew:
         if hasattr(topic, 'recommendation_reason') and topic.recommendation_reason:
             print(f"\n推荐理由: {topic.recommendation_reason}")
 
-    def _get_valid_input(self, prompt: str, validator: callable) -> str:
+    def _get_valid_input(self, prompt: str, field_validator: callable) -> str:
         """获取有效输入
 
         Args:

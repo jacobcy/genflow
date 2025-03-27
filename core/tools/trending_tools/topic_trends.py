@@ -13,7 +13,7 @@ import random
 
 from .api_collector import APICollector
 from .utils import TopicProcessor, TopicFilter, TokenCounter
-from ...constants.platform_categories import CATEGORY_TAGS, get_platforms_by_category, PLATFORM_CATEGORIES
+from .platform_categories import CATEGORY_TAGS, get_platforms_by_category, PLATFORM_CATEGORIES
 from .redis_storage import RedisStorage
 from .config import get_config
 from .platform_weights import get_platform_weight, get_default_hot_score

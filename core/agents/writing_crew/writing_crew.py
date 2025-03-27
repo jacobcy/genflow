@@ -10,6 +10,7 @@ import asyncio
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 from pathlib import Path
+from json_repair import repair_json  # 添加json修复库
 
 from crewai import Task, Crew, Process
 from crewai.agent import Agent
@@ -22,6 +23,7 @@ from core.constants.content_types import (
     DEFAULT_WRITING_CONFIG,
     WRITING_CONFIG
 )
+from core.models.util import ArticleParser
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -29,20 +31,18 @@ logger = logging.getLogger(__name__)
 class WritingResult:
     """写作结果类
 
-    存储写作流程的各个阶段结果，包括大纲、内容、SEO优化和最终稿件。
+    存储写作流程的各个阶段结果，包括大纲、内容和最终稿件。
     """
     def __init__(
         self,
         article: Article,
         outline: Optional[Dict] = None,
         content: Optional[Dict] = None,
-        seo_data: Optional[Dict] = None,
         final_draft: Optional[Dict] = None
     ):
         self.article = article
         self.outline = outline or {}
         self.content = content or {}
-        self.seo_data = seo_data or {}
         self.final_draft = final_draft or {}
         self.created_at = datetime.now()
         self.human_feedback: Optional[Dict] = None
@@ -54,7 +54,6 @@ class WritingResult:
             "title": self.article.title,
             "outline": self.outline,
             "content": self.content,
-            "seo_data": self.seo_data,
             "final_draft": self.final_draft,
             "created_at": self.created_at.isoformat(),
             "human_feedback": self.human_feedback
@@ -161,7 +160,6 @@ class WritingCrew:
                 agents=[
                     self.outline_creator,
                     self.content_writer,
-                    self.seo_specialist,
                     self.fact_checker,
                     self.editor
                 ],
@@ -197,7 +195,6 @@ class WritingCrew:
         # 初始化各种角色的智能体
         self.outline_creator = self.agents.get_outline_creator()
         self.content_writer = self.agents.get_content_writer()
-        self.seo_specialist = self.agents.get_seo_specialist()
         self.fact_checker = self.agents.get_fact_checker()
         self.editor = self.agents.get_editor()
 
@@ -287,46 +284,6 @@ class WritingCrew:
         )
         tasks.append(content_task)
 
-        # 3. SEO优化任务
-        seo_task = Task(
-            description=f"""
-            为文章《{article.title}》进行SEO优化分析与建议。
-
-            文章主题：{article.topic.name if hasattr(article, 'topic') and article.topic else article.title}
-            内容类型：{article.metadata.get('content_type', '未指定')}
-            目标平台：{platform.name}
-            SEO关注点：{self.current_content_config['seo_focus']}
-
-            文章内容：{{content_task.output}}
-
-            请进行SEO分析并提供优化建议，包括：
-            1. 识别主要关键词和长尾关键词
-            2. 评估关键词在文章中的分布
-            3. 标题和小标题的SEO优化建议
-            4. 内容和结构的改进建议
-            5. 适合文章的元描述示例
-
-            输出格式：JSON对象，包含keywords、suggestions和meta_description键
-            """,
-            agent=self.seo_specialist,
-            expected_output="""
-            {
-                "keywords": {
-                    "primary": ["关键词1", "关键词2"],
-                    "secondary": ["长尾关键词1", "长尾关键词2", ...]
-                },
-                "suggestions": {
-                    "title": "标题优化建议",
-                    "headings": "小标题优化建议",
-                    "content": "内容优化建议",
-                    "structure": "结构优化建议"
-                },
-                "meta_description": "推荐的元描述"
-            }
-            """
-        )
-        tasks.append(seo_task)
-
         # 4. 事实核查任务
         fact_check_task = Task(
             description=f"""
@@ -366,7 +323,6 @@ class WritingCrew:
             对文章《{article.title}》进行最终编辑和完善。
 
             原始内容：{{content_task.output}}
-            SEO建议：{{seo_task.output}}
             事实核查：{{fact_check_task.output}}
 
             内容类型：{article.metadata.get('content_type', '未指定')}
@@ -374,29 +330,25 @@ class WritingCrew:
             字数要求：{self.current_content_config['word_count']}字左右
             写作风格：{self.current_content_config['style']}
 
-            请根据以上信息对文章进行最终编辑：
-            1. 整合SEO建议和事实核查结果
-            2. 确保文章风格一致，符合{self.current_content_config['style']}的要求
-            3. 优化段落和句子结构，提高可读性
-            4. 检查并修正语法和拼写错误
-            5. 调整文章长度至{self.current_content_config['word_count']}字左右
+            请根据以上信息对文章进行最终编辑，并按照以下严格的JSON格式返回：
+            1. title: 文章标题
+            2. summary: 文章摘要（200字以内）
+            3. content: 文章内容，使用Markdown格式，用##分隔章节
+            4. tags: 文章标签数组（至少3个）
 
-            输出格式：完整的最终文章内容，JSON格式，包含title、sections和metadata键
+            注意事项：
+            1. 确保返回的JSON结构完全符合要求
+            2. 所有字段都必须提供值，不能为空
+            3. 标签数组至少包含3个元素
+            4. summary不能超过200字
             """,
             agent=self.editor,
             expected_output="""
             {
-                "title": "最终文章标题",
-                "subtitle": "副标题（如有）",
-                "sections": [
-                    {"title": "部分标题", "content": "部分内容..."},
-                    ...
-                ],
-                "metadata": {
-                    "word_count": 1500,
-                    "keywords": ["关键词1", "关键词2", ...],
-                    "description": "文章描述/摘要"
-                }
+                "title": "文章标题",
+                "summary": "文章摘要",
+                "content": "## 引言\\n这是引言部分的内容...\\n\\n## 主要内容\\n这是主要内容部分...\\n\\n## 总结\\n这是总结部分的内容...\\n",
+                "tags": ["标签1", "标签2", "标签3"]
             }
             """
         )
@@ -417,19 +369,41 @@ class WritingCrew:
         result = WritingResult(article=article)
 
         try:
-            # 解析各个任务的结果
-            if isinstance(crew_results, list) and len(crew_results) >= 5:
-                result.outline = json.loads(crew_results[0]) if isinstance(crew_results[0], str) else crew_results[0]
-                result.content = json.loads(crew_results[1]) if isinstance(crew_results[1], str) else crew_results[1]
-                result.seo_data = json.loads(crew_results[2]) if isinstance(crew_results[2], str) else crew_results[2]
-                fact_check = json.loads(crew_results[3]) if isinstance(crew_results[3], str) else crew_results[3]
-                result.final_draft = json.loads(crew_results[4]) if isinstance(crew_results[4], str) else crew_results[4]
+            # 尝试解析各个任务的结果
+            if isinstance(crew_results, list) and len(crew_results) >= 4:
+                # 处理每个结果，尝试修复可能的JSON错误
+                for i, res in enumerate(crew_results):
+                    if isinstance(res, str):
+                        try:
+                            # 首先尝试常规JSON解析
+                            parsed_result = json.loads(res)
+                        except json.JSONDecodeError:
+                            try:
+                                # 如果失败，尝试修复并重新解析
+                                repaired_json = repair_json(res)
+                                parsed_result = json.loads(repaired_json)
+                            except Exception as e:
+                                logger.warning(f"JSON修复失败: {str(e)}")
+                                parsed_result = {"raw_content": res}
+                    else:
+                        parsed_result = res
+
+                    # 根据索引分配结果
+                    if i == 0:
+                        result.outline = parsed_result
+                    elif i == 1:
+                        result.content = parsed_result
+                    elif i == 2:
+                        fact_check = parsed_result
+                    elif i == 3:
+                        result.final_draft = parsed_result
 
                 # 合并事实核查到最终结果
                 if isinstance(result.final_draft, dict) and isinstance(fact_check, dict):
                     if "metadata" not in result.final_draft:
                         result.final_draft["metadata"] = {}
                     result.final_draft["metadata"]["fact_check"] = fact_check
+
         except Exception as e:
             logger.error(f"处理写作结果时出错: {str(e)}")
 
@@ -447,34 +421,28 @@ class WritingCrew:
             return
 
         try:
-            # 更新标题（如果最终稿件中有）
-            if "title" in result.final_draft and result.final_draft["title"]:
-                article.title = result.final_draft["title"]
+            # 将最终稿件转换为JSON字符串
+            final_draft_json = json.dumps(result.final_draft)
 
-            # 更新副标题
-            if "subtitle" in result.final_draft and result.final_draft["subtitle"]:
-                article.subtitle = result.final_draft["subtitle"]
+            # 使用ArticleParser解析和更新文章
+            updated_article = ArticleParser.parse_ai_response(final_draft_json, article)
 
-            # 更新文章部分
-            if "sections" in result.final_draft and isinstance(result.final_draft["sections"], list):
-                article.sections = []
-                for section_data in result.final_draft["sections"]:
-                    section = Section(
-                        title=section_data.get("title", ""),
-                        content=section_data.get("content", "")
-                    )
-                    article.sections.append(section)
+            if updated_article and ArticleParser.validate_article(updated_article):
+                # 更新原始文章对象
+                article.title = updated_article.title
+                article.summary = updated_article.summary
+                article.sections = updated_article.sections
+                article.tags = updated_article.tags
 
-            # 更新元数据
-            if "metadata" in result.final_draft and isinstance(result.final_draft["metadata"], dict):
-                if not hasattr(article, "metadata") or not article.metadata:
-                    article.metadata = {}
-
-                for key, value in result.final_draft["metadata"].items():
-                    article.metadata[key] = value
+                # 更新状态
+                article.status = "reviewed"
+                logger.info(f"文章《{article.title}》更新成功")
+            else:
+                logger.error("文章数据验证失败，保持原状")
 
         except Exception as e:
             logger.error(f"更新文章对象时出错: {str(e)}")
+            logger.debug("最终稿件内容:", result.final_draft)
 
     def get_human_feedback(self, writing_result: WritingResult) -> WritingResult:
         """获取人工反馈
@@ -500,21 +468,14 @@ class WritingCrew:
         print("- 过渡自然")
         structure_score = float(input("请评分: "))
 
-        print("\n3. SEO表现 (0-1):")
-        print("- 关键词优化")
-        print("- 标题吸引力")
-        print("- 元描述质量")
-        seo_score = float(input("请评分: "))
-
-        print("\n4. 修改建议:")
+        print("\n3. 修改建议:")
         comments = input("评审意见: ")
 
         # 更新反馈
         writing_result.human_feedback = {
             "content_score": content_score,
             "structure_score": structure_score,
-            "seo_score": seo_score,
-            "average_score": (content_score + structure_score + seo_score) / 3,
+            "average_score": (content_score + structure_score) / 2,
             "comments": comments,
             "reviewed_at": datetime.now()
         }
@@ -537,124 +498,8 @@ class WritingCrew:
         article = writing_result.article
         article.title = final_draft["title"]
         article.summary = final_draft["summary"]
-        article.sections = [
-            Section(
-                title=section["title"],
-                content=section["content"],
-                order=idx + 1
-            )
-            for idx, section in enumerate(final_draft["sections"])
-        ]
-        article.seo_data = writing_result.seo_data
+        article.sections = ArticleParser._parse_sections(final_draft["content"])
+        article.tags = final_draft["tags"]
         article.status = "reviewed"
 
         return article
-
-# 使用示例
-async def main():
-    """示例运行函数"""
-    import json
-    from pathlib import Path
-
-    # 配置日志
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s [%(levelname)s] %(name)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-
-    logger.info("启动写作团队示例")
-
-    # 创建一个示例文章
-    article = Article(
-        id="article_001",
-        topic_id="topic_001",
-        title="Python异步编程最佳实践",
-        summary="探讨Python异步编程的发展、应用场景和最佳实践",
-        sections=[
-            Section(
-                title="异步编程简介",
-                content="异步编程是一种编程范式，允许程序在等待I/O操作完成时执行其他任务。",
-                order=1
-            )
-        ],
-        status="draft"
-    )
-
-    # 创建一个示例平台
-    platform = Platform(
-        id="platform_001",
-        name="掘金",
-        url="https://juejin.cn",
-        content_rules={
-            "min_words": 1000,
-            "max_words": 5000,
-            "allowed_tags": ["Python", "编程", "技术"]
-        }
-    )
-
-    try:
-        # 创建写作团队
-        crew = WritingCrew(verbose=True)
-        logger.info("写作团队已创建")
-
-        # 进行写作
-        logger.info("开始写作流程")
-        writing_result = await crew.write_article(article, platform)
-
-        # 保存原始结果
-        result_path = writing_result.save_to_file()
-        logger.info(f"原始写作结果已保存到: {result_path}")
-
-        # 获取人工反馈
-        writing_result = crew.get_human_feedback(writing_result)
-
-        # 更新并保存最终结果
-        if writing_result.human_feedback and writing_result.human_feedback.get("normalized_average_score", 0) >= 0.7:
-            logger.info("评分达标，更新文章")
-            article = crew.update_article(writing_result)
-
-            # 保存最终文章
-            output_dir = Path("output")
-            output_dir.mkdir(exist_ok=True)
-
-            article_path = output_dir / f"article_{article.id}_final.json"
-            with open(article_path, "w", encoding="utf-8") as f:
-                # 将文章对象转换为字典
-                article_dict = {
-                    "id": article.id,
-                    "title": article.title,
-                    "summary": article.summary,
-                    "sections": [
-                        {"title": s.title, "content": s.content, "order": s.order}
-                        for s in article.sections
-                    ],
-                    "status": article.status,
-                    "metadata": article.metadata
-                }
-                json.dump(article_dict, f, ensure_ascii=False, indent=2)
-
-            logger.info(f"最终文章已保存到: {article_path}")
-
-            # 打印文章摘要
-            print("\n" + "="*50)
-            print(" 更新后的文章 ".center(50, "="))
-            print("="*50)
-            print(f"\n标题: {article.title}")
-            print(f"\n摘要: {article.summary}")
-            print("\n章节:")
-            for section in article.sections:
-                print(f"\n{section.order}. {section.title}")
-                print(f"  {section.content[:100]}..." if len(section.content) > 100 else section.content)
-        else:
-            logger.info("评分未达标，需要修改")
-
-    except Exception as e:
-        logger.error(f"运行示例时发生错误: {str(e)}", exc_info=True)
-
-def run_example():
-    """命令行入口点"""
-    asyncio.run(main())
-
-if __name__ == "__main__":
-    run_example()

@@ -290,7 +290,7 @@ class ContentCollector(BaseTool):
         ]
 
     async def execute(self, url: str) -> ToolResult:
-        """尝试使用所有工具采集内容，返回最佳结果"""
+        """执行内容采集的主要方法"""
         results = []
         for tool in self.tools:
             result = await tool.execute(url)
@@ -306,3 +306,7 @@ class ContentCollector(BaseTool):
             best_result[1].data,
             {"tool_used": best_result[0]}
         )
+
+    async def _run(self, url: str) -> ToolResult:
+        """CrewAI 所需的内部执行方法"""
+        return await self.execute(url)

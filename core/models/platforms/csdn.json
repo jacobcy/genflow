@@ -1,0 +1,46 @@
+{
+  "id": "csdn",
+  "name": "CSDN",
+  "url": "https://www.csdn.net",
+  "description": "中国领先的IT技术社区和开发者平台",
+  "category": "tech",
+  "primary_language": "zh-CN",
+  "supported_languages": ["zh-CN", "en-US"],
+  "min_length": 300,
+  "max_length": 50000,
+  "max_title_length": 80,
+  "max_image_count": 100,
+  "forbidden_words": ["敏感词", "违规内容", "政治", "广告"],
+  "constraints": {
+    "min_length": 300,
+    "max_length": 50000,
+    "max_title_length": 80,
+    "max_image_count": 100,
+    "max_video_count": 5,
+    "forbidden_words": ["敏感词", "违规内容", "政治", "广告"],
+    "required_elements": ["title", "content", "tags"],
+    "allowed_formats": ["text", "image", "video", "code"],
+    "allowed_media_types": ["jpg", "png", "gif", "mp4"],
+    "code_block_support": true,
+    "math_formula_support": true,
+    "table_support": true,
+    "emoji_support": true
+  },
+  "technical": {
+    "api_version": "v1",
+    "rate_limits": {
+      "articles_per_day": 10
+    },
+    "max_request_size": 10485760,
+    "supported_file_types": ["jpg", "png", "gif", "mp4", "md"],
+    "auth_required": true,
+    "https_required": true
+  },
+  "review_required": false,
+  "auto_review_enabled": false,
+  "publish_settings": {
+    "default_publish_time": "immediate",
+    "scheduling_supported": true,
+    "batch_publish_supported": false
+  }
+}

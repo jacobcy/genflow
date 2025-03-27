@@ -1,0 +1,53 @@
+{
+    "id": "qa",
+    "name": "问答",
+    "category": "OTHER",
+    "description": "问答形式内容，解决具体问题",
+    "format": "structured",
+    "primary_purpose": "solve",
+    "structure_templates": [
+        {
+            "name": "问答内容",
+            "description": "清晰解答具体问题",
+            "sections": ["问题", "简要回答", "详细解释", "相关问题"],
+            "outline_template": {
+                "question": "明确的问题表述",
+                "short_answer": "简洁的回答要点",
+                "explanation": "详细解释和说明",
+                "related": "相关问题和扩展"
+            },
+            "examples": ["技术问答", "知识问答"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 1000,
+        "max_length": 2000,
+        "min_section_count": 3,
+        "max_section_count": 6,
+        "recommended_section_length": 300,
+        "title_guidelines": {
+            "min_length": 10,
+            "max_length": 100,
+            "format": "question"
+        },
+        "requires_images": false,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": true,
+        "is_creative": false,
+        "is_formal": false,
+        "is_timely": false,
+        "is_narrative": false,
+        "is_instructional": true,
+        "audience_level": "general",
+        "multimedia_focus": false,
+        "research_intensity": 3
+    },
+    "compatible_styles": ["clear", "helpful", "direct"],
+    "example_topics": ["技术问题", "知识解答", "概念解释"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

@@ -1,0 +1,55 @@
+{
+    "id": "popular_science",
+    "name": "科普",
+    "category": "OTHER",
+    "description": "通俗易懂的科学知识解读",
+    "format": "standard",
+    "primary_purpose": "educate",
+    "structure_templates": [
+        {
+            "name": "科普文章",
+            "description": "通俗解释科学概念",
+            "sections": ["引言", "基本概念", "原理解释", "实际应用", "意义影响", "延伸阅读"],
+            "outline_template": {
+                "intro": "引入科学话题和现象",
+                "concepts": "解释基本概念",
+                "principles": "通俗讲解原理",
+                "applications": "实际应用场景",
+                "implications": "科学意义和影响",
+                "further_reading": "延伸阅读和资源"
+            },
+            "examples": ["自然科学科普", "技术原理解释"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 1500,
+        "max_length": 2500,
+        "min_section_count": 4,
+        "max_section_count": 8,
+        "recommended_section_length": 400,
+        "title_guidelines": {
+            "min_length": 10,
+            "max_length": 70,
+            "format": "interesting"
+        },
+        "requires_images": true,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": true,
+        "is_creative": false,
+        "is_formal": false,
+        "is_timely": false,
+        "is_narrative": false,
+        "is_instructional": true,
+        "audience_level": "general",
+        "multimedia_focus": true,
+        "research_intensity": 4
+    },
+    "compatible_styles": ["accessible", "educational", "engaging"],
+    "example_topics": ["自然科学现象", "技术原理解释", "科学发现解读"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

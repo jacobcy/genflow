@@ -45,3 +45,11 @@ class IGetResponseBase(IResponseBase[T], Generic[T]):
 
 class IPostResponseBase(IResponseBase[T], Generic[T]):
     message: str = "Data created correctly"
+
+
+class APIResponse(BaseModel):
+    """API响应"""
+    success: bool = Field(..., description="请求是否成功")
+    message: str = Field(..., description="响应消息")
+    data: Optional[Dict[str, Any]] = Field(default=None, description="响应数据")
+    task_id: Optional[str] = Field(default=None, description="任务ID，用于异步任务")

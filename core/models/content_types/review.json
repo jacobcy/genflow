@@ -1,0 +1,56 @@
+{
+    "id": "review",
+    "name": "评测",
+    "category": "REVIEW",
+    "description": "产品或服务的全面评价内容",
+    "format": "standard",
+    "primary_purpose": "evaluate",
+    "structure_templates": [
+        {
+            "name": "产品评测",
+            "description": "全面评价产品或服务",
+            "sections": ["摘要", "介绍", "产品规格", "使用体验", "优点", "缺点", "总结评分"],
+            "outline_template": {
+                "summary": "评测摘要和总体评价",
+                "introduction": "产品背景和定位",
+                "specifications": "产品规格和参数",
+                "experience": "实际使用体验",
+                "pros": "产品优点分析",
+                "cons": "产品缺点分析",
+                "conclusion": "总结评分和建议"
+            },
+            "examples": ["数码产品评测", "软件评测"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 1500,
+        "max_length": 2500,
+        "min_section_count": 5,
+        "max_section_count": 8,
+        "recommended_section_length": 350,
+        "title_guidelines": {
+            "min_length": 10,
+            "max_length": 70,
+            "format": "descriptive"
+        },
+        "requires_images": true,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": true,
+        "is_creative": false,
+        "is_formal": true,
+        "is_timely": false,
+        "is_narrative": false,
+        "is_instructional": false,
+        "audience_level": "general",
+        "multimedia_focus": true,
+        "research_intensity": 4
+    },
+    "compatible_styles": ["analytical", "evaluative", "balanced"],
+    "example_topics": ["数码产品评测", "软件评测", "服务体验评价"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

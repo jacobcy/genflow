@@ -1,87 +1,55 @@
 """进度跟踪模型"""
 from typing import Dict, Optional, List
 from datetime import datetime
-from enum import Enum
+from .article import Article
+from .enums import ProductionStage, StageStatus
 
-class ProductionStage(str, Enum):
-    """生产阶段"""
-    TOPIC_DISCOVERY = "topic_discovery"  # 话题发现
-    TOPIC_RESEARCH = "topic_research"    # 话题研究
-    ARTICLE_WRITING = "article_writing"  # 文章写作
-    STYLE_ADAPTATION = "style_adaptation"  # 风格适配
-    ARTICLE_REVIEW = "article_review"    # 文章审核
-    COMPLETED = "completed"              # 已完成
-    FAILED = "failed"                    # 失败
-    PAUSED = "paused"                    # 暂停
+# 导入ArticleService，使用try-except块避免循环导入
+try:
+    from .article_service import ArticleService
+except ImportError:
+    # 如果在导入时发生循环导入，将在方法中动态导入
+    ArticleService = None
 
-class StageStatus(str, Enum):
-    """阶段状态"""
-    PENDING = "pending"      # 等待中
-    IN_PROGRESS = "in_progress"  # 进行中
-    COMPLETED = "completed"  # 已完成
-    FAILED = "failed"        # 失败
-    PAUSED = "paused"        # 暂停
+class ArticleProductionProgress:
+    """文章生产进度跟踪
 
-class StageProgress:
-    """阶段进度"""
-    def __init__(self, stage: ProductionStage):
-        self.stage = stage
-        self.status = StageStatus.PENDING
-        self.start_time: Optional[datetime] = None
-        self.end_time: Optional[datetime] = None
-        self.total_items: int = 0
-        self.completed_items: int = 0
-        self.avg_score: float = 0.0
-        self.error_count: int = 0
+    跟踪文章在生产流程中的进度和状态
+    """
 
-    @property
-    def duration(self) -> float:
-        """阶段耗时(秒)"""
-        if not self.start_time:
-            return 0
-        end = self.end_time or datetime.now()
-        return (end - self.start_time).total_seconds()
+    def __init__(self, article: Article = None, article_id: str = None):
+        """初始化进度跟踪
 
-    @property
-    def success_rate(self) -> float:
-        """成功率"""
-        if self.total_items == 0:
-            return 0
-        return (self.completed_items - self.error_count) / self.total_items
-
-    def to_dict(self) -> Dict:
-        """转换为字典"""
-        return {
-            "status": self.status.value,
-            "duration": self.duration,
-            "total_items": self.total_items,
-            "completed_items": self.completed_items,
-            "success_rate": self.success_rate,
-            "avg_score": self.avg_score,
-            "error_count": self.error_count
-        }
-
-class ProductionProgress:
-    """生产进度"""
-    def __init__(self, production_id: str):
-        self.production_id = production_id
-        self.start_time = datetime.now()
-        self.end_time: Optional[datetime] = None
+        Args:
+            article: 文章对象，可选
+            article_id: 文章ID，如果未提供article则使用
+        """
+        self.article = article
+        self.article_id = article_id if article_id else (article.id if article else None)
         self.current_stage = ProductionStage.TOPIC_DISCOVERY
-        self.stage_status = StageStatus.PENDING
-        self.total_topics = 0
-        self.completed_topics = 0
+        self.stages = {}
+        self.started_at = datetime.now()
+        self.completed_at = None
+        self.stage_history = []
         self.error_count = 0
-        self.error_logs: List[Dict] = []
-        self.stages: Dict[ProductionStage, StageProgress] = {
-            stage: StageProgress(stage)
-            for stage in ProductionStage
-            if stage not in [
-                ProductionStage.COMPLETED,
-                ProductionStage.FAILED,
-                ProductionStage.PAUSED
-            ]
-        }
+        self.paused_from_stage = None
+
+        # 初始化各阶段状态
+        for stage in ProductionStage:
+            self.stages[stage] = {
+                "status": StageStatus.PENDING,
+                "start_time": None,
+                "end_time": None,
+                "duration": 0,
+                "message": "",
+                "total_items": 0,
+                "completed_items": 0,
+                "avg_score": 0.0,
+                "error_count": 0
+            }
+
+        # 设置第一阶段为待处理
+        self.stages[self.current_stage]["status"] = StageStatus.PENDING
 
     def start_stage(self, stage: ProductionStage, total_items: int):
         """开始阶段
@@ -91,11 +59,15 @@ class ProductionProgress:
             total_items: 总项目数
         """
         self.current_stage = stage
-        self.stage_status = StageStatus.IN_PROGRESS
-        stage_progress = self.stages[stage]
-        stage_progress.status = StageStatus.IN_PROGRESS
-        stage_progress.start_time = datetime.now()
-        stage_progress.total_items = total_items
+        self.stages[stage]["status"] = StageStatus.IN_PROGRESS
+        self.stages[stage]["start_time"] = datetime.now()
+        self.stages[stage]["total_items"] = total_items
+
+        # 同步文章状态并保存到数据库
+        if self.article:
+            if ArticleService:
+                new_status = ProductionStage.to_article_status(stage)
+                ArticleService.update_article_status(self.article, new_status)
 
     def update_progress(
         self,
@@ -113,10 +85,10 @@ class ProductionProgress:
             error_count: 错误数
         """
         stage_progress = self.stages[stage]
-        stage_progress.completed_items = completed_items
-        stage_progress.avg_score = avg_score
-        stage_progress.error_count = error_count
-        self.error_count = sum(s.error_count for s in self.stages.values())
+        stage_progress["completed_items"] = completed_items
+        stage_progress["avg_score"] = avg_score
+        stage_progress["error_count"] = error_count
+        self.error_count = sum(s["error_count"] for s in self.stages.values())
 
     def complete_stage(self, stage: ProductionStage):
         """完成阶段
@@ -125,44 +97,91 @@ class ProductionProgress:
             stage: 阶段
         """
         stage_progress = self.stages[stage]
-        stage_progress.status = StageStatus.COMPLETED
-        stage_progress.end_time = datetime.now()
+        stage_progress["status"] = StageStatus.COMPLETED
+        stage_progress["end_time"] = datetime.now()
 
         # 确定下一个阶段
         stages = list(ProductionStage)
         current_index = stages.index(stage)
         if current_index < len(stages) - 4:  # 排除 COMPLETED, FAILED, PAUSED
-            self.current_stage = stages[current_index + 1]
-            self.stage_status = StageStatus.PENDING
+            next_stage = stages[current_index + 1]
+            self.current_stage = next_stage
+            self.stages[next_stage]["status"] = StageStatus.PENDING
+            # 同步文章状态到下一阶段并保存到数据库
+            if self.article:
+                if ArticleService:
+                    new_status = ProductionStage.to_article_status(next_stage)
+                    ArticleService.update_article_status(self.article, new_status)
 
     def complete(self):
         """完成生产"""
         self.current_stage = ProductionStage.COMPLETED
-        self.stage_status = StageStatus.COMPLETED
-        self.end_time = datetime.now()
+        self.stages[self.current_stage]["status"] = StageStatus.COMPLETED
+        self.completed_at = datetime.now()
+
+        # 同步文章状态并保存到数据库
+        if self.article:
+            if ArticleService:
+                ArticleService.update_article_status(self.article, "completed")
 
     def fail(self):
         """生产失败"""
         self.current_stage = ProductionStage.FAILED
-        self.stage_status = StageStatus.FAILED
-        self.end_time = datetime.now()
+        self.stages[self.current_stage]["status"] = StageStatus.FAILED
+        self.completed_at = datetime.now()
+
+        # 同步文章状态并保存到数据库
+        if self.article:
+            if ArticleService:
+                ArticleService.update_article_status(self.article, "failed")
 
     def pause(self):
         """暂停生产"""
+        # 记录当前活动阶段
+        active_stage = self.current_stage
+
+        # 记录被暂停的阶段（用于恢复）
+        self.paused_from_stage = active_stage
+
+        # 设置当前阶段为PAUSED
         self.current_stage = ProductionStage.PAUSED
-        self.stage_status = StageStatus.PAUSED
-        # 暂停当前阶段
-        if self.current_stage in self.stages:
-            self.stages[self.current_stage].status = StageStatus.PAUSED
+        self.stages[ProductionStage.PAUSED]["status"] = StageStatus.PAUSED
+
+        # 将之前的活动阶段标记为暂停
+        if active_stage != ProductionStage.PAUSED and active_stage in self.stages:
+            self.stages[active_stage]["status"] = StageStatus.PAUSED
+
+        # 同步文章状态并保存到数据库
+        if self.article:
+            if ArticleService:
+                ArticleService.update_article_status(self.article, "paused")
 
     def resume(self):
         """恢复生产"""
-        # 找到上一个未完成的阶段
+        # 优先恢复到之前暂停的活动阶段
+        if hasattr(self, 'paused_from_stage') and self.paused_from_stage in self.stages:
+            resume_stage = self.paused_from_stage
+            self.current_stage = resume_stage
+            self.stages[resume_stage]["status"] = StageStatus.IN_PROGRESS
+
+            # 同步文章状态并保存到数据库
+            if self.article and ArticleService:
+                new_status = ProductionStage.to_article_status(resume_stage)
+                ArticleService.update_article_status(self.article, new_status)
+
+            # 清除暂停记录
+            delattr(self, 'paused_from_stage')
+            return
+
+        # 如果没有记录暂停前的阶段，则找到第一个未完成的阶段
         for stage in ProductionStage:
-            if stage in self.stages and self.stages[stage].status != StageStatus.COMPLETED:
+            if stage in self.stages and self.stages[stage]["status"] != StageStatus.COMPLETED:
                 self.current_stage = stage
-                self.stage_status = StageStatus.IN_PROGRESS
-                self.stages[stage].status = StageStatus.IN_PROGRESS
+                self.stages[stage]["status"] = StageStatus.IN_PROGRESS
+                # 同步文章状态并保存到数据库
+                if self.article and ArticleService:
+                    new_status = ProductionStage.to_article_status(stage)
+                    ArticleService.update_article_status(self.article, new_status)
                 break
 
     def add_error(self, stage: ProductionStage, error: str):
@@ -172,7 +191,7 @@ class ProductionProgress:
             stage: 阶段
             error: 错误信息
         """
-        self.error_logs.append({
+        self.stage_history.append({
             "time": datetime.now(),
             "stage": stage,
             "error": error
@@ -181,10 +200,10 @@ class ProductionProgress:
     @property
     def duration(self) -> float:
         """总耗时(秒)"""
-        if not self.start_time:
+        if not self.started_at:
             return 0
-        end = self.end_time or datetime.now()
-        return (end - self.start_time).total_seconds()
+        end = self.completed_at or datetime.now()
+        return (end - self.started_at).total_seconds()
 
     @property
     def progress_percentage(self) -> float:
@@ -200,10 +219,10 @@ class ProductionProgress:
         total_progress = 0
         for stage, progress in self.stages.items():
             if stage in stage_weights:
-                if progress.status == StageStatus.COMPLETED:
+                if progress["status"] == StageStatus.COMPLETED:
                     stage_progress = 1.0
-                elif progress.total_items > 0:
-                    stage_progress = progress.completed_items / progress.total_items
+                elif progress["total_items"] > 0:
+                    stage_progress = progress["completed_items"] / progress["total_items"]
                 else:
                     stage_progress = 0
                 total_progress += stage_progress * stage_weights[stage]
@@ -217,16 +236,14 @@ class ProductionProgress:
             Dict: 进度摘要
         """
         return {
-            "production_id": self.production_id,
+            "article_id": self.article_id,
             "current_stage": self.current_stage.value,
-            "stage_status": self.stage_status.value,
+            "stage_status": self.stages[self.current_stage]["status"].value,
             "progress_percentage": self.progress_percentage,
             "duration": self.duration,
-            "total_topics": self.total_topics,
-            "completed_topics": self.completed_topics,
-            "error_count": self.error_count,
+            "stage_history": self.stage_history,
             "stages": {
-                stage.value: progress.to_dict()
+                stage.value: progress
                 for stage, progress in self.stages.items()
             }
         }

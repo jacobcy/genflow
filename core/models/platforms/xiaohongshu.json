@@ -1,0 +1,46 @@
+{
+  "id": "xiaohongshu",
+  "name": "小红书",
+  "url": "https://www.xiaohongshu.com",
+  "description": "中国流行的生活方式分享社区",
+  "category": "social_media",
+  "primary_language": "zh-CN",
+  "supported_languages": ["zh-CN"],
+  "min_length": 50,
+  "max_length": 5000,
+  "max_title_length": 30,
+  "max_image_count": 9,
+  "forbidden_words": ["敏感词", "违规内容", "广告", "营销"],
+  "constraints": {
+    "min_length": 50,
+    "max_length": 5000,
+    "max_title_length": 30,
+    "max_image_count": 9,
+    "max_video_count": 1,
+    "forbidden_words": ["敏感词", "违规内容", "广告", "营销"],
+    "required_elements": ["title", "image"],
+    "allowed_formats": ["text", "image", "video"],
+    "allowed_media_types": ["jpg", "png", "gif", "mp4"],
+    "code_block_support": false,
+    "math_formula_support": false,
+    "table_support": false,
+    "emoji_support": true
+  },
+  "technical": {
+    "api_version": "v2",
+    "rate_limits": {
+      "notes_per_day": 10
+    },
+    "max_request_size": 10485760,
+    "supported_file_types": ["jpg", "png", "gif", "mp4"],
+    "auth_required": true,
+    "https_required": true
+  },
+  "review_required": true,
+  "auto_review_enabled": true,
+  "publish_settings": {
+    "default_publish_time": "immediate",
+    "scheduling_supported": true,
+    "batch_publish_supported": false
+  }
+}

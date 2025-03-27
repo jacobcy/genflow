@@ -1,0 +1,46 @@
+{
+  "id": "wechat",
+  "name": "微信公众号",
+  "url": "https://mp.weixin.qq.com",
+  "description": "中国最大的社交媒体平台微信的内容发布系统",
+  "category": "social_media",
+  "primary_language": "zh-CN",
+  "supported_languages": ["zh-CN"],
+  "min_length": 200,
+  "max_length": 20000,
+  "max_title_length": 64,
+  "max_image_count": 30,
+  "forbidden_words": ["敏感词", "违规内容", "色情", "暴力", "赌博", "违法"],
+  "constraints": {
+    "min_length": 200,
+    "max_length": 20000,
+    "max_title_length": 64,
+    "max_image_count": 30,
+    "max_video_count": 1,
+    "forbidden_words": ["敏感词", "违规内容", "色情", "暴力", "赌博", "违法"],
+    "required_elements": ["title", "cover_image"],
+    "allowed_formats": ["text", "image", "video", "code"],
+    "allowed_media_types": ["jpg", "png", "gif", "mp4"],
+    "code_block_support": true,
+    "math_formula_support": false,
+    "table_support": true,
+    "emoji_support": true
+  },
+  "technical": {
+    "api_version": "v1",
+    "rate_limits": {
+      "articles_per_day": 1
+    },
+    "max_request_size": 5242880,
+    "supported_file_types": ["jpg", "png", "gif", "mp4"],
+    "auth_required": true,
+    "https_required": true
+  },
+  "review_required": true,
+  "auto_review_enabled": false,
+  "publish_settings": {
+    "default_publish_time": "immediate",
+    "scheduling_supported": true,
+    "batch_publish_supported": false
+  }
+}

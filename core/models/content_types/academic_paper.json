@@ -1,0 +1,57 @@
+{
+    "id": "academic_paper",
+    "name": "论文",
+    "category": "OTHER",
+    "description": "严谨的学术论文格式内容",
+    "format": "long-form",
+    "primary_purpose": "research",
+    "structure_templates": [
+        {
+            "name": "学术论文",
+            "description": "标准学术论文结构",
+            "sections": ["摘要", "引言", "文献综述", "研究方法", "结果", "讨论", "结论", "参考文献"],
+            "outline_template": {
+                "abstract": "简明扼要的研究概述",
+                "introduction": "研究背景和问题提出",
+                "literature_review": "文献综述和理论框架",
+                "methodology": "研究方法和设计",
+                "results": "研究结果和数据",
+                "discussion": "结果讨论和分析",
+                "conclusion": "研究结论和贡献",
+                "references": "参考文献列表"
+            },
+            "examples": ["实证研究论文", "理论研究论文"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 3000,
+        "max_length": 8000,
+        "min_section_count": 6,
+        "max_section_count": 12,
+        "recommended_section_length": 800,
+        "title_guidelines": {
+            "min_length": 10,
+            "max_length": 150,
+            "format": "academic"
+        },
+        "requires_images": false,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": true,
+        "is_creative": false,
+        "is_formal": true,
+        "is_timely": false,
+        "is_narrative": false,
+        "is_instructional": false,
+        "audience_level": "expert",
+        "multimedia_focus": false,
+        "research_intensity": 5
+    },
+    "compatible_styles": ["academic", "scholarly", "formal"],
+    "example_topics": ["学术研究", "理论探讨", "实验研究"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

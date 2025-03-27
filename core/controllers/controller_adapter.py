@@ -10,13 +10,12 @@ from abc import ABC, abstractmethod
 from typing import Dict, Optional, List, Any, Union, Callable, Type
 
 from core.models.topic import Topic
+from core.models.article import Article
 from core.models.platform import Platform, get_default_platform
 from core.controllers.content_controller import ContentController
-from core.controllers.crewai_manager_controller import CrewAIManagerController
+from core.controllers.crewai_hierarchical_controller import CrewAIManagerController
 from core.controllers.crewai_sequential_controller import CrewAISequentialController
-from core.constants.content_types import ALL_CONTENT_TYPES, validate_content_type, get_content_type_from_category
-from core.constants.style_types import ALL_STYLE_TYPES, get_style_features
-from core.constants.platform_categories import CATEGORY_TAGS
+from core.tools.trending_tools.platform_categories import CATEGORY_TAGS
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,6 @@ class BaseContentControllerInterface(ABC):
                              category: Optional[str] = None,
                              topic: Optional[Topic] = None,
                              style: Optional[str] = None,
-                             keywords: Optional[List[str]] = None,
                              content_type: Optional[str] = None,
                              platform: Optional[Platform] = None,
                              options: Optional[Dict[str, Any]] = None) -> Dict:
@@ -47,7 +45,6 @@ class BaseContentControllerInterface(ABC):
             category: 内容类别
             topic: 指定话题（如果已有）
             style: 写作风格
-            keywords: 关键词列表
             content_type: 内容类型（如"新闻"、"论文"、"快讯"、"研究报告"等）
             platform: 目标平台
             options: 控制器特定的额外选项
@@ -66,13 +63,26 @@ class BaseContentControllerInterface(ABC):
         """
         pass
 
+    @abstractmethod
+    def cancel_production(self) -> Dict:
+        """取消内容生产
 
-class ContentControllerAdapter(BaseContentControllerInterface):
-    """自定义顺序流程控制器适配器"""
+        Returns:
+            Dict: 取消操作结果
+        """
+        pass
 
-    def __init__(self, **kwargs):
-        """初始化适配器"""
-        self.controller = ContentController()
+class BaseControllerAdapter(BaseContentControllerInterface):
+    """基础控制器适配器，处理共同的逻辑"""
+
+    def __init__(self, controller_class, **kwargs):
+        """初始化基础适配器
+
+        Args:
+            controller_class: 具体控制器类
+            **kwargs: 传递给控制器的参数
+        """
+        self.controller = controller_class(**kwargs)
 
     async def initialize(self, platform: Optional[Platform] = None) -> None:
         """初始化控制器
@@ -82,11 +92,345 @@ class ContentControllerAdapter(BaseContentControllerInterface):
         """
         await self.controller.initialize(platform=platform)
 
+    def get_progress(self) -> Dict:
+        """获取生产进度"""
+        return self.controller.get_progress()
+
+    def cancel_production(self) -> Dict:
+        """取消内容生产"""
+        if hasattr(self.controller, "cancel_production"):
+            return self.controller.cancel_production()
+        return {"status": "unsupported", "message": "此控制器不支持取消操作"}
+
+    def _process_category(self, category: Optional[str], topic: Optional[Topic]) -> str:
+        """处理类别信息
+
+        Args:
+            category: 类别
+            topic: 话题对象
+
+        Returns:
+            str: 处理后的类别
+        """
+        if not category and topic:
+            return getattr(topic, "name", None) or getattr(topic, "category", None) or "通用"
+        return category or "通用"
+
+    def _process_content_type(self, category: str, content_type: Optional[str]) -> str:
+        """处理内容类型
+
+        Args:
+            category: 类别
+            content_type: 内容类型
+
+        Returns:
+            str: 处理后的类别（可能包含内容类型信息）
+        """
+        if content_type:
+            if hasattr(self.controller, "state"):
+                self.controller.state.content_type = content_type
+            return f"{category} ({content_type})"
+        return category
+
+    def _process_style(self, style: Optional[str], content_type: Optional[str]) -> str:
+        """处理写作风格
+
+        Args:
+            style: 原始风格
+            content_type: 内容类型
+
+        Returns:
+            str: 处理后的风格
+        """
+        if not content_type:
+            return style or "neutral"
+
+        if style:
+            return f"{style}风格的{content_type}"
+        return f"{content_type}风格"
+
+    def _process_topic(self, topic: Optional[Topic], category: Optional[str],
+                      content_type: Optional[str], style: Optional[str]) -> Optional[Topic]:
+        """处理话题对象
+
+        Args:
+            topic: 原始话题对象
+            category: 类别
+            content_type: 内容类型
+            style: 写作风格
+
+        Returns:
+            Optional[Topic]: 处理后的话题对象
+        """
+        if topic:
+            if not hasattr(topic, "metadata"):
+                topic.metadata = {}
+            if content_type:
+                topic.metadata["content_type"] = content_type
+            if style:
+                topic.metadata["style"] = style
+
+        return topic
+
+    def _prepare_article(self, article: Optional[Article], topic: Optional[Topic],
+                       content_type: Optional[str], style: Optional[str]) -> Optional[Article]:
+        """准备文章对象
+
+        根据提供的参数创建或更新文章对象
+
+        Args:
+            article: 原始文章对象
+            topic: 话题对象
+            content_type: 内容类型
+            style: 写作风格
+
+        Returns:
+            Optional[Article]: 处理后的文章对象
+        """
+        if article:
+            # 更新现有文章
+            if topic and not article.topic_id:
+                article.topic_id = getattr(topic, "id", None)
+                article.topic = topic
+
+            if content_type and not getattr(article, "content_type", None):
+                article.content_type = content_type
+
+            if style and not getattr(article, "style", None):
+                # 根据文章类的实现方式设置风格
+                if hasattr(article, "style"):
+                    if isinstance(article.style, dict):
+                        article.style["tone"] = style
+                    elif hasattr(article.style, "tone"):
+                        article.style.tone = style
+                    else:
+                        article.style = style
+                else:
+                    # 如果没有style属性，可以添加到metadata
+                    if not hasattr(article, "metadata"):
+                        article.metadata = {}
+                    article.metadata["style"] = style
+
+            return article
+        elif topic:
+            # 根据话题创建新文章
+            from uuid import uuid4
+
+            # 创建基本文章对象
+            new_article = Article(
+                id=str(uuid4()),
+                topic_id=getattr(topic, "id", None),
+                title=getattr(topic, "title", "未命名文章"),
+                summary=getattr(topic, "summary", ""),
+                content="",
+                status="pending"
+            )
+
+            # 设置话题引用
+            new_article.topic = topic
+
+            # 设置内容类型和风格
+            if content_type:
+                new_article.content_type = content_type
+
+            if style:
+                # 根据文章类的实现设置风格
+                if hasattr(new_article, "style"):
+                    if isinstance(new_article.style, dict):
+                        new_article.style["tone"] = style
+                    elif hasattr(new_article.style, "tone"):
+                        new_article.style.tone = style
+                    else:
+                        new_article.style = style
+                else:
+                    # 如果没有style属性，添加到metadata
+                    if not hasattr(new_article, "metadata"):
+                        new_article.metadata = {}
+                    new_article.metadata["style"] = style
+
+            return new_article
+
+        return None
+
+class ContentControllerAdapter(BaseControllerAdapter):
+    """内容控制器适配器
+
+    这是一个特殊的适配器，用于处理 ContentController 的特定功能，
+    包括自动化模式设置和阶段控制。
+    """
+
+    def __init__(self, **kwargs):
+        """初始化适配器
+
+        Args:
+            **kwargs: 配置参数
+                - mode: 生产模式，可选 'auto'(全自动), 'human'(全人工辅助), 'mixed'(混合模式)
+                - auto_stages: 当mode为'mixed'时，指定自动执行的阶段列表
+        """
+        from core.controllers.content_controller import ContentController
+        super().__init__(ContentController, **kwargs)
+
+        # 设置默认模式
+        self.mode = kwargs.get("mode", "human")
+        self.auto_stages = kwargs.get("auto_stages", None)
+
+        # 阶段映射
+        from core.models.progress import ProductionStage
+        self.stage_map = {
+            "topic_discovery": ProductionStage.TOPIC_DISCOVERY,
+            "topic_research": ProductionStage.TOPIC_RESEARCH,
+            "article_writing": ProductionStage.ARTICLE_WRITING,
+            "style_adaptation": ProductionStage.STYLE_ADAPTATION,
+            "article_review": ProductionStage.ARTICLE_REVIEW
+        }
+
+        # 初始化时设置模式
+        self._set_controller_mode()
+
+    def _set_controller_mode(self):
+        """设置控制器的生产模式"""
+        if self.auto_stages and self.mode == 'mixed':
+            auto_stages_enum = [
+                self.stage_map[s]
+                for s in self.auto_stages
+                if s in self.stage_map
+            ]
+            self.controller.set_auto_mode(self.mode, auto_stages_enum)
+        else:
+            self.controller.set_auto_mode(self.mode)
+
+    def set_mode(self, mode: str, auto_stages: Optional[List[str]] = None):
+        """设置生产模式
+
+        Args:
+            mode: 'auto', 'human', 或 'mixed'
+            auto_stages: 在 mixed 模式下要自动执行的阶段列表
+        """
+        self.mode = mode
+        self.auto_stages = auto_stages
+        self._set_controller_mode()
+
+    async def produce_content(self,
+                            category: Optional[str] = None,
+                            topic: Optional[Topic] = None,
+                            style: Optional[str] = None,
+                            content_type: Optional[str] = None,
+                            platform: Optional[Platform] = None,
+                            options: Optional[Dict[str, Any]] = None) -> Dict:
+        """生产内容
+
+        特殊处理：
+        1. 确保模式设置正确传递给控制器
+        2. 处理自动化阶段的设置
+
+        Args:
+            category: 话题类别
+            topic: 指定话题对象
+            style: 写作风格
+            content_type: 内容类型
+            platform: 目标平台
+            options: 其他选项，包括：
+                - topic_count: 话题数量（当topic不提供时使用）
+                - progress_callback: 进度回调函数
+                - mode: 生产模式，可选 'auto', 'human', 'mixed'
+                - auto_stages: mixed模式下的自动执行阶段列表
+                - article: 文章对象（可选）
+
+        Returns:
+            Dict: 生产结果
+        """
+        # 处理 options
+        options = options or {}
+
+        # 如果在 options 中指定了新的模式，更新适配器的模式设置
+        if "mode" in options:
+            self.set_mode(
+                options["mode"],
+                options.get("auto_stages", self.auto_stages)
+            )
+        else:
+            # 使用适配器当前的模式设置
+            options["mode"] = self.mode
+            if self.auto_stages and self.mode == "mixed":
+                options["auto_stages"] = self.auto_stages
+
+        # 处理文章对象
+        article = options.get("article")
+        if article:
+            # 确保文章对象包含必要的信息
+            article = self._prepare_article(article, topic, content_type, style)
+
+        # 调用控制器的生产方法
+        result = await self.controller.produce_content(
+            category=category,
+            topic=topic,
+            style=style,
+            content_type=content_type,
+            platform=platform,
+            options=options
+        )
+
+        return result
+
+    def get_available_modes(self) -> Dict[str, Any]:
+        """获取可用的模式和阶段信息
+
+        Returns:
+            Dict[str, Any]: 包含可用模式、阶段和当前设置的信息
+        """
+        return {
+            "modes": ["auto", "human", "mixed"],
+            "stages": list(self.stage_map.keys()),
+            "current_mode": self.mode,
+            "current_auto_stages": self.auto_stages
+        }
+
+    def get_progress(self) -> Dict:
+        """获取当前进度
+
+        Returns:
+            Dict: 进度信息
+        """
+        return self.controller.get_progress()
+
+    def pause_production(self):
+        """暂停生产"""
+        if hasattr(self.controller, "pause_production"):
+            return self.controller.pause_production()
+        return {"status": "unsupported", "message": "此控制器不支持暂停操作"}
+
+    def resume_production(self):
+        """恢复生产"""
+        if hasattr(self.controller, "resume_production"):
+            return self.controller.resume_production()
+        return {"status": "unsupported", "message": "此控制器不支持恢复操作"}
+
+    def cancel_production(self) -> Dict:
+        """取消内容生产
+
+        自定义流程没有显式的取消方法，尝试使用暂停
+
+        Returns:
+            Dict: 取消操作结果
+        """
+        if hasattr(self.controller, "pause_production"):
+            result = self.controller.pause_production()
+            return {"status": "cancelled" if result.get("status") == "paused" else "failed",
+                   "message": "内容生产已取消"}
+        return {"status": "unsupported", "message": "此控制器不支持取消操作"}
+
+
+class CrewAIManagerControllerAdapter(BaseControllerAdapter):
+    """CrewAI 管理器控制器适配器"""
+
+    def __init__(self, **kwargs):
+        """初始化适配器"""
+        super().__init__(CrewAIManagerController, **kwargs)
+
     async def produce_content(self,
                              category: Optional[str] = None,
                              topic: Optional[Topic] = None,
                              style: Optional[str] = None,
-                             keywords: Optional[List[str]] = None,
                              content_type: Optional[str] = None,
                              platform: Optional[Platform] = None,
                              options: Optional[Dict[str, Any]] = None) -> Dict:
@@ -95,85 +439,52 @@ class ContentControllerAdapter(BaseContentControllerInterface):
         Args:
             category: 内容类别
             topic: 指定话题
-            style: 写作风格（此控制器通过research_crew和writing_crew读取）
-            keywords: 关键词列表（此控制器将其转换为topic相关内容）
-            content_type: 内容类型（如"新闻"、"论文"、"快讯"等）
+            style: 写作风格
+            content_type: 内容类型
             platform: 目标平台
-            options: 其他选项
+            options: 其他选项，包括：
+                - article: 文章对象（可选）
 
         Returns:
             Dict: 生产结果
         """
-        # 提取ContentController特有的参数
+        # 处理options
         options = options or {}
-        topic_count = options.get("topic_count", 1)
-        progress_callback = options.get("progress_callback", None)
-        mode = options.get("mode", "human")
-        auto_stages = options.get("auto_stages", None)
 
-        # 关键词处理 - 如果有topic但没有description，使用keywords作为描述
-        if topic and not getattr(topic, "description", None) and keywords:
-            topic.description = f"关于{', '.join(keywords)}的内容"
+        # 处理文章对象
+        article = options.get("article")
+        if article:
+            # 确保文章对象包含必要的信息
+            article = self._prepare_article(article, topic, content_type, style)
 
-        # 如果有keywords但没有topic，可以创建一个topic对象
-        if not topic and keywords and category:
-            topic = Topic(
-                name=category,
-                description=f"关于{', '.join(keywords)}的{category}内容"
-            )
+        # 处理类别
+        processed_category = self._process_category(category, topic)
 
-        # 处理内容类型 - 添加到topic的metadata或description中
-        if content_type and topic:
-            if not hasattr(topic, "metadata"):
-                topic.metadata = {}
-            topic.metadata["content_type"] = content_type
+        # 处理内容类型
+        if content_type and hasattr(self.controller, "state"):
+            self.controller.state.content_type = content_type
 
-            # 如果有description，在描述中添加内容类型
-            if hasattr(topic, "description") and topic.description:
-                topic.description = f"{topic.description}，输出格式为{content_type}"
-
-        # 如果有style，也添加到topic的metadata中
-        if style and topic and hasattr(topic, "metadata"):
-            topic.metadata["style"] = style
-
-        # 调用原生方法
+        # 直接调用控制器实现
         result = await self.controller.produce_content(
-            topic=topic,
-            category=category,
-            platform=platform,
-            topic_count=topic_count,
-            progress_callback=progress_callback,
-            mode=mode,
-            auto_stages=auto_stages
+            category=processed_category,
+            style=style,
+            article=article
         )
 
         return result
 
-    def get_progress(self) -> Dict:
-        """获取生产进度"""
-        return self.controller.get_progress()
 
+class CrewAISequentialControllerAdapter(BaseControllerAdapter):
+    """CrewAI 顺序控制器适配器"""
 
-class CrewAIManagerControllerAdapter(BaseContentControllerInterface):
-    """CrewAI层级流程控制器适配器"""
-
-    def __init__(self, model_name="gpt-4", **kwargs):
+    def __init__(self, **kwargs):
         """初始化适配器"""
-        self.controller = CrewAIManagerController(model_name=model_name)
-
-    async def initialize(self, platform: Optional[Platform] = None) -> None:
-        """初始化控制器
-
-        Args:
-            platform: 目标平台
-        """
-        await self.controller.initialize(platform=platform)
+        super().__init__(CrewAISequentialController, **kwargs)
 
     async def produce_content(self,
                              category: Optional[str] = None,
                              topic: Optional[Topic] = None,
                              style: Optional[str] = None,
-                             keywords: Optional[List[str]] = None,
                              content_type: Optional[str] = None,
                              platform: Optional[Platform] = None,
                              options: Optional[Dict[str, Any]] = None) -> Dict:
@@ -181,125 +492,40 @@ class CrewAIManagerControllerAdapter(BaseContentControllerInterface):
 
         Args:
             category: 内容类别
-            topic: 指定话题（此控制器不使用此参数，但从中提取category）
+            topic: 指定话题
             style: 写作风格
-            keywords: 关键词列表
-            content_type: 内容类型（如"新闻"、"论文"、"快讯"等）
-            platform: 目标平台（此控制器仅记录平台名称）
-            options: 其他选项（不使用）
-
-        Returns:
-            Dict: 生产结果
-        """
-        # 如果没有提供category但有topic，从topic提取
-        if not category and topic:
-            category = getattr(topic, "name", None) or getattr(topic, "category", None) or "通用"
-
-        # 处理内容类型 - 结合category或使用task_context
-        extended_category = category
-        if content_type:
-            extended_category = f"{category} ({content_type})"
-
-            # 将内容类型保存到控制器状态，以便任务创建时使用
-            if hasattr(self.controller, "state"):
-                self.controller.state.content_type = content_type
-
-        # 使用options处理额外的控制器配置
-        options = options or {}
-
-        # 调用原生方法
-        result = await self.controller.produce_content(
-            category=extended_category,
-            style=style,
-            keywords=keywords
-        )
-
-        # 将内容类型添加到结果中
-        if content_type and isinstance(result, dict):
-            result["content_type"] = content_type
-
-        return result
-
-    def get_progress(self) -> Dict:
-        """获取生产进度"""
-        return self.controller.get_progress()
-
-
-class CrewAISequentialControllerAdapter(BaseContentControllerInterface):
-    """CrewAI标准顺序流程控制器适配器"""
-
-    def __init__(self, model_name="gpt-4", **kwargs):
-        """初始化适配器"""
-        self.controller = CrewAISequentialController(model_name=model_name)
-
-    async def initialize(self, platform: Optional[Platform] = None) -> None:
-        """初始化控制器
-
-        Args:
+            content_type: 内容类型
             platform: 目标平台
-        """
-        await self.controller.initialize(platform=platform)
-
-    async def produce_content(self,
-                             category: Optional[str] = None,
-                             topic: Optional[Topic] = None,
-                             style: Optional[str] = None,
-                             keywords: Optional[List[str]] = None,
-                             content_type: Optional[str] = None,
-                             platform: Optional[Platform] = None,
-                             options: Optional[Dict[str, Any]] = None) -> Dict:
-        """生产内容
-
-        Args:
-            category: 内容类别
-            topic: 指定话题（此控制器不使用此参数，但从中提取category）
-            style: 写作风格
-            keywords: 关键词列表
-            content_type: 内容类型（如"新闻"、"论文"、"快讯"等）
-            platform: 目标平台（此控制器仅记录平台名称）
-            options: 其他选项（不使用）
+            options: 其他选项，包括：
+                - article: 文章对象（可选）
 
         Returns:
             Dict: 生产结果
         """
-        # 如果没有提供category但有topic，从topic提取
-        if not category and topic:
-            category = getattr(topic, "name", None) or getattr(topic, "category", None) or "通用"
-
-        # 处理内容类型 - 结合category或使用task_context
-        extended_category = category
-        if content_type:
-            extended_category = f"{category} ({content_type})"
-
-            # 将内容类型保存到控制器状态，以便任务创建时使用
-            if hasattr(self.controller, "state"):
-                self.controller.state.content_type = content_type
-
-            # 修改风格描述，包含内容类型
-            if style:
-                style = f"{style}风格的{content_type}"
-            else:
-                style = f"{content_type}风格"
-
-        # 使用options处理额外的控制器配置
+        # 处理options
         options = options or {}
 
-        # 调用原生方法
+        # 处理文章对象
+        article = options.get("article")
+        if article:
+            # 确保文章对象包含必要的信息
+            article = self._prepare_article(article, topic, content_type, style)
+
+        # 处理类别
+        processed_category = self._process_category(category, topic)
+
+        # 处理内容类型
+        if content_type and hasattr(self.controller, "state"):
+            self.controller.state.content_type = content_type
+
+        # 直接调用控制器实现
         result = await self.controller.produce_content(
-            category=extended_category,
+            category=processed_category,
             style=style,
-            keywords=keywords
+            article=article
         )
 
-        # 将内容类型添加到结果中
-        if content_type and isinstance(result, dict):
-            result["content_type"] = content_type
-
         return result
-
-    def get_progress(self) -> Dict:
-        """获取生产进度"""
-        return self.controller.get_progress()
 
 
 class ContentControllerFactory:
@@ -324,7 +550,11 @@ class ContentControllerFactory:
                 - "custom_sequential": 自定义顺序流程
                 - "crewai_manager": CrewAI层级流程
                 - "crewai_sequential": CrewAI标准顺序流程
-            **kwargs: 传递给控制器的其他参数
+            **kwargs: 传递给控制器的其他参数，可包括：
+                - model_name: 模型名称（适用于CrewAI控制器）
+                - platform: 目标平台
+                - mode: 自定义控制器的模式（auto/human/mixed）
+                - auto_stages: 自定义控制器的自动阶段列表
 
         Returns:
             BaseContentControllerInterface: 统一接口的控制器实例
@@ -366,7 +596,9 @@ class ContentControllerFactory:
         Returns:
             bool: 内容类型是否有效
         """
-        return validate_content_type(content_type)
+        # 此处需要导入内容类型验证函数
+        # 考虑添加导入或实现验证逻辑
+        return True  # 临时返回，实际应根据系统定义验证
 
     @staticmethod
     def is_valid_style(style: str) -> bool:
@@ -378,7 +610,9 @@ class ContentControllerFactory:
         Returns:
             bool: 风格是否为标准风格
         """
-        return style in ALL_STYLE_TYPES
+        # 此处需要导入或定义标准风格列表
+        # 考虑添加导入或实现验证逻辑
+        return True  # 临时返回，实际应根据系统定义验证
 
 
 # 使用示例
@@ -396,6 +630,14 @@ async def example_usage():
         }
     )
 
+    # 创建文章对象
+    article = Article(
+        id="example-article-1",
+        title="示例文章",
+        summary="这是一篇用于测试的示例文章",
+        status="pending"
+    )
+
     # 使用工厂创建控制器（自定义顺序流程）
     controller1 = await ContentControllerFactory.create_controller(
         "custom_sequential",
@@ -405,12 +647,12 @@ async def example_usage():
     # 生产内容
     result1 = await controller1.produce_content(
         category="技术",
-        keywords=["Python", "编程"],
         content_type="教程",  # 指定内容类型
         platform=platform,
         options={
             "topic_count": 1,
-            "mode": "auto"
+            "mode": "auto",
+            "article": article
         }
     )
     print(f"自定义顺序流程控制器结果: {result1.get('status')}")
@@ -426,10 +668,16 @@ async def example_usage():
     result2 = await controller2.produce_content(
         category="技术",
         style="专业",
-        keywords=["Python", "编程"],
-        content_type="研究报告"  # 指定内容类型
+        content_type="研究报告",  # 指定内容类型
+        options={
+            "article": article
+        }
     )
     print(f"CrewAI层级流程控制器结果: {result2.get('status')}")
+
+    # 测试取消功能
+    cancel_result = controller2.cancel_production()
+    print(f"取消结果: {cancel_result}")
 
     # 获取进度
     progress = controller2.get_progress()

@@ -191,35 +191,6 @@ async def test_adapt_style_with_crewai():
     assert hasattr(agent.tools[0], "_run")
 
 @mock_external_services
-async def test_optimize_seo_with_crewai():
-    """测试SEO优化工具能否被CrewAI正常使用"""
-    # 初始化工具
-    tools = WritingTools()
-
-    # 创建Agent和Task
-    agent = Agent(
-        role="Writing Agent",
-        goal="测试SEO优化工具",
-        backstory="我是测试SEO优化工具的Agent",
-        tools=[tools.optimize_seo]
-    )
-
-    task = Task(
-        description="优化内容以提高搜索引擎排名",
-        expected_output="SEO优化建议",
-        agent=agent
-    )
-
-    # 创建Crew（禁用实际执行）
-    crew = Crew(agents=[agent], tasks=[task])
-
-    # 验证工具是否被正确设置
-    assert hasattr(agent, "tools")
-    assert len(agent.tools) == 1
-    assert isinstance(agent.tools[0], BaseTool)
-    assert hasattr(agent.tools[0], "_run")
-
-@mock_external_services
 async def test_edit_article_with_crewai():
     """测试文章编辑工具能否被CrewAI正常使用"""
     # 初始化工具
@@ -250,32 +221,28 @@ async def test_edit_article_with_crewai():
 
 @mock_external_services
 async def test_all_writing_tools_with_crewai():
-    """测试所有写作团队工具能否被CrewAI正常使用"""
+    """测试所有写作工具能否被CrewAI正常使用"""
     # 初始化工具
     tools = WritingTools()
-
-    # 获取所有工具方法
-    all_tools = [
-        tools.analyze_structure,
-        tools.extract_keywords,
-        tools.summarize_content,
-        tools.write_article,
-        tools.adapt_style,
-        tools.optimize_seo,
-        tools.edit_article
-    ]
 
     # 创建Agent和Task
     agent = Agent(
         role="Writing Agent",
         goal="测试所有写作工具",
         backstory="我是测试所有写作工具的Agent",
-        tools=all_tools
+        tools=[
+            tools.analyze_structure,
+            tools.extract_keywords,
+            tools.summarize_content,
+            tools.write_article,
+            tools.adapt_style,
+            tools.edit_article
+        ]
     )
 
     task = Task(
-        description="使用各种写作工具创作和优化内容",
-        expected_output="完整的文章",
+        description="测试所有写作工具",
+        expected_output="测试结果",
         agent=agent
     )
 
@@ -284,7 +251,7 @@ async def test_all_writing_tools_with_crewai():
 
     # 验证工具是否被正确设置
     assert hasattr(agent, "tools")
-    assert len(agent.tools) == len(all_tools)
+    assert len(agent.tools) == 6
     for tool in agent.tools:
         assert isinstance(tool, BaseTool)
         assert hasattr(tool, "_run")

@@ -789,7 +789,6 @@ class ControlAI:
         topic = None
         category = None
         style = None
-        keywords = []
 
         for step in steps:
             action = step.get("action")
@@ -804,9 +803,6 @@ class ControlAI:
             elif action in ["create_content", "adjust_style"] and params.get("style"):
                 style = params.get("style")
 
-            elif action == "specify_keywords" and params.get("keywords"):
-                keywords = params.get("keywords")
-
         # 使用内容控制器执行完整流程
         # 初始化控制器
         await self.content_controller.initialize()
@@ -816,7 +812,6 @@ class ControlAI:
             topic=topic,
             category=category,
             style=style,
-            keywords=keywords,
             mode='auto'  # 使用自动模式
         )
 

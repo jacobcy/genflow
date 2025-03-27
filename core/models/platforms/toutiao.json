@@ -1,0 +1,46 @@
+{
+  "id": "toutiao",
+  "name": "今日头条",
+  "url": "https://www.toutiao.com",
+  "description": "中国领先的内容发现平台",
+  "category": "news",
+  "primary_language": "zh-CN",
+  "supported_languages": ["zh-CN"],
+  "min_length": 300,
+  "max_length": 30000,
+  "max_title_length": 40,
+  "max_image_count": 50,
+  "forbidden_words": ["敏感词", "违规内容", "假新闻", "谣言"],
+  "constraints": {
+    "min_length": 300,
+    "max_length": 30000,
+    "max_title_length": 40,
+    "max_image_count": 50,
+    "max_video_count": 5,
+    "forbidden_words": ["敏感词", "违规内容", "假新闻", "谣言"],
+    "required_elements": ["title", "content"],
+    "allowed_formats": ["text", "image", "video", "code"],
+    "allowed_media_types": ["jpg", "png", "gif", "mp4"],
+    "code_block_support": true,
+    "math_formula_support": true,
+    "table_support": true,
+    "emoji_support": true
+  },
+  "technical": {
+    "api_version": "v2",
+    "rate_limits": {
+      "articles_per_day": 20
+    },
+    "max_request_size": 15728640,
+    "supported_file_types": ["jpg", "png", "gif", "mp4"],
+    "auth_required": true,
+    "https_required": true
+  },
+  "review_required": true,
+  "auto_review_enabled": true,
+  "publish_settings": {
+    "default_publish_time": "immediate",
+    "scheduling_supported": true,
+    "batch_publish_supported": true
+  }
+}

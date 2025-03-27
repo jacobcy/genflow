@@ -1,0 +1,93 @@
+{
+    "id": "bilibili",
+    "name": "哔哩哔哩",
+    "type": "entertainment",
+    "url": "https://www.bilibili.com",
+    "description": "国内知名的视频与专栏内容平台，用户主要为年轻人，偏好知识性、娱乐性、互动性强的内容",
+    "target_audience": "15-35岁的年轻人，主要对二次元、游戏、数码、知识、生活等内容感兴趣",
+    "content_types": [
+        "tech_tutorial",
+        "entertainment",
+        "lifestyle",
+        "gaming",
+        "anime"
+    ],
+    "primary_language": "zh-CN",
+    "tone": "friendly",
+    "formality": 2,
+    "emotion": true,
+    "content_rules": {
+        "min_length": 800,
+        "max_length": 12000,
+        "allowed_formats": [
+            "text",
+            "image",
+            "code",
+            "video"
+        ],
+        "forbidden_words": [
+            "敏感词1",
+            "敏感词2",
+            "敏感词3"
+        ],
+        "required_sections": [
+            "引言",
+            "正文",
+            "总结"
+        ]
+    },
+    "style_rules": {
+        "tone": "friendly",
+        "formality": 2,
+        "emotion": true,
+        "code_block": true,
+        "emoji": true,
+        "image_text_ratio": 0.15,
+        "max_image_count": 20,
+        "min_paragraph_length": 20,
+        "max_paragraph_length": 300,
+        "paragraph_count_range": [
+            5,
+            30
+        ],
+        "section_count_range": [
+            3,
+            10
+        ],
+        "title_length_range": [
+            15,
+            60
+        ],
+        "keyword_density": 0.02,
+        "heading_required": true,
+        "tag_count_range": [
+            3,
+            10
+        ]
+    },
+    "style_guide": {
+        "tone": "friendly",
+        "format": "图文结合",
+        "target_audience": "15-35岁的年轻人，主要对二次元、游戏、数码、知识、生活等内容感兴趣",
+        "writing_style": "生动活泼",
+        "language_level": "normal",
+        "content_approach": "通俗易懂",
+        "recommended_patterns": [
+            "使用二次元表达",
+            "结合热门梗",
+            "语言富有感染力",
+            "丰富的标题和分段",
+            "适当使用表情符号增强表达力"
+        ],
+        "examples": [
+            "这波操作太秀了！让我们一起来看看Python异步编程的奥秘吧~",
+            "学会这个技能，同事都说我是大佬了（狗头）",
+            "别慌！跟着这篇教程，异步编程不再是天书！"
+        ]
+    },
+    "publish_settings": {
+        "auto_publish": false,
+        "review_required": true,
+        "publish_time": "immediate"
+    }
+}

@@ -13,7 +13,7 @@ from .platform_weights import (
     PLATFORM_WEIGHTS,
     DEFAULT_HOT_SCORES
 )
-from ...constants.platform_categories import (
+from .platform_categories import (
     PLATFORM_CATEGORIES,
     get_platforms_by_category,
     get_platform_categories,

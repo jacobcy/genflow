@@ -172,7 +172,7 @@ class IntentRecognizer:
 - unknown: 无法确定用户意图
 
 对于每个意图，提取相关实体:
-- 对于content_production，提取topic(主题)、category(分类)、style(风格)、keywords(关键词)等
+- 对于content_production，提取topic(主题)、category(分类)、style(风格)等
 - 对于writing_request，提取topic(主题)、style(风格)等
 - 对于research_request，提取topic(主题)、focus_areas(关注点)等
 
@@ -189,8 +189,7 @@ class IntentRecognizer:
   "entities": {
     "topic": "2023年AI发展趋势",
     "category": "科技",
-    "style": "分析性",
-    "keywords": ["人工智能", "大模型", "发展趋势"]
+    "style": "分析性"
   },
   "explanation": "用户明确要求创建关于AI发展趋势的内容，并指定了类别和风格。"
 }"""

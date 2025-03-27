@@ -1,0 +1,54 @@
+{
+    "id": "lifestyle",
+    "name": "生活",
+    "category": "OTHER",
+    "description": "实用生活类内容",
+    "format": "standard",
+    "primary_purpose": "help",
+    "structure_templates": [
+        {
+            "name": "生活指导",
+            "description": "日常生活实用内容",
+            "sections": ["介绍", "生活场景", "解决方案", "实用建议", "总结"],
+            "outline_template": {
+                "intro": "介绍生活话题背景",
+                "scenario": "描述常见生活场景或问题",
+                "solutions": "提供解决方案",
+                "tips": "实用建议和技巧",
+                "conclusion": "总结经验和价值"
+            },
+            "examples": ["家居生活", "健康饮食"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 1200,
+        "max_length": 2000,
+        "min_section_count": 3,
+        "max_section_count": 7,
+        "recommended_section_length": 350,
+        "title_guidelines": {
+            "min_length": 8,
+            "max_length": 60,
+            "format": "helpful"
+        },
+        "requires_images": true,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": false,
+        "is_creative": false,
+        "is_formal": false,
+        "is_timely": false,
+        "is_narrative": false,
+        "is_instructional": true,
+        "audience_level": "general",
+        "multimedia_focus": true,
+        "research_intensity": 2
+    },
+    "compatible_styles": ["friendly", "practical", "helpful"],
+    "example_topics": ["家居生活", "健康饮食", "生活技巧"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

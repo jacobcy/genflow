@@ -1,0 +1,47 @@
+{
+  "id": "zhihu",
+  "name": "知乎",
+  "url": "https://www.zhihu.com",
+  "description": "中文互联网高质量问答社区和创作者聚集平台",
+  "category": "knowledge_sharing",
+  "primary_language": "zh-CN",
+  "supported_languages": ["zh-CN"],
+  "min_length": 300,
+  "max_length": 60000,
+  "max_title_length": 100,
+  "max_image_count": 50,
+  "forbidden_words": ["广告", "推广", "违规内容", "敏感词", "色情", "暴力"],
+  "constraints": {
+    "min_length": 300,
+    "max_length": 60000,
+    "max_title_length": 100,
+    "max_image_count": 50,
+    "max_video_count": 10,
+    "forbidden_words": ["广告", "推广", "违规内容", "敏感词", "色情", "暴力"],
+    "required_elements": [],
+    "allowed_formats": ["text", "image", "video", "code", "math"],
+    "allowed_media_types": ["jpg", "png", "gif", "mp4"],
+    "code_block_support": true,
+    "math_formula_support": true,
+    "table_support": true,
+    "emoji_support": true
+  },
+  "technical": {
+    "api_version": "v1",
+    "rate_limits": {
+      "requests_per_minute": 60,
+      "articles_per_day": 10
+    },
+    "max_request_size": 10485760,
+    "supported_file_types": ["jpg", "png", "gif", "mp4", "pdf"],
+    "auth_required": true,
+    "https_required": true
+  },
+  "review_required": true,
+  "auto_review_enabled": true,
+  "publish_settings": {
+    "default_publish_time": "immediate",
+    "scheduling_supported": true,
+    "batch_publish_supported": false
+  }
+}

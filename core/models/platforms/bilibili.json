@@ -1,0 +1,46 @@
+{
+  "id": "bilibili",
+  "name": "哔哩哔哩",
+  "url": "https://www.bilibili.com",
+  "description": "中国领先的视频分享网站和年轻人文化社区",
+  "category": "video",
+  "primary_language": "zh-CN",
+  "supported_languages": ["zh-CN"],
+  "min_length": 10,
+  "max_length": 2000,
+  "max_title_length": 80,
+  "max_image_count": 0,
+  "forbidden_words": ["敏感词", "违规内容", "政治", "色情"],
+  "constraints": {
+    "min_length": 10,
+    "max_length": 2000,
+    "max_title_length": 80,
+    "max_image_count": 0,
+    "max_video_count": 1,
+    "forbidden_words": ["敏感词", "违规内容", "政治", "色情"],
+    "required_elements": ["title", "video", "description"],
+    "allowed_formats": ["text", "video"],
+    "allowed_media_types": ["mp4", "flv"],
+    "code_block_support": false,
+    "math_formula_support": false,
+    "table_support": false,
+    "emoji_support": true
+  },
+  "technical": {
+    "api_version": "v3",
+    "rate_limits": {
+      "videos_per_day": 5
+    },
+    "max_request_size": 4294967296,
+    "supported_file_types": ["mp4", "flv"],
+    "auth_required": true,
+    "https_required": true
+  },
+  "review_required": true,
+  "auto_review_enabled": false,
+  "publish_settings": {
+    "default_publish_time": "immediate",
+    "scheduling_supported": true,
+    "batch_publish_supported": false
+  }
+}

@@ -37,9 +37,6 @@ async def run_benchmark(args):
     # 解析控制器类型
     controller_types = args.controllers.split(',') if args.controllers else None
 
-    # 解析关键词
-    keywords = args.keywords.split(',') if args.keywords else None
-
     # 初始化控制器
     logger.info(f"初始化控制器: {controller_types or '所有'}")
     await benchmark.initialize_controllers(controller_types)
@@ -49,7 +46,6 @@ async def run_benchmark(args):
     result = await benchmark.run_benchmark(
         category=args.category,
         style=args.style,
-        keywords=keywords,
         controller_types=controller_types
     )
 
@@ -91,12 +87,6 @@ def main():
         type=str,
         default="科技",
         help="写作风格，例如：'科技'"
-    )
-
-    parser.add_argument(
-        "--keywords",
-        type=str,
-        help="关键词列表，以逗号分隔，例如：'AI,大模型,机器学习'"
     )
 
     parser.add_argument(

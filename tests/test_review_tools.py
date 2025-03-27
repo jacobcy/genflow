@@ -8,6 +8,7 @@ import pytest
 import asyncio
 from unittest.mock import patch, MagicMock
 from crewai import Agent, Task, Crew
+from functools import wraps
 
 # 导入审核团队工具
 from core.agents.review_crew.review_tools import ReviewTools
@@ -29,12 +30,13 @@ def mock_external_services(func):
               return_value=MagicMock(success=True, data={"sensitive_words": []}))
     ]
 
+    @wraps(func)
     @pytest.mark.asyncio
     async def wrapper(*args, **kwargs):
         for p in patches:
             p.start()
         try:
-            await func(*args, **kwargs)
+            return await func(*args, **kwargs)
         finally:
             for p in patches:
                 p.stop()
@@ -45,8 +47,8 @@ def mock_external_services(func):
 @pytest.fixture
 def test_platform():
     return Platform(
-        id="test",
         name="测试平台",
+        type="test",
         url="https://test.com",
         content_rules={
             "min_words": 500,

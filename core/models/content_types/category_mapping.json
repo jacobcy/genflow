@@ -1,0 +1,80 @@
+{
+    "category_mapping": {
+        "社交": "social_media",
+        "技术": "technical",
+        "新闻": "news",
+        "知识": "qa",
+        "游戏": "entertainment",
+        "娱乐": "entertainment",
+        "购物": "lifestyle",
+        "数码": "review",
+        "阅读": "blog",
+        "热点": "news_flash",
+        "时事": "news",
+        "开发": "technical",
+        "编程": "technical",
+        "互联网": "technical",
+        "科技": "technical",
+        "创业": "analysis",
+        "商业": "analysis",
+        "问答": "qa",
+        "科普": "popular_science",
+        "二次元": "entertainment",
+        "电竞": "entertainment",
+        "优惠": "review",
+        "效率": "tutorial",
+        "安全": "technical",
+        "创新": "blog",
+        "开源": "technical",
+        "短视频": "social_media",
+        "讨论": "social_media",
+        "综合": "news",
+        "深度": "analysis",
+        "视频": "entertainment",
+        "评论": "review",
+        "博客": "blog",
+        "资讯": "news",
+        "Linux": "technical",
+        "主机": "technical",
+        "米哈游": "entertainment",
+        "英雄联盟": "entertainment",
+        "应用": "review",
+        "安卓": "technical",
+        "摄影": "tutorial",
+        "设计": "tutorial",
+        "学习": "tutorial",
+        "国际": "news",
+        "消费": "review",
+        "生活": "lifestyle",
+        "监测": "news_flash",
+        "预警": "news_flash"
+    },
+    "content_type_groups": {
+        "short": [
+            "article",
+            "social_media"
+        ],
+        "standard": [
+            "news",
+            "blog",
+            "tutorial",
+            "review",
+            "story",
+            "technical",
+            "qa",
+            "entertainment",
+            "lifestyle",
+            "popular_science"
+        ],
+        "deep": [
+            "academic_paper",
+            "report",
+            "analysis"
+        ]
+    },
+    "research_depth": {
+        "light": "轻量",
+        "medium": "中等",
+        "deep": "深度"
+    }
+}

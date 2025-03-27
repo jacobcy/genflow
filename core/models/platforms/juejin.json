@@ -1,0 +1,46 @@
+{
+  "id": "juejin",
+  "name": "掘金",
+  "url": "https://juejin.cn",
+  "description": "一个帮助开发者成长的社区",
+  "category": "tech",
+  "primary_language": "zh-CN",
+  "supported_languages": ["zh-CN"],
+  "min_length": 300,
+  "max_length": 100000,
+  "max_title_length": 80,
+  "max_image_count": 50,
+  "forbidden_words": ["敏感词", "违规内容", "政治", "广告"],
+  "constraints": {
+    "min_length": 300,
+    "max_length": 100000,
+    "max_title_length": 80,
+    "max_image_count": 50,
+    "max_video_count": 5,
+    "forbidden_words": ["敏感词", "违规内容", "政治", "广告"],
+    "required_elements": ["title", "content", "tags"],
+    "allowed_formats": ["text", "image", "video", "code"],
+    "allowed_media_types": ["jpg", "png", "gif", "mp4"],
+    "code_block_support": true,
+    "math_formula_support": true,
+    "table_support": true,
+    "emoji_support": true
+  },
+  "technical": {
+    "api_version": "v2",
+    "rate_limits": {
+      "articles_per_day": 5
+    },
+    "max_request_size": 10485760,
+    "supported_file_types": ["jpg", "png", "gif", "mp4", "md"],
+    "auth_required": true,
+    "https_required": true
+  },
+  "review_required": true,
+  "auto_review_enabled": true,
+  "publish_settings": {
+    "default_publish_time": "immediate",
+    "scheduling_supported": true,
+    "batch_publish_supported": false
+  }
+}

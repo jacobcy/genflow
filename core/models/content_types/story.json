@@ -1,0 +1,54 @@
+{
+    "id": "story",
+    "name": "故事",
+    "category": "STORY",
+    "description": "叙事性内容，注重情感和故事性",
+    "format": "narrative",
+    "primary_purpose": "entertain",
+    "structure_templates": [
+        {
+            "name": "叙事故事",
+            "description": "结构完整的故事内容",
+            "sections": ["开篇", "发展", "高潮", "转折", "结局"],
+            "outline_template": {
+                "beginning": "引入故事场景和人物",
+                "development": "情节发展和矛盾出现",
+                "climax": "故事高潮",
+                "turning_point": "情节转折",
+                "ending": "故事结局和启示"
+            },
+            "examples": ["人物故事", "创业故事"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 1500,
+        "max_length": 3000,
+        "min_section_count": 3,
+        "max_section_count": 7,
+        "recommended_section_length": 500,
+        "title_guidelines": {
+            "min_length": 5,
+            "max_length": 50,
+            "format": "engaging"
+        },
+        "requires_images": false,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": false,
+        "is_creative": true,
+        "is_formal": false,
+        "is_timely": false,
+        "is_narrative": true,
+        "is_instructional": false,
+        "audience_level": "general",
+        "multimedia_focus": false,
+        "research_intensity": 2
+    },
+    "compatible_styles": ["narrative", "engaging", "emotional"],
+    "example_topics": ["人物传记", "创业故事", "生活故事"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

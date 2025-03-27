@@ -1,0 +1,56 @@
+{
+    "id": "analysis",
+    "name": "分析",
+    "category": "OTHER",
+    "description": "深入分析特定主题的内容",
+    "format": "long-form",
+    "primary_purpose": "analyze",
+    "structure_templates": [
+        {
+            "name": "深度分析",
+            "description": "对特定问题的深入剖析",
+            "sections": ["概述", "背景", "核心分析", "案例研究", "数据支持", "观点论证", "结论"],
+            "outline_template": {
+                "overview": "分析主题概述",
+                "background": "背景和现状",
+                "core_analysis": "核心问题分析",
+                "case_studies": "具体案例研究",
+                "data": "数据支持和验证",
+                "arguments": "观点论证",
+                "conclusion": "结论和洞见"
+            },
+            "examples": ["行业分析", "商业案例分析"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 2000,
+        "max_length": 4000,
+        "min_section_count": 5,
+        "max_section_count": 10,
+        "recommended_section_length": 500,
+        "title_guidelines": {
+            "min_length": 10,
+            "max_length": 100,
+            "format": "analytical"
+        },
+        "requires_images": true,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": true,
+        "is_creative": false,
+        "is_formal": true,
+        "is_timely": false,
+        "is_narrative": false,
+        "is_instructional": false,
+        "audience_level": "professional",
+        "multimedia_focus": false,
+        "research_intensity": 5
+    },
+    "compatible_styles": ["analytical", "deep", "insightful"],
+    "example_topics": ["行业趋势分析", "商业模式研究", "市场洞察"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

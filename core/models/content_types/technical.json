@@ -1,0 +1,56 @@
+{
+    "id": "technical",
+    "name": "技术内容",
+    "category": "OTHER",
+    "description": "以技术为核心的专业内容",
+    "format": "standard",
+    "primary_purpose": "inform",
+    "structure_templates": [
+        {
+            "name": "技术文章",
+            "description": "技术问题的分析和解决",
+            "sections": ["背景", "问题描述", "技术分析", "解决方案", "实现", "测试", "总结"],
+            "outline_template": {
+                "background": "技术背景和概念介绍",
+                "problem": "问题描述和挑战",
+                "analysis": "技术分析和原理",
+                "solution": "解决方案设计",
+                "implementation": "具体实现方法",
+                "testing": "测试和验证",
+                "conclusion": "总结和展望"
+            },
+            "examples": ["编程技术文章", "架构设计"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 1500,
+        "max_length": 3000,
+        "min_section_count": 4,
+        "max_section_count": 10,
+        "recommended_section_length": 400,
+        "title_guidelines": {
+            "min_length": 10,
+            "max_length": 80,
+            "format": "descriptive"
+        },
+        "requires_images": true,
+        "requires_code": true
+    },
+    "characteristics": {
+        "is_technical": true,
+        "is_creative": false,
+        "is_formal": true,
+        "is_timely": false,
+        "is_narrative": false,
+        "is_instructional": true,
+        "audience_level": "professional",
+        "multimedia_focus": false,
+        "research_intensity": 4
+    },
+    "compatible_styles": ["technical", "precise", "analytical"],
+    "example_topics": ["编程技术", "系统架构", "技术解决方案"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

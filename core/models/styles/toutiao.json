@@ -1,0 +1,93 @@
+{
+    "id": "toutiao",
+    "name": "今日头条",
+    "type": "news",
+    "url": "https://www.toutiao.com",
+    "description": "国内领先的内容平台与资讯聚合渠道，用户主要寻求热点新闻和具有冲击力的内容",
+    "target_audience": "18-50岁的广泛人群，对时事、社会热点、实用信息有较高关注",
+    "content_types": [
+        "news",
+        "trending",
+        "life_tips",
+        "social_issue",
+        "knowledge"
+    ],
+    "primary_language": "zh-CN",
+    "content_rules": {
+        "min_length": 600,
+        "max_length": 8000,
+        "allowed_formats": [
+            "text",
+            "image",
+            "list",
+            "blockquote"
+        ],
+        "forbidden_words": [
+            "敏感词1",
+            "敏感词2",
+            "敏感词3"
+        ],
+        "required_sections": [
+            "标题党",
+            "正文",
+            "结论"
+        ]
+    },
+    "style_rules": {
+        "tone": "dramatic",
+        "formality": 2,
+        "emotion": true,
+        "code_block": true,
+        "emoji": false,
+        "image_text_ratio": 0.2,
+        "max_image_count": 20,
+        "min_paragraph_length": 30,
+        "max_paragraph_length": 200,
+        "paragraph_count_range": [
+            5,
+            25
+        ],
+        "section_count_range": [
+            3,
+            10
+        ],
+        "title_length_range": [
+            15,
+            50
+        ],
+        "keyword_density": 0.025,
+        "heading_required": true,
+        "tag_count_range": [
+            3,
+            10
+        ]
+    },
+    "style_guide": {
+        "tone": "authoritative",
+        "format": "图文结合",
+        "target_audience": "18-50岁的广泛人群，对时事、社会热点、实用信息有较高关注",
+        "writing_style": "新闻体解析",
+        "language_level": "simple",
+        "content_approach": "突出冲击点",
+        "recommended_patterns": [
+            "使用'最新发现'、'数据表明'等权威表述",
+            "每段配数据图表或案例佐证",
+            "引用行业报告（如IDC、Gartner）",
+            "采用'现象-分析-结论'三段式结构",
+            "适当加入专家访谈内容",
+            "结尾提供实用建议或工具推荐"
+        ],
+        "examples": [
+            "工信部最新报告：Python异步编程人才缺口达47%",
+            "异步编程效能白皮书：头部企业平均节省32%服务器成本",
+            "专家圆桌谈：异步编程将如何影响2024年云原生架构",
+            "对比实验：三种异步框架在千万级并发下的性能差异",
+            "突发！PyPI官方发布异步编程安全警示（附应对方案）"
+        ]
+    },
+    "publish_settings": {
+        "auto_publish": false,
+        "review_required": true,
+        "publish_time": "immediate"
+    }
+}

@@ -1,0 +1,53 @@
+{
+    "id": "news_flash",
+    "name": "快讯",
+    "category": "NEWS",
+    "description": "简短及时的新闻快讯",
+    "format": "short-form",
+    "primary_purpose": "inform",
+    "structure_templates": [
+        {
+            "name": "新闻快讯",
+            "description": "简短及时的要点式新闻",
+            "sections": ["标题", "主要信息", "核心要点", "背景说明"],
+            "outline_template": {
+                "headline": "简洁明了的标题",
+                "main_info": "关键新闻信息",
+                "key_points": "核心要点列表",
+                "background": "简短背景说明"
+            },
+            "examples": ["突发新闻", "市场动态"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 800,
+        "max_length": 1200,
+        "min_section_count": 2,
+        "max_section_count": 4,
+        "recommended_section_length": 200,
+        "title_guidelines": {
+            "min_length": 5,
+            "max_length": 40,
+            "format": "headline"
+        },
+        "requires_images": false,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": false,
+        "is_creative": false,
+        "is_formal": true,
+        "is_timely": true,
+        "is_narrative": false,
+        "is_instructional": false,
+        "audience_level": "general",
+        "multimedia_focus": false,
+        "research_intensity": 1
+    },
+    "compatible_styles": ["concise", "direct", "timely"],
+    "example_topics": ["突发新闻", "市场动态", "时事要点"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

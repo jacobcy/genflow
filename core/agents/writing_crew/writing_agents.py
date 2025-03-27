@@ -54,7 +54,7 @@ class WritingAgents:
                 "goal": "优化内容以提高搜索引擎可见性和点击率",
                 "backstory": """你是一位经验丰富的SEO专家，精通搜索引擎算法和内容优化技巧。
                 你能够在保持内容质量的同时，提升其在搜索结果中的排名。
-                你关注关键词密度、元描述、标题优化以及内部链接结构。""",
+                你关注关键词密度和标题优化""",
                 "tools": [
                     self.tools.optimize_seo,
                     self.tools.extract_keywords,

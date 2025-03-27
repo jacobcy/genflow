@@ -20,9 +20,13 @@ class ContentItem:
 class BaseCollector(BaseTool):
     """内容采集器基类"""
 
-    @abstractmethod
     async def execute(self, url: str) -> ToolResult:
-        """执行内容采集"""
+        """执行内容采集的具体方法"""
+        return await self._run(url)
+
+    @abstractmethod
+    async def _run(self, url: str) -> ToolResult:
+        """实际执行内容采集的抽象方法，子类必须实现"""
         pass
 
 class ContentParser(ABC):

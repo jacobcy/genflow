@@ -1,0 +1,52 @@
+{
+    "id": "social_media",
+    "name": "社交媒体",
+    "category": "OTHER",
+    "description": "适合在社交媒体平台分享的简短内容",
+    "format": "short-form",
+    "primary_purpose": "engage",
+    "structure_templates": [
+        {
+            "name": "社交媒体帖子",
+            "description": "引人入胜的社交内容",
+            "sections": ["开场", "主体", "互动引导"],
+            "outline_template": {
+                "hook": "吸引注意的开场",
+                "main": "核心内容和价值",
+                "engagement": "引导互动的结尾"
+            },
+            "examples": ["热点讨论", "分享帖"]
+        }
+    ],
+    "format_guidelines": {
+        "min_length": 300,
+        "max_length": 800,
+        "min_section_count": 2,
+        "max_section_count": 5,
+        "recommended_section_length": 150,
+        "title_guidelines": {
+            "min_length": 5,
+            "max_length": 30,
+            "format": "catchy"
+        },
+        "requires_images": true,
+        "requires_code": false
+    },
+    "characteristics": {
+        "is_technical": false,
+        "is_creative": true,
+        "is_formal": false,
+        "is_timely": true,
+        "is_narrative": false,
+        "is_instructional": false,
+        "audience_level": "general",
+        "multimedia_focus": true,
+        "research_intensity": 1
+    },
+    "compatible_styles": ["conversational", "engaging", "trendy"],
+    "example_topics": ["热点话题", "互动讨论", "轻松分享"],
+    "metadata": {
+        "version": 1,
+        "last_updated": "2023-01-01"
+    }
+}

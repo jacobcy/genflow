@@ -78,7 +78,6 @@ class ControllerBenchmark:
     async def run_benchmark(self,
                      category: str,
                      style: Optional[str] = None,
-                     keywords: Optional[List[str]] = None,
                      content_type: Optional[str] = None,
                      controller_types: Optional[List[str]] = None) -> Dict[str, Any]:
         """运行基准测试，比较不同控制器的性能
@@ -86,7 +85,6 @@ class ControllerBenchmark:
         Args:
             category: 内容类别
             style: 写作风格
-            keywords: 关键词列表
             content_type: 内容类型
             controller_types: 要测试的控制器类型，如不提供则测试所有已初始化的控制器
 
@@ -109,7 +107,6 @@ class ControllerBenchmark:
         task_info = {
             "category": category,
             "style": style,
-            "keywords": keywords,
             "content_type": content_type,
             "start_time": start_time.isoformat(),
             "controllers": controller_types
@@ -132,7 +129,6 @@ class ControllerBenchmark:
                 result = await controller.produce_content(
                     category=category,
                     style=style,
-                    keywords=keywords,
                     content_type=content_type,
                     platform=None  # 不使用platform控制风格，而是通过style参数
                 )
@@ -378,7 +374,6 @@ async def main():
         result = await benchmark.run_benchmark(
             category="科技",
             style="专业",
-            keywords=["人工智能", "大模型"],
             content_type="分析"  # 添加内容类型参数
         )
 

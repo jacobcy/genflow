@@ -266,7 +266,6 @@ class StyleCrew:
             "platform_analysis": str(platform_analysis),
             "article_title": article.title,
             "article_content": article.content[:1000] + "..." if len(article.content) > 1000 else article.content,
-            "article_keywords": article.keywords,
             "article_type": article.article_type
         }
 

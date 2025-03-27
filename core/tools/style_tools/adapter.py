@@ -1,10 +1,14 @@
 """文章风格适配工具"""
-from typing import List, Dict, Optional, ClassVar
+from typing import List, Dict, Optional, ClassVar, TYPE_CHECKING
 import re
 from core.tools.base import BaseTool, ToolResult
 from core.tools.nlp_tools.processor import NLPAggregator
-from core.models.article import Article
-from core.models.platform import Platform, StyleRules
+
+# 避免循环导入
+if TYPE_CHECKING:
+    from core.models.article import Article
+from core.models.platform import Platform
+from core.models.article_style import StyleRules
 
 class StyleAdapter:
     """平台风格适配器"""
@@ -70,7 +74,7 @@ class StyleAdapter:
         except Exception:
             return False
 
-    async def adapt_article(self, article: Article) -> Article:
+    async def adapt_article(self, article: 'Article') -> 'Article':
         """适配文章风格
 
         Args:
@@ -93,7 +97,7 @@ class StyleAdapter:
 
         return article
 
-    async def _adapt_tone(self, article: Article) -> Article:
+    async def _adapt_tone(self, article: 'Article') -> 'Article':
         """调整文章语气
 
         1. 根据平台风格调整语气
@@ -113,7 +117,7 @@ class StyleAdapter:
 
         return article
 
-    async def _adapt_format(self, article: Article) -> Article:
+    async def _adapt_format(self, article: 'Article') -> 'Article':
         """调整文章格式
 
         1. 处理代码块
@@ -159,7 +163,7 @@ class StyleAdapter:
 
         return article
 
-    async def _adapt_structure(self, article: Article) -> Article:
+    async def _adapt_structure(self, article: 'Article') -> 'Article':
         """调整文章结构
 
         1. 调整段落长度
@@ -194,7 +198,7 @@ class StyleAdapter:
             # 增加段落
             pass
         elif current_paras > para_range[1]:
-            # 合并段落
+            # 减少段落
             pass
 
         # 调整章节数量
@@ -208,50 +212,59 @@ class StyleAdapter:
 
         return article
 
-    async def _adapt_seo(self, article: Article) -> Article:
-        """SEO优化
+    async def _adapt_seo(self, article: 'Article') -> 'Article':
+        """优化SEO
 
-        1. 优化标题长度
-        2. 调整关键词密度
-        3. 添加/优化小标题
-        4. 优化标签
+        1. 关键词密度
+        2. 标题优化
+        3. 元标签优化
         """
         # 获取SEO规则
-        title_range = self.style_rules.title_length_range
         keyword_density = self.style_rules.keyword_density
-        heading_required = self.style_rules.heading_required
-        tag_range = self.style_rules.tag_count_range
+        has_seo_title = self.style_rules.seo_title
+        has_meta_desc = self.style_rules.meta_description
 
-        # 分析当前结构
-        sections = [s for s in article.content.split('\n') if s.startswith('#')]
+        # 关键词密度优化
+        if article.keywords:
+            # 计算当前密度
+            content = article.content.lower()
+            total_words = len(content.split())
 
-        # 优化标题长度
-        if len(article.title) < title_range[0]:
-            # 扩展标题
-            pass
-        elif len(article.title) > title_range[1]:
-            # 缩短标题
-            pass
+            # 检查每个关键词的密度
+            for keyword in article.keywords:
+                keyword = keyword.lower()
+                count = content.count(keyword)
+                current_density = count / max(1, total_words)
 
-        # 调整关键词密度
-        for keyword in article.keywords:
-            current_density = article.content.count(keyword) / len(article.content)
-            if abs(current_density - keyword_density) > 0.005:
-                # 需要调整关键词出现频率
+                # 调整密度
+                if current_density < keyword_density:
+                    # 增加关键词出现次数
+                    pass
+                elif current_density > keyword_density * 1.5:
+                    # 减少关键词过度使用
+                    pass
+
+        # 标题SEO优化
+        if has_seo_title and article.keywords:
+            # 确保标题包含主要关键词
+            main_keyword = article.keywords[0] if article.keywords else ""
+            if main_keyword and main_keyword.lower() not in article.title.lower():
+                # 尝试将关键词融入标题
                 pass
 
-        # 处理小标题
-        if heading_required and not sections:
-            # 添加小标题
-            pass
+        # 元描述优化
+        if has_meta_desc:
+            # 确保摘要符合SEO要求
+            if len(article.summary) < 50:
+                # 扩展摘要
+                pass
+            elif len(article.summary) > 160:
+                # 缩减摘要
+                pass
 
-        # 优化标签
-        current_tags = len(article.tags)
-        if current_tags < tag_range[0]:
-            # 增加标签
-            pass
-        elif current_tags > tag_range[1]:
-            # 删除标签
-            article.tags = article.tags[:tag_range[1]]
+            # 确保摘要包含关键词
+            if article.keywords and not any(k.lower() in article.summary.lower() for k in article.keywords):
+                # 将关键词融入摘要
+                pass
 
         return article

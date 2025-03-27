@@ -17,7 +17,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
 from core.tools.trending_tools import TrendingTopics
-from core.constants.platform_categories import CATEGORY_TAGS, get_platforms_by_category
+from core.tools.trending_tools.platform_categories import CATEGORY_TAGS, get_platforms_by_category
 from core.tools.trending_tools.redis_storage import RedisStorage
 from core.tools.trending_tools.config import get_config
 

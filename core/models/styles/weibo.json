@@ -1,0 +1,90 @@
+{
+    "id": "weibo",
+    "name": "微博",
+    "type": "social_media",
+    "url": "https://weibo.com",
+    "description": "中国主流社交媒体平台，信息传播速度快，用户喜欢话题性强、情绪化、有争议性的内容",
+    "target_audience": "16-45岁的广泛人群，对热点事件、娱乐八卦、社会话题有高度关注",
+    "content_types": [
+        "trending",
+        "gossip",
+        "entertainment",
+        "social_commentary",
+        "viral"
+    ],
+    "primary_language": "zh-CN",
+    "content_rules": {
+        "min_length": 200,
+        "max_length": 5000,
+        "allowed_formats": [
+            "text",
+            "image",
+            "emoji"
+        ],
+        "forbidden_words": [
+            "敏感词1",
+            "敏感词2",
+            "敏感词3"
+        ],
+        "required_sections": [
+            "话题",
+            "爆料",
+            "互动"
+        ]
+    },
+    "style_rules": {
+        "tone": "gossipy",
+        "formality": 1,
+        "emotion": true,
+        "code_block": false,
+        "emoji": true,
+        "image_text_ratio": 0.3,
+        "max_image_count": 9,
+        "min_paragraph_length": 15,
+        "max_paragraph_length": 150,
+        "paragraph_count_range": [
+            3,
+            15
+        ],
+        "section_count_range": [
+            1,
+            5
+        ],
+        "title_length_range": [
+            10,
+            35
+        ],
+        "keyword_density": 0.03,
+        "heading_required": false,
+        "tag_count_range": [
+            3,
+            15
+        ]
+    },
+    "style_guide": {
+        "tone": "gossipy",
+        "format": "微博文风",
+        "target_audience": "16-45岁的广泛人群，对热点事件、娱乐八卦、社会话题有高度关注",
+        "writing_style": "八卦爆料",
+        "language_level": "simple",
+        "content_approach": "话题引导式",
+        "recommended_patterns": [
+            "使用吸引眼球的标题和开头",
+            "大量使用感叹号和省略号",
+            "添加各种表情包增强情绪表达",
+            "使用反问句和设问句增加互动感",
+            "多用「据说」「有人爆料」等表达增加神秘感",
+            "插入#话题标签#增加话题性"
+        ],
+        "examples": [
+            "重磅！Python之父深夜发文暗示：这个编程技巧很快将被淘汰？#Python编程# #程序员#",
+            "扒一扒那些年我们误解的Python异步编程...真相太意外了！",
+            "Python圈又出大瓜！这个特性竟然被99%的人用错了...第3点简直惊呆！"
+        ]
+    },
+    "publish_settings": {
+        "auto_publish": false,
+        "review_required": true,
+        "publish_time": "immediate"
+    }
+}

@@ -76,8 +76,6 @@ def get_human_feedback(writing_result: WritingResult) -> WritingResult:
         print("\n3. SEO表现 (0-10分):")
         print("   - 关键词使用")
         print("   - 标题优化")
-        print("   - 元描述质量")
-        print("   - 内部链接结构")
 
         while True:
             try:

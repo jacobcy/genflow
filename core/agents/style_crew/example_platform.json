@@ -87,15 +87,6 @@
             "独家解读｜异步编程将死？2025年编程范式演进预测白皮书"
         ]
     },
-    "seo_requirements": {
-        "title_length": 64,
-        "description_length": 200,
-        "keyword_count": 5,
-        "meta_requirements": {
-            "title_format": "{核心观点}：{主题}的{深度解析}",
-            "description_format": "本文深度剖析{主题}，从{角度1}、{角度2}等多维度进行思考..."
-        }
-    },
     "publish_settings": {
         "auto_publish": false,
         "review_required": true,

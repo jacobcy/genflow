@@ -8,7 +8,7 @@
 import logging
 import os
 import asyncio
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Union
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -27,8 +27,8 @@ class SequentialProductionState(BaseModel):
     # 输入参数
     category: str = ""
     style: Optional[str] = None
-    keywords: List[str] = Field(default_factory=list)
     platform_name: str = "default"
+    article: Optional[Article] = None  # 添加文章引用
 
     # 任务结果
     topic_result: Optional[Any] = None
@@ -48,12 +48,57 @@ class SequentialProductionState(BaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     current_stage: str = "initialized"  # initialized, running, completed, failed
-    status: str = "pending"  # pending, running, completed, failed
+    status: str = "pending"  # pending, running, completed, failed, cancelled
     error: Optional[str] = None
 
     # 执行统计
     execution_time: float = 0.0
     token_usage: Dict[str, int] = Field(default_factory=dict)
+
+    def mark_start(self):
+        """标记开始时间"""
+        self.started_at = datetime.now()
+        self.status = "running"
+        self.current_stage = "running"
+        # 同步文章状态
+        if self.article:
+            from core.models.content_manager import ContentManager
+            ContentManager.update_article_status(self.article, "running")
+
+    def mark_complete(self):
+        """标记完成时间"""
+        self.completed_at = datetime.now()
+        self.status = "completed"
+        self.current_stage = "completed"
+        # 同步文章状态
+        if self.article:
+            from core.models.content_manager import ContentManager
+            ContentManager.update_article_status(self.article, "completed")
+
+    def mark_failed(self, error_msg: str):
+        """标记失败状态"""
+        self.status = "failed"
+        self.current_stage = "failed"
+        self.error = error_msg
+        # 同步文章状态
+        if self.article:
+            from core.models.content_manager import ContentManager
+            ContentManager.update_article_status(self.article, "failed")
+
+    def mark_cancelled(self):
+        """标记取消状态"""
+        self.status = "cancelled"
+        self.current_stage = "cancelled"
+        # 同步文章状态
+        if self.article:
+            from core.models.content_manager import ContentManager
+            ContentManager.update_article_status(self.article, "cancelled")
+
+    def set_task_result(self, stage: str, result: Any):
+        """设置特定阶段的任务结果"""
+        setattr(self, f"{stage}_result", result)
+        self.tasks_completed.append(stage)
+        self.tasks_output[stage] = result
 
 class CrewAISequentialController(Flow[SequentialProductionState]):
     """使用CrewAI标准顺序流程的内容生产控制器
@@ -91,13 +136,13 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
     async def produce_content(self,
                             category: str,
                             style: Optional[str] = None,
-                            keywords: Optional[List[str]] = None) -> Dict:
+                            article: Optional[Article] = None) -> Dict:
         """生产内容
 
         Args:
             category: 内容类别
             style: 写作风格
-            keywords: 关键词列表
+            article: 文章对象（可选）
 
         Returns:
             Dict: 生产结果
@@ -105,7 +150,11 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
         # 设置状态参数
         self.state.category = category
         self.state.style = style
-        self.state.keywords = keywords or []
+        self.state.article = article
+
+        # 阻止已发布文章的重新生成
+        if article and article.is_published:
+            raise ValueError("已发布文章不能重新生成")
 
         # 启动Flow
         result = await self.run()
@@ -117,7 +166,8 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
             "final_output": self.state.final_output,
             "platform": self.state.platform_name,
             "status": self.state.status,
-            "execution_time": self.state.execution_time
+            "execution_time": self.state.execution_time,
+            "tasks_completed": self.state.tasks_completed
         }
 
         return production_result
@@ -128,9 +178,7 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
         logger.info(f"开始内容生产，类别: {self.state.category}，风格: {self.state.style}")
 
         # 更新状态
-        self.state.started_at = datetime.now()
-        self.state.status = "running"
-        self.state.current_stage = "running"
+        self.state.mark_start()
 
         # 更新进度
         self.current_progress.start_stage(ProductionStage.TOPIC_DISCOVERY, 1)
@@ -151,7 +199,7 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
             editor = self._create_editor()
 
             # 2. 创建顺序任务
-            topic_task = self._create_topic_task(self.state.category, self.state.keywords, topic_advisor)
+            topic_task = self._create_topic_task(self.state.category, topic_advisor)
             research_task = self._create_research_task(researcher)
             writing_task = self._create_writing_task(self.state.style, writer)
             style_task = self._create_style_task(stylist)
@@ -186,12 +234,17 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
             self.current_progress.complete_stage(ProductionStage.STYLE_ADAPTATION)
             self.current_progress.complete_stage(ProductionStage.ARTICLE_REVIEW)
 
+            # 保存到文章对象（如果有）
+            if self.state.article and self.state.final_output:
+                self.state.article.content = self.state.final_output
+                from core.models.content_manager import ContentManager
+                ContentManager.save_article(self.state.article)
+
             return "内容生产成功完成"
 
         except Exception as e:
             logger.error(f"CrewAI顺序内容生产过程中出错: {str(e)}")
-            self.state.status = "failed"
-            self.state.error = str(e)
+            self.state.mark_failed(str(e))
             self.current_progress.add_error(ProductionStage.ARTICLE_WRITING, str(e))
             return f"内容生产失败: {str(e)}"
 
@@ -199,17 +252,35 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
     def complete_production(self, result):
         """完成内容生产"""
         if "失败" in result:
-            self.state.status = "failed"
-            self.state.current_stage = "failed"
+            self.state.mark_failed("执行过程中发生错误")
         else:
-            self.state.status = "completed"
-            self.state.current_stage = "completed"
-            self.state.completed_at = datetime.now()
+            self.state.mark_complete()
 
         return {
             "status": self.state.status,
             "execution_time": self.state.execution_time,
             "tasks_count": len(self.state.tasks_completed)
+        }
+
+    @listen(complete_production)
+    def save_results(self, _):
+        """保存结果并记录完成状态"""
+        # 如果有文章对象，确保保存最终结果
+        if self.state.article and self.state.final_output:
+            try:
+                from core.models.content_manager import ContentManager
+                self.state.article.content = self.state.final_output
+                self.state.article.status = "completed"
+                self.state.article.completed_at = self.state.completed_at
+                ContentManager.save_article(self.state.article)
+                logger.info(f"文章内容已保存，ID: {self.state.article.id}")
+            except Exception as e:
+                logger.error(f"保存文章时出错: {str(e)}")
+
+        return {
+            "status": self.state.status,
+            "message": "内容生产流程已完成",
+            "has_article": self.state.article is not None
         }
 
     def _process_crew_result(self, result: Any):
@@ -232,11 +303,33 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
                 self.state.tasks_output[stage_name] = task.output
                 self.state.tasks_completed.append(stage_name)
 
+                # 存储到对应结果字段
+                if stage_name == "topic_discovery":
+                    self.state.topic_result = task.output
+                elif stage_name == "research":
+                    self.state.research_result = task.output
+                elif stage_name == "writing":
+                    self.state.writing_result = task.output
+                elif stage_name == "style_adaptation":
+                    self.state.style_result = task.output
+                elif stage_name == "review":
+                    self.state.review_result = task.output
+
         # 处理最终输出
         if hasattr(result, 'output'):
             self.state.final_output = result.output
+        elif hasattr(result, 'raw'):
+            self.state.final_output = result.raw
         else:
-            self.state.final_output = "任务完成，但无最终输出数据"
+            # 如果没有明确的输出，使用最后任务的输出
+            if self.state.review_result:
+                self.state.final_output = self.state.review_result
+            elif self.state.style_result:
+                self.state.final_output = self.state.style_result
+            elif self.state.writing_result:
+                self.state.final_output = self.state.writing_result
+            else:
+                self.state.final_output = "任务完成，但无最终输出数据"
 
     def _create_topic_advisor(self) -> Agent:
         """创建选题顾问Agent"""
@@ -293,12 +386,11 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
             llm=self.model_name
         )
 
-    def _create_topic_task(self, category: str, keywords: Optional[List[str]], agent: Agent) -> Task:
+    def _create_topic_task(self, category: str, agent: Agent) -> Task:
         """创建选题任务"""
-        keywords_text = f"关键词：{', '.join(keywords)}" if keywords else ""
         return Task(
             description=f"""
-            请基于当前热搜趋势，为类别'{category}'生成3个高质量的内容选题建议。{keywords_text}
+            请基于当前热搜趋势，为类别'{category}'生成3个高质量的内容选题建议。
 
             对每个选题，提供：
             1. 选题标题
@@ -343,7 +435,18 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
             agent: 写作Agent
         """
         # 内容类型指导
-        content_type_info = f"遵循'{content_type}'内容类型的标准结构" if content_type else "使用适合主题的内容结构"
+        content_type_info = ""
+        if content_type:
+            content_type_info = f"遵循'{content_type}'内容类型的标准结构"
+        elif self.state.article and hasattr(self.state.article, 'content_type') and self.state.article.content_type:
+            content_type_info = f"遵循'{self.state.article.content_type}'内容类型的标准结构"
+        else:
+            content_type_info = "使用适合主题的内容结构"
+
+        # 平台信息作为辅助约束
+        platform_info = ""
+        if hasattr(self, 'platform') and self.platform and hasattr(self.platform, 'name') and self.platform.name != "default":
+            platform_info = f"注意考虑{self.platform.name}平台的目标受众特点。"
 
         return Task(
             description=f"""
@@ -353,6 +456,8 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
             - 专注于内容质量和信息准确性
             - 逻辑结构清晰，论点有力
             - 确保内容原创，观点独到
+
+            {platform_info}
 
             文章应包括：
             1. 引人入胜的标题
@@ -452,6 +557,15 @@ class CrewAISequentialController(Flow[SequentialProductionState]):
             progress["stages"] = self.current_progress.to_dict()
 
         return progress
+
+    def cancel_production(self) -> Dict:
+        """取消内容生产
+
+        Returns:
+            Dict: 取消结果
+        """
+        self.state.mark_cancelled()
+        return {"status": "cancelled", "message": "内容生产已取消"}
 
 
 # 使用示例

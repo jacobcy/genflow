@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Field, validator, constr
+from pydantic import BaseModel, Field, field_validator
 
 
 # 用户简化信息
@@ -17,7 +17,7 @@ class UserInfo(BaseModel):
 
 # 标签相关模型
 class TagBase(BaseModel):
-    name: constr(min_length=1, max_length=20)
+    name: str = Field(..., min_length=1, max_length=20)
 
 
 class TagCreate(TagBase):
@@ -31,13 +31,14 @@ class TagResponse(TagBase):
 
 # 文章相关模型
 class ArticleBase(BaseModel):
-    title: constr(min_length=2, max_length=100)
-    content: constr(min_length=10, max_length=50000)
-    summary: Optional[constr(max_length=200)] = None
+    title: str = Field(..., min_length=2, max_length=100)
+    content: str = Field(..., min_length=10, max_length=50000)
+    summary: Optional[str] = Field(None, max_length=200)
     cover_image: Optional[str] = None
     tags: Optional[List[str]] = Field(default_factory=list, max_items=5)
 
-    @validator("tags")
+    @field_validator("tags")
+    @classmethod
     def validate_tags(cls, v):
         if v and any(len(tag) > 20 for tag in v):
             raise ValueError("标签长度不能超过20个字符")
@@ -49,13 +50,13 @@ class ArticleCreate(ArticleBase):
 
 
 class ArticleUpdate(BaseModel):
-    title: Optional[constr(min_length=2, max_length=100)] = None
-    content: Optional[constr(min_length=10, max_length=50000)] = None
-    summary: Optional[constr(max_length=200)] = None
+    title: Optional[str] = None
+    content: Optional[str] = None
+    summary: Optional[str] = None
     cover_image: Optional[str] = None
     tags: Optional[List[str]] = None
 
-    @validator("tags")
+    @field_validator("tags")
     def validate_tags(cls, v):
         if v and any(len(tag) > 20 for tag in v):
             raise ValueError("标签长度不能超过20个字符")
@@ -79,7 +80,7 @@ class ArticleListResponse(BaseModel):
     class Config:
         from_attributes = True
 
-    @validator("tags", pre=True)
+    @field_validator("tags", pre=True)
     def extract_tag_names(cls, v):
         if isinstance(v, list) and v and hasattr(v[0], "name"):
             return [tag.name for tag in v]
@@ -99,7 +100,7 @@ class ArticleResponse(ArticleBase):
     class Config:
         from_attributes = True
 
-    @validator("tags", pre=True)
+    @field_validator("tags", pre=True)
     def extract_tag_names(cls, v):
         if isinstance(v, list) and v and hasattr(v[0], "name"):
             return [tag.name for tag in v]

@@ -11,7 +11,7 @@ import json
 
 from crewai import Crew, Task, Agent
 from crewai.tasks.task_output import TaskOutput
-from core.models.research import ResearchResult, Article, ArticleSection
+from core.models.research import ResearchResult, ArticleOutline, ArticleSection
 from core.models.feedback import ResearchFeedback
 from core.agents.research_crew.research_agents import ResearchAgents
 from core.config import Config
@@ -23,6 +23,7 @@ from core.constants.content_types import (
     RESEARCH_DEPTH_MEDIUM,
     RESEARCH_DEPTH_DEEP
 )
+from core.models.article_outline import OutlineSection, ArticleSectionType
 
 # 配置日志
 logger = logging.getLogger("research_crew")
@@ -593,15 +594,15 @@ class ResearchCrew:
             # 继续抛出异常以便上层处理
             raise
 
-    def run_full_workflow(self, topic: str, progress_callback=None) -> Tuple[ResearchResult, Article]:
-        """运行完整的研究工作流，包括研究和文章大纲生成
+    def run_full_workflow(self, topic: str, progress_callback=None) -> Tuple[ResearchResult, ArticleOutline]:
+        """运行完整的研究工作流程
 
         Args:
-            topic: 研究话题
-            progress_callback: 可选的进度回调函数，接收(current_step, total_steps, step_name)参数
+            topic: 研究主题
+            progress_callback: 进度回调函数
 
         Returns:
-            Tuple[ResearchResult, Article]: 研究结果和文章大纲
+            Tuple[ResearchResult, ArticleOutline]: 研究结果和文章大纲
         """
         logger.info(f"开始完整研究工作流，话题: {topic}")
 
@@ -660,105 +661,87 @@ class ResearchCrew:
         logger.info("人类反馈收集完成")
         return feedback
 
-    def generate_article_outline(self, research_result: ResearchResult) -> Article:
-        """基于研究结果生成文章大纲
+    def generate_article_outline(self, research_result: ResearchResult) -> ArticleOutline:
+        """根据研究结果生成文章大纲
 
         Args:
-            research_result: 研究结果对象
+            research_result: 研究结果
 
         Returns:
-            Article: 文章大纲对象
+            ArticleOutline: 文章大纲对象
         """
-        logger.info(f"开始为话题'{research_result.topic}'生成文章大纲")
+        # 从研究结果中提取关键信息
+        key_insights = [f.content for f in research_result.key_findings]
 
-        # 从研究报告中提取主要部分
-        # 在实际应用中，这里应该使用更复杂的逻辑来分析研究报告并提取结构化信息
-        # 这里使用简化的逻辑
-
-        # 创建文章对象
-        article = Article(
-            title=f"{research_result.topic} - 研究分析",
-            description=f"基于深入研究对{research_result.topic}的全面分析和见解",
-            keywords=[research_result.topic] + research_result.topic.split()[:3],
-            sections=[]
+        # 创建文章大纲
+        outline = ArticleOutline(
+            title=f"{research_result.topic}研究报告",
+            summary=research_result.background or "",
+            key_insights=key_insights,
+            target_word_count=3000  # 设置默认目标字数
         )
 
-        # 添加引言部分
-        article.sections.append(
-            ArticleSection(
+        # 添加章节
+        outline.sections = [
+            OutlineSection(
                 title="引言",
-                content=f"介绍{research_result.topic}的背景和重要性",
-                key_points=[
-                    "话题背景和上下文",
-                    "为什么这个话题重要",
-                    "本文的研究范围和目标"
-                ]
+                content=research_result.background or "",
+                order=1,
+                section_type=ArticleSectionType.INTRODUCTION,
+                key_points=["研究背景", "研究目的", "研究方法"]
+            )
+        ]
+
+        # 添加主要发现章节
+        main_sections = self._extract_main_sections_from_report(research_result.data_analysis or "")
+        outline.sections.extend(main_sections)
+
+        # 添加结论
+        outline.sections.append(
+            OutlineSection(
+                title="结论",
+                content="基于以上研究发现...",
+                order=len(outline.sections) + 1,
+                section_type=ArticleSectionType.CONCLUSION,
+                key_points=key_insights[:3]  # 使用前3个关键发现作为结论要点
             )
         )
 
-        # 从研究报告中提取三个主要部分作为文章章节
-        main_sections = self._extract_main_sections_from_report(research_result.research_report)
-        for section in main_sections:
-            article.sections.append(section)
+        return outline
 
-        # 添加结论部分
-        article.sections.append(
-            ArticleSection(
-                title="结论与展望",
-                content=f"总结关于{research_result.topic}的主要发现和未来展望",
-                key_points=[
-                    "研究的主要发现和结论",
-                    "对未来发展的预测",
-                    "值得进一步研究的方向"
-                ]
-            )
-        )
-
-        logger.info(f"文章大纲生成完成，包含 {len(article.sections)} 个章节")
-        return article
-
-    def _extract_main_sections_from_report(self, report: str) -> List[ArticleSection]:
+    def _extract_main_sections_from_report(self, report: str) -> List[OutlineSection]:
         """从研究报告中提取主要章节
 
         Args:
             report: 研究报告文本
 
         Returns:
-            List[ArticleSection]: 提取的文章章节列表
+            List[OutlineSection]: 提取的文章章节列表
         """
-        # 在实际应用中，这里应该使用NLP技术分析报告结构并提取章节
-        # 这里使用简化的逻辑创建示例章节
+        # 这里是一个简化的实现，实际应该使用更复杂的文本分析
+        sections = []
 
-        # 创建三个样例章节
-        sections = [
-            ArticleSection(
-                title="背景与历史发展",
-                content="详述话题的历史背景和发展脉络",
-                key_points=[
-                    "起源和历史发展",
-                    "关键事件和里程碑",
-                    "历史演变中的重要转折点"
-                ]
-            ),
-            ArticleSection(
-                title="专家观点分析",
-                content="分析领域专家对话题的不同见解和立场",
-                key_points=[
-                    "主流专家观点概述",
-                    "不同学派或立场的比较",
-                    "观点争议和共识点"
-                ]
-            ),
-            ArticleSection(
-                title="数据支持的关键发现",
-                content="基于数据分析提出的主要发现和洞见",
-                key_points=[
-                    "关键统计数据和趋势",
-                    "数据支持的主要论点",
-                    "数据解读和启示"
-                ]
+        # 添加研究发现章节
+        sections.append(
+            OutlineSection(
+                title="研究发现",
+                content=report[:200] + "...",  # 使用报告开头作为内容预览
+                order=2,
+                section_type=ArticleSectionType.MAIN_POINT,
+                key_points=["主要研究发现", "数据分析结果"]
             )
-        ]
+        )
+
+        # 添加分析讨论章节
+        sections.append(
+            OutlineSection(
+                title="分析讨论",
+                content="基于研究发现进行深入分析...",
+                order=3,
+                section_type=ArticleSectionType.ANALYSIS,
+                key_points=["发现解读", "影响分析", "未来展望"]
+            )
+        )
 
         return sections
 
