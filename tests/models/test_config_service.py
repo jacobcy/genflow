@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 # 导入被测试模块
-from core.models.config_service import ConfigService
+from core.models.service.config_service import ConfigService
 
 class TestConfigServiceCore:
     """测试ConfigService的核心功能"""

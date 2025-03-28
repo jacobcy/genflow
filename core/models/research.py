@@ -6,7 +6,7 @@
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
-from .enums import ArticleSectionType
+from .util.enums import ArticleSectionType
 
 class ArticleSection(BaseModel):
     """文章部分结构
@@ -62,16 +62,14 @@ class ArticleOutlineItem(BaseModel):
     subsections: List['ArticleOutlineItem'] = Field(default_factory=list, description="子项列表")
     order: int = Field(default=0, description="排序序号")
 
-class TopicResearch(BaseModel):
-    """话题研究结果
+class BasicResearch(BaseModel):
+    """基础研究结果
 
-    表示完整的研究结果，包含背景信息、专家见解、关键发现等。
-    与特定话题和内容类型相关联。
+    表示不与特定话题关联的研究结果，可以独立使用或作为TopicResearch的基类。
+    包含研究内容、专家见解、关键发现等核心数据。
     """
-    topic_id: str = Field(..., description="关联的话题ID")
-    content_type: str = Field(..., description="内容类型")
-
     title: str = Field(..., description="研究标题")
+    content_type: str = Field(..., description="内容类型")
     background: Optional[str] = Field(default=None, description="背景信息")
 
     expert_insights: List[ExpertInsight] = Field(default_factory=list, description="专家见解列表")
@@ -83,6 +81,10 @@ class TopicResearch(BaseModel):
 
     article_outline: Optional[List[ArticleOutlineItem]] = Field(default=None, description="文章大纲")
 
+    summary: Optional[str] = Field(default=None, description="研究摘要")
+    report: Optional[str] = Field(default=None, description="完整研究报告")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="元数据")
+
     @field_validator("content_type")
     @classmethod
     def validate_content_type(cls, v):
@@ -90,6 +92,106 @@ class TopicResearch(BaseModel):
         # 此处可添加内容类型验证逻辑
         # 例如检查ContentType.get_content_type(v)是否返回有效实例
         return v
+
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典格式"""
+        return {
+            "title": self.title,
+            "content_type": self.content_type,
+            "background": self.background,
+            "expert_insights": [insight.dict() for insight in self.expert_insights],
+            "key_findings": [kf.dict() for kf in self.key_findings],
+            "sources": [s.dict() for s in self.sources],
+            "data_analysis": self.data_analysis,
+            "research_timestamp": self.research_timestamp.isoformat(),
+            "article_outline": [item.dict() for item in self.article_outline] if self.article_outline else None,
+            "summary": self.summary,
+            "report": self.report,
+            "metadata": self.metadata
+        }
+
+    @classmethod
+    def from_simple_research(cls,
+                            title: str,
+                            content: str,
+                            key_points: List[Dict],
+                            references: List[Dict],
+                            content_type: str) -> 'BasicResearch':
+        """从简单版本的ResearchResult创建标准BasicResearch
+
+        Args:
+            title: 研究标题
+            content: 研究内容
+            key_points: 关键点列表
+            references: 参考资料列表
+            content_type: 内容类型
+
+        Returns:
+            BasicResearch: 基础研究结果对象
+        """
+        # 转换引用为Source对象
+        sources = []
+        for ref in references:
+            source = Source(
+                name=ref.get("title", "Unknown Source"),
+                url=ref.get("url"),
+                author=ref.get("author"),
+                publish_date=ref.get("date"),
+                content_snippet=ref.get("snippet"),
+                reliability_score=ref.get("reliability", 0.5)
+            )
+            sources.append(source)
+
+        # 转换关键点为KeyFinding对象
+        key_findings = []
+        for kp in key_points:
+            importance = kp.get("importance", 5)
+            # 将1-10的重要性转换为0-1的浮点数
+            normalized_importance = importance / 10.0 if importance else 0.5
+
+            kf = KeyFinding(
+                content=kp.get("content", ""),
+                importance=normalized_importance,
+                sources=[]
+            )
+            key_findings.append(kf)
+
+        return cls(
+            title=title,
+            content_type=content_type,
+            summary=content[:500] + "..." if len(content) > 500 else content,
+            report=content,
+            key_findings=key_findings,
+            sources=sources,
+            metadata={
+                "created_from": "simple_research",
+                "created_at": datetime.now().isoformat(),
+                "key_points": key_points  # 保留原始关键点数据
+            }
+        )
+
+class TopicResearch(BasicResearch):
+    """话题研究结果
+
+    表示完整的研究结果，包含背景信息、专家见解、关键发现等。
+    与特定话题和内容类型相关联。继承自BasicResearch并添加话题关联。
+    """
+    topic_id: str = Field(..., description="关联的话题ID")
+
+    @classmethod
+    def from_basic_research(cls, basic_research: BasicResearch, topic_id: str) -> 'TopicResearch':
+        """从BasicResearch创建TopicResearch
+
+        Args:
+            basic_research: 基础研究结果
+            topic_id: 话题ID
+
+        Returns:
+            TopicResearch: 话题研究结果
+        """
+        data = basic_research.dict()
+        data["topic_id"] = topic_id
+        return cls(**data)
 
     class Config:
         """模型配置"""

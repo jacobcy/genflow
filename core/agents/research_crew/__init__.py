@@ -6,5 +6,15 @@
 from core.agents.research_crew.research_tools import ResearchTools
 from core.agents.research_crew.research_agents import ResearchAgents
 from core.agents.research_crew.research_crew import ResearchCrew, ResearchWorkflowResult
+from core.models.research import BasicResearch, TopicResearch
+from core.agents.research_crew.research_adapter import ResearchTeamAdapter
 
-__all__ = ['ResearchTools', 'ResearchAgents', 'ResearchCrew', 'ResearchWorkflowResult']
+__all__ = [
+    'ResearchTools',
+    'ResearchAgents',
+    'ResearchCrew',
+    'ResearchWorkflowResult',
+    'BasicResearch',
+    'TopicResearch',
+    'ResearchTeamAdapter'
+]

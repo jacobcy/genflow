@@ -22,7 +22,7 @@ os.makedirs("logs", exist_ok=True)
 # 初始化数据库
 try:
     # 使用数据库适配器初始化数据库
-    from core.models.db_adapter import DBAdapter
+    from core.models.service.db_adapter import DBAdapter
 
     # 初始化数据库并同步配置文件
     if DBAdapter.initialize():

@@ -2,11 +2,11 @@
 from typing import Dict, Optional, List
 from datetime import datetime
 from .article import Article
-from .enums import ProductionStage, StageStatus
+from .util.enums import ProductionStage, StageStatus
 
 # 导入ArticleService，使用try-except块避免循环导入
 try:
-    from .article_service import ArticleService
+    from .service.article_service import ArticleService
 except ImportError:
     # 如果在导入时发生循环导入，将在方法中动态导入
     ArticleService = None

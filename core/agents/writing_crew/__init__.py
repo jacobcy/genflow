@@ -8,6 +8,7 @@ from .writing_crew import WritingCrew, WritingResult
 from .writing_agents import WritingAgents
 from .writing_tools import WritingTools
 from .get_human_feedback import get_human_feedback
+from .writing_adapter import WritingTeamAdapter
 
 __all__ = [
     'WritingCrew',
@@ -15,4 +16,5 @@ __all__ = [
     'WritingAgents',
     'WritingTools',
     'get_human_feedback',
+    'WritingTeamAdapter',
 ]

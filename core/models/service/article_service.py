@@ -7,11 +7,11 @@
 from typing import Dict, List, Optional, Any
 from loguru import logger
 
-from .article import Article
-from .platform import Platform, get_default_platform
-from .article_style import ArticleStyle
-from .content_type import ContentType
-from .topic import Topic
+from ..article import Article
+from ..platform import Platform, get_default_platform
+from ..article_style import ArticleStyle
+from ..content_type import ContentType
+from ..topic import Topic
 
 class ArticleService:
     """文章业务逻辑服务类"""
@@ -46,7 +46,7 @@ class ArticleService:
         Returns:
             Dict: 验证结果，包含是否通过及问题详情
         """
-        from .platform import PLATFORM_CONFIGS
+        from ..platform import PLATFORM_CONFIGS
 
         if not platform:
             if not article.platform_id:
@@ -101,7 +101,7 @@ class ArticleService:
         Returns:
             Dict: 处理结果，包含调整内容和验证状态
         """
-        from .platform import PLATFORM_CONFIGS
+        from ..platform import PLATFORM_CONFIGS
 
         # 加载平台配置
         platform = PLATFORM_CONFIGS.get(platform_id, get_default_platform())
@@ -167,7 +167,7 @@ class ArticleService:
             bool: 是否成功保存
         """
         try:
-            from .content_manager import ContentManager
+            from ..content_manager import ContentManager
             return ContentManager.save_article(article)
         except Exception as e:
             logger.error(f"保存文章失败: {str(e)}")

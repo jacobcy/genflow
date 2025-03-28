@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 import time
 
 # 导入被测试模块
-from core.models.db_adapter import DBAdapter
+from core.models.service.db_adapter import DBAdapter
 from core.db.initialize import initialize_all
 
 class TestDBAdapterInitialization:

@@ -4,95 +4,19 @@
 用于结构化组织文章内容，支持文章创作过程。
 """
 
-from typing import List, Dict, Optional
-from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
-from .enums import ArticleSectionType
+from typing import List, Dict
+from pydantic import Field
 
-class OutlineSection(BaseModel):
-    """大纲章节
+from .basic_outline import BasicOutline
 
-    文章大纲中的章节，包含标题、内容概要、类型和关键点等信息。
-    """
-    title: str = Field(..., description="章节标题")
-    content: str = Field(default="", description="章节概要内容")
-    order: int = Field(default=0, description="章节顺序")
-    section_type: ArticleSectionType = Field(
-        default=ArticleSectionType.MAIN_POINT,
-        description="章节类型"
-    )
-    subsections: List['OutlineSection'] = Field(
-        default_factory=list,
-        description="子章节"
-    )
-    key_points: List[str] = Field(
-        default_factory=list,
-        description="关键要点"
-    )
-    references: List[str] = Field(
-        default_factory=list,
-        description="参考资料"
-    )
-
-class ArticleOutline(BaseModel):
+class ArticleOutline(BasicOutline):
     """文章大纲模型
 
     作为Topic和Article之间的桥梁，用于结构化规划文章内容。
+    继承自BasicOutline，添加了话题关联功能。
     直接关联到特定话题，并为后续文章生成提供框架。
     """
-    id: str = Field(..., description="大纲ID")
     topic_id: str = Field(..., description="关联话题ID")
-    content_type: str = Field(default="default", description="内容类型名称")
-    title: str = Field(..., description="文章标题")
-    summary: str = Field(..., description="文章摘要")
-    sections: List[OutlineSection] = Field(
-        default_factory=list,
-        description="大纲章节列表"
-    )
-    tags: List[str] = Field(default_factory=list, description="文章标签")
-
-    # 大纲特有字段
-    research_notes: List[str] = Field(
-        default_factory=list,
-        description="研究笔记"
-    )
-    key_insights: List[str] = Field(
-        default_factory=list,
-        description="核心见解"
-    )
-    target_word_count: int = Field(
-        default=0,
-        description="目标字数"
-    )
-
-    # 元数据
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
-
-    @field_validator("content_type")
-    @classmethod
-    def validate_content_type(cls, v):
-        """验证内容类型"""
-        # 此处可添加内容类型验证逻辑
-        return v
-
-    def to_article_sections(self) -> List[Dict]:
-        """将大纲转换为文章章节列表
-
-        用于从大纲创建文章时，将大纲章节转换为文章章节格式。
-
-        Returns:
-            List[Dict]: 文章章节列表
-        """
-        sections = []
-        for section in self.sections:
-            sections.append({
-                "title": section.title,
-                "content": section.content or f"# {section.title}\n\n待撰写内容...",
-                "order": section.order
-            })
-            # 可以选择是否包含子章节
-        return sections
 
     class Config:
         """模型配置"""

@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 # 导入被测试模块
-from core.models.article_service import ArticleService
+from core.models.service.article_service import ArticleService
 from core.models.article import Article
 from core.models.platform import Platform
 

@@ -21,7 +21,7 @@ class ConfigService:
         Returns:
             bool: 是否兼容
         """
-        from .content_manager import ContentManager
+        from ..content_manager import ContentManager
         return ContentManager.is_compatible(content_type_id, style_id)
 
     @classmethod
@@ -34,7 +34,7 @@ class ConfigService:
         Returns:
             Optional[Any]: 推荐的风格配置
         """
-        from .content_manager import ContentManager
+        from ..content_manager import ContentManager
         return ContentManager.get_recommended_style_for_content_type(content_type_id)
 
     @classmethod
@@ -47,7 +47,7 @@ class ConfigService:
         Returns:
             Optional[Any]: 平台风格配置
         """
-        from .content_manager import ContentManager
+        from ..content_manager import ContentManager
         return ContentManager.get_platform_style(platform)
 
     @classmethod
@@ -62,7 +62,7 @@ class ConfigService:
         Returns:
             Optional[Any]: 更新后的平台配置
         """
-        from .content_manager import ContentManager
+        from ..content_manager import ContentManager
         return ContentManager.reload_platform(platform_id)
 
     @classmethod
@@ -74,7 +74,7 @@ class ConfigService:
         Returns:
             Dict[str, Any]: 更新后的平台配置字典
         """
-        from .content_manager import ContentManager
+        from ..content_manager import ContentManager
         return ContentManager.reload_all_platforms()
 
     @classmethod
@@ -87,7 +87,7 @@ class ConfigService:
         Returns:
             bool: 是否成功同步
         """
-        from .content_manager import ContentManager
+        from ..content_manager import ContentManager
         if full_sync:
             return ContentManager.sync_configs_to_db_full()
         else:
@@ -103,7 +103,7 @@ class ConfigService:
         Returns:
             bool: 是否成功保存
         """
-        from .content_manager import ContentManager
+        from ..content_manager import ContentManager
         return ContentManager.save_content_type(content_type)
 
     @classmethod
@@ -116,7 +116,7 @@ class ConfigService:
         Returns:
             bool: 是否成功保存
         """
-        from .content_manager import ContentManager
+        from ..content_manager import ContentManager
         return ContentManager.save_article_style(style)
 
     @classmethod
@@ -129,7 +129,7 @@ class ConfigService:
         Returns:
             bool: 是否成功保存
         """
-        from .content_manager import ContentManager
+        from ..content_manager import ContentManager
         return ContentManager.save_platform(platform)
 
     @classmethod
@@ -142,5 +142,5 @@ class ConfigService:
         Returns:
             Optional[Any]: 内容类型配置
         """
-        from .content_manager import ContentManager
+        from ..content_manager import ContentManager
         return ContentManager.get_content_type_by_category(category)

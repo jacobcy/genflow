@@ -8,6 +8,7 @@ from .review_crew import ReviewCrew, ReviewResult
 from .review_agents import ReviewAgents
 from .review_tools import ReviewTools
 from .get_human_feedback import get_human_feedback
+from .review_adapter import ReviewTeamAdapter
 
 __all__ = [
     'ReviewCrew',
@@ -15,4 +16,5 @@ __all__ = [
     'ReviewAgents',
     'ReviewTools',
     'get_human_feedback',
+    'ReviewTeamAdapter',
 ]

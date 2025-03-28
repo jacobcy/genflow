@@ -4,7 +4,7 @@
 """
 
 # 导出共享枚举类型
-from .enums import (
+from .util.enums import (
     ArticleSectionType,
     ContentCategory,
     CategoryType,

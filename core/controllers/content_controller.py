@@ -3,7 +3,7 @@
 该模块实现了内容生产的总体协调流程，整合各个专业团队完成从选题到发布的全流程。
 """
 
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Union
 from datetime import datetime
 import logging
 import uuid
@@ -163,32 +163,43 @@ class ContentController:
             )
             raise
 
-    async def research_topic(self, topic: Topic) -> Dict:
+    async def research_topic(self, topic: Union[str, Topic]) -> Dict:
         """研究单个话题
 
         Args:
-            topic: 要研究的话题
+            topic: 要研究的话题(字符串或Topic对象)
 
         Returns:
             Dict: 研究结果
         """
-        logger.info(f"开始研究话题: {topic.title}")
+        # 处理不同类型的topic
+        topic_title = topic if isinstance(topic, str) else getattr(topic, 'title', str(topic))
+        logger.info(f"开始研究话题: {topic_title}")
 
         # 更新进度，标记研究阶段开始
         self.current_progress.start_stage(ProductionStage.TOPIC_RESEARCH, 1)
 
         try:
             # 使用研究团队适配器进行研究
-            research_result = await self.research_team.research_topic(
-                topic=topic,
-                depth="medium"
-            )
+            research_result = await self.research_team.research_topic(topic=topic, depth="medium")
+
+            # 确保研究结果是字典格式，如果直接返回BasicResearch对象需要转换
+            if not isinstance(research_result, dict) and hasattr(research_result, 'to_dict'):
+                research_data = research_result.to_dict()
+            else:
+                research_data = research_result
 
             # 更新进度
+            score = 0
+            if isinstance(research_data, dict):
+                score = research_data.get("score", 0)
+            elif hasattr(research_result, 'score'):
+                score = research_result.score
+
             self.current_progress.update_progress(
                 stage=ProductionStage.TOPIC_RESEARCH,
                 completed_items=1,
-                avg_score=research_result.get("score", 0) if isinstance(research_result, dict) else 0
+                avg_score=score
             )
             self.current_progress.complete_stage(ProductionStage.TOPIC_RESEARCH)
 
@@ -202,7 +213,7 @@ class ContentController:
             logger.error(f"研究话题出错: {str(e)}")
             self.current_progress.add_error(
                 ProductionStage.TOPIC_RESEARCH,
-                f"研究话题 '{topic.title}' 出错: {str(e)}"
+                f"研究话题 '{topic_title}' 出错: {str(e)}"
             )
             return {
                 "topic": topic,
@@ -232,11 +243,29 @@ class ContentController:
         self.current_progress.start_stage(ProductionStage.ARTICLE_WRITING, 1)
 
         try:
+            # 处理研究数据，支持不同类型
+            research_data = article.metadata.get("research_data", {})
+
+            # 如果是BasicResearch对象，转换为字典
+            if hasattr(research_data, 'to_dict'):
+                research_dict = research_data.to_dict()
+            else:
+                research_dict = research_data if isinstance(research_data, dict) else {"data": str(research_data)}
+
+            # 获取话题对象，支持字符串或Topic对象
+            topic = getattr(article, 'topic', None)
+            if not topic and hasattr(article, 'topic_id') and article.topic_id:
+                # 如果没有topic对象但有topic_id，创建一个临时topic对象
+                topic = Topic(id=article.topic_id, title=article.title)
+            elif not topic:
+                # 创建一个简单的topic字典
+                topic = {"title": article.title}
+
             # 使用写作团队适配器创作文章
             writing_result = await self.writing_team.write_content(
-                topic=article.topic,
-                research_data=article.metadata.get("research_data", {}),
-                style=article.style.tone if hasattr(article, "style") else None
+                topic=topic,
+                research_data=research_dict,
+                style=article.style.tone if hasattr(article, "style") and hasattr(article.style, "tone") else None
             )
 
             if writing_result and "content" in writing_result:
@@ -293,9 +322,18 @@ class ContentController:
         self.current_progress.start_stage(ProductionStage.STYLE_ADAPTATION, 1)
 
         try:
+            # 获取话题对象，支持字符串或Topic对象
+            topic = getattr(article, 'topic', None)
+            if not topic and hasattr(article, 'topic_id') and article.topic_id:
+                # 如果没有topic对象但有topic_id，创建一个临时topic对象
+                topic = Topic(id=article.topic_id, title=article.title)
+            elif not topic:
+                # 创建一个简单的topic字典
+                topic = {"title": article.title}
+
             # 使用风格团队适配器调整文章风格
             styled_content = await self.style_team.apply_style(
-                topic=article.topic,
+                topic=topic,
                 content=article.content,
                 style=style
             )
@@ -344,9 +382,18 @@ class ContentController:
         self.current_progress.start_stage(ProductionStage.ARTICLE_REVIEW, 1)
 
         try:
+            # 获取话题对象，支持字符串或Topic对象
+            topic = getattr(article, 'topic', None)
+            if not topic and hasattr(article, 'topic_id') and article.topic_id:
+                # 如果没有topic对象但有topic_id，创建一个临时topic对象
+                topic = Topic(id=article.topic_id, title=article.title)
+            elif not topic:
+                # 创建一个简单的topic字典
+                topic = {"title": article.title}
+
             # 使用审核团队适配器审核文章
             review_result = await self.review_team.review_content(
-                topic=article.topic,
+                topic=topic,
                 content=article.content
             )
 
@@ -377,7 +424,7 @@ class ContentController:
     async def produce_content(
         self,
         category: Optional[str] = None,
-        topic: Optional[Topic] = None,
+        topic: Optional[Union[str, Topic]] = None,
         style: Optional[str] = None,
         content_type: Optional[str] = None,
         platform: Optional[Platform] = None,
@@ -389,7 +436,7 @@ class ContentController:
 
         Args:
             category: 话题类别
-            topic: 指定话题，如不提供则自动发现
+            topic: 指定话题(字符串或Topic对象)，如不提供则自动发现
             style: 指定的写作风格
             content_type: 内容类型
             platform: 目标平台，如不提供则使用默认平台
@@ -443,28 +490,57 @@ class ContentController:
                 if not topic:
                     raise ValueError("未能获取有效话题")
 
+            # 获取topic的基本信息
+            topic_id = None
+            topic_title = None
+            if isinstance(topic, str):
+                topic_title = topic
+            else:
+                # 假设是Topic对象
+                topic_id = getattr(topic, 'id', None)
+                topic_title = getattr(topic, 'title', str(topic))
+
             # 更新文章基本信息
-            article.topic_id = topic.id
-            article.title = topic.title
-            article.summary = topic.summary if hasattr(topic, "summary") else ""
+            article.topic_id = topic_id or ""
+            article.title = topic_title or ""
+            article.summary = getattr(topic, "summary", "") if not isinstance(topic, str) else ""
+
+            # 将topic转换为字典存储
+            topic_dict = topic.to_dict() if hasattr(topic, "to_dict") else topic
+            if isinstance(topic_dict, str):
+                topic_dict = {"title": topic_dict}
 
             result["stages"]["topic"] = {
-                "topic": topic.to_dict() if hasattr(topic, "to_dict") else topic,
+                "topic": topic_dict,
                 "completed_at": datetime.now().isoformat()
             }
 
             # 2. 研究阶段
             research_result = await self.research_topic(topic)
+
+            # 确保研究结果是一个字典
+            research_data = research_result
+            if isinstance(research_result, dict) and "research_result" in research_result:
+                research_data = research_result["research_result"]
+
+            # 转换BasicResearch对象为字典
+            if hasattr(research_data, 'to_dict'):
+                research_dict = research_data.to_dict()
+            else:
+                research_dict = research_data if isinstance(research_data, dict) else {"data": str(research_data)}
+
             result["stages"]["research"] = {
-                "result": research_result,
+                "result": research_dict,
                 "completed_at": datetime.now().isoformat()
             }
 
             # 3. 写作阶段
-            article.metadata = {"research_data": research_result}
+            article.metadata = {"research_data": research_data}
             article = await self.write_article(article, platform)
+
+            article_dict = article.to_dict() if hasattr(article, "to_dict") else article
             result["stages"]["writing"] = {
-                "article": article.to_dict() if hasattr(article, "to_dict") else article,
+                "article": article_dict,
                 "completed_at": datetime.now().isoformat()
             }
 
@@ -486,7 +562,7 @@ class ContentController:
             # 保存生产结果
             production_result = ContentProductionResult(
                 topic=topic,
-                research_data=research_result,
+                research_data=research_data,
                 article=article,
                 review_data=review_result,
                 platform=platform
@@ -496,7 +572,8 @@ class ContentController:
 
             # 完成生产
             self.current_progress.complete()  # 这会自动把文章状态设置为"completed"并保存到数据库
-            result["final_article"] = article.to_dict() if hasattr(article, "to_dict") else article
+            final_article_dict = article.to_dict() if hasattr(article, "to_dict") else article
+            result["final_article"] = final_article_dict
             result["end_time"] = datetime.now().isoformat()
             result["status"] = "completed"
             result["progress"] = self.current_progress.get_summary()  # 添加进度信息到结果

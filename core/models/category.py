@@ -11,7 +11,7 @@
 from typing import List, Dict, Set, Optional
 from pydantic import BaseModel, Field, field_validator
 from ..tools.trending_tools.platform_categories import PLATFORM_CATEGORIES, CATEGORY_TAGS
-from .enums import CategoryType
+from .util.enums import CategoryType
 
 class Category(BaseModel):
     """分类模型，使用name作为唯一标识"""

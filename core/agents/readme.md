@@ -1,74 +1,150 @@
-# GenFlow 智能团队说明
+# 智能代理系统 - 分层架构
 
-本目录包含了 GenFlow 系统中的各个智能团队。每个团队由多个专门的智能体组成，配备相应的工具来完成特定任务。
+本系统采用严格的分层架构设计，确保职责清晰、代码可维护性高，并保持清晰的数据流向。
 
-## 团队构成
+## 分层架构总览
 
-### 1. 选题团队 (topic_crew)
-负责发现和评估内容选题。
+系统分为三个主要层次：
 
-**智能体**：
-- 趋势分析师：发现热门话题
-- 话题研究员：评估话题价值
-- 报告撰写员：生成分析报告
+1. **控制器层 (Controller)**
+   - 处理用户请求和系统流程编排
+   - 不包含业务逻辑，只负责调用适配器
 
-**工具**：
-- TrendingTopics：热点话题发现
-- SearchAggregator：搜索聚合
-- ContentCollector：内容采集
-- NLPAggregator：文本分析
+2. **适配器层 (TeamAdapter)**
+   - 控制器和具体团队之间的桥梁
+   - 处理参数解析和转换，确保传递给底层团队的数据格式正确
+   - 处理ID关联和状态映射
+   - 不保存处理结果
 
-### 2. 研究团队 (research_crew)
-负责深入研究选定话题。
+3. **团队实现层 (Crew)**
+   - 实现具体业务逻辑的工作流
+   - 不处理ID关联或状态映射
+   - 专注于完成特定任务
 
-**智能体**：
-- 背景研究员：收集话题背景
-- 专家发现者：收集专家观点
-- 数据分析师：分析研究数据
-- 研究报告撰写员：撰写研究报告
+## 数据流向
 
-**工具**：
-- ContentCollector：内容采集
-- SearchAggregator：搜索聚合
-- NLPAggregator：文本分析
+```
+用户请求 --> 控制器 --> 团队适配器 --> 团队实现 --> 团队适配器 --> 控制器 --> 用户响应
+```
 
-### 3. 写作团队 (writing_crew)
-负责生成高质量内容。
+## 团队模块详细说明
 
-**智能体**：
-- 大纲撰写员：设计文章结构
-- 内容撰写员：生成主体内容
-- SEO优化师：优化搜索表现
-- 编辑：提升内容质量
+### 1. 研究团队 (ResearchCrew)
 
-**工具**：
-- ArticleWriter：文章生成
-- NLPAggregator：文本处理
-- SummaTool：摘要生成
-- YakeTool：关键词提取
-- StyleAdapter：风格适配
+#### 研究团队适配器 (ResearchTeamAdapter)
 
-### 4. 审核团队 (review_crew)
-负责内容审核和质量把控。
+**职责**：
+- 解析输入的话题信息（从Topic对象或topic_id）
+- 根据content_type确定研究配置
+- 调用ResearchCrew执行研究
+- 返回BasicResearch或TopicResearch对象
 
-**智能体**：
-- 查重专员：检查原创性
-- AI检测员：识别AI内容
-- 内容审核员：检查合规性
-- 终审专员：全面评估
+**输入**：
+- `topic`: 话题对象或topic_id或直接的文本标题
+- `content_type`: 内容类型 (默认为"article")
+- `depth`: 研究深度
+- `options`: 其他选项
 
-**工具**：
-- PlagiarismChecker：查重检查
-- StatisticalAIDetector：统计型AI检测
-- OpenAIDetector：基于OpenAI的AI检测
-- SensitiveWordChecker：敏感词检查
-- NLPAggregator：文本分析
+**输出**：
+- 如有topic_id，返回TopicResearch对象
+- 否则返回BasicResearch对象
 
-## 工作流程
+#### 研究团队实现 (ResearchCrew)
 
-1. 选题团队发现和评估话题
-2. 研究团队深入研究并生成报告
-3. 写作团队基于研究成果创作内容
-4. 审核团队进行多维度质量检查
+**职责**：
+- 执行背景研究、专家发现、数据分析等研究任务
+- 生成研究报告
 
-每个环节都保留人工干预接口，确保内容质量。
+**输入**：
+- `topic`: 话题标题字符串
+- `research_config`: 研究配置
+- `depth`: 研究深度
+- `options`: 其他选项
+
+**输出**：
+- 返回BasicResearch对象
+
+### 2. 写作团队 (WritingCrew)
+
+#### 写作团队适配器 (WritingTeamAdapter)
+
+**职责**：
+- 解析输入的话题信息（从Topic对象或topic_id）
+- 根据content_type和platform确定写作风格和配置
+- 调用WritingCrew执行写作
+- 返回处理后的写作结果
+
+**输入**：
+- `topic`: 话题对象
+- `research_data`: 研究数据
+- `content_type`: 内容类型（可选，如未提供则从topic提取）
+- `platform_id`: 平台ID（可选）
+- `style`: 写作风格（可选）
+- `options`: 其他选项
+
+**输出**：
+- 返回写作结果字典
+
+#### 写作团队实现 (WritingCrew)
+
+**职责**：
+- 负责创建大纲、撰写内容、事实核查和编辑
+
+**输入**：
+- `article`: 文章对象
+- `research_data`: 研究资料
+- `platform`: 平台信息
+- `content_type`: 内容类型
+- `style`: 写作风格
+- `options`: 其他选项
+
+**输出**：
+- 返回WritingResult对象
+
+### 3. 风格团队 (StyleCrew)
+
+#### 风格团队适配器 (StyleTeamAdapter)
+
+**职责**：
+- 解析输入的内容信息（从outline_id或文本内容）
+- 根据style_id或style_type确定风格配置
+- 调用StyleCrew执行风格适配
+- 返回BasicArticle或Article对象
+
+**输入**：
+- `content`: 需要调整风格的内容（文本、ID、outline对象或article对象）
+- `platform_id`: 目标平台ID（可选）
+- `style_name`: 目标风格名称或描述文本（可选）
+- `options`: 其他选项
+
+**输出**：
+- 返回BasicArticle或Article对象
+
+#### 风格团队实现 (StyleCrew)
+
+**职责**：
+- 执行风格分析和适配
+
+**输入**：
+- `article`: 文章对象
+- `style_config`: 风格配置
+- `platform_info`: 平台信息
+- `options`: 其他选项
+
+**输出**：
+- 返回风格处理结果
+
+## 设计原则
+
+1. **职责分离**：每层有清晰的职责边界，不重叠
+2. **单向依赖**：上层依赖下层，下层不依赖上层
+3. **参数解析职责**：ID映射和内容类型解析应在适配器层完成
+4. **状态管理**：适配器层负责状态跟踪，但不保存处理结果
+5. **核心业务逻辑**：只在团队实现层处理
+
+## 开发规范
+
+1. 适配器层方法必须记录处理状态（如processing, completed, failed）
+2. 团队实现层方法不应直接与数据库或状态存储交互
+3. 注释必须说明每个方法的输入参数和返回值的格式和含义
+4. 异常必须在适配器层被捕获并包装为友好的错误信息

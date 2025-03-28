@@ -2,23 +2,27 @@
 # -*- coding: utf-8 -*-
 """研究团队运行脚本
 
-这个脚本提供命令行接口，用于运行研究团队的各种工作流程，包括：
-- 单话题研究
-- 完整研究工作流（研究+文章大纲）
-- 批量话题研究
+这个脚本提供了运行研究团队的命令行接口，支持以下三种模式：
+1. research: 仅执行研究过程
+2. full: 执行完整工作流（研究 + 文章大纲）
+3. batch: 批量执行研究
 
-包含进度回调和结果存储功能。
+使用示例:
+    python -m core.agents.research_crew.run --mode research --topic "人工智能发展趋势"
+    python -m core.agents.research_crew.run --mode full --topic "区块链技术应用" --output-dir ./results
+    python -m core.agents.research_crew.run --mode batch --topics-file topics.txt --output-dir ./results
 """
-import os
 import sys
+import os
+import json
 import logging
 import argparse
-import json
-from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime
+from typing import Dict, List, Any, Optional, Callable
 from tqdm import tqdm
 
-from core.agents.research_crew.research_crew import ResearchCrew
+from core.agents.research_crew import ResearchCrew, ResearchWorkflowResult
+from core.models.research import BasicResearch
 from core.config import Config
 
 # 配置日志
@@ -26,11 +30,10 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('research_crew.log')
+        logging.StreamHandler(stream=sys.stdout)
     ]
 )
-logger = logging.getLogger("research_run")
+logger = logging.getLogger("research_runner")
 
 def configure_progress_bar(total_steps: int) -> tqdm:
     """配置进度条

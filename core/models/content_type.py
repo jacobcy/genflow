@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, computed_field
 import os
 import json
 from .util import JsonModelLoader
-from .enums import ContentCategory
+from .util.enums import ContentCategory
 
 class StructureTemplate(BaseModel):
     """结构模板"""

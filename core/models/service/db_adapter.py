@@ -100,7 +100,7 @@ class DBAdapter:
         """从数据库加载所有文章风格
 
         Returns:
-            Dict[str, Any]: 文章风格字典
+            Dict[str, Any]: 文章风格字典，键为风格名称
         """
         try:
             # 初始化数据库
@@ -112,7 +112,7 @@ class DBAdapter:
 
             # 获取所有文章风格
             styles = article_style_repo.get_all()
-            return {style.id: style for style in styles}
+            return {style.name: style for style in styles}
         except Exception as e:
             logger.error(f"从数据库加载文章风格失败: {str(e)}")
             return {}
@@ -164,11 +164,11 @@ class DBAdapter:
             return None
 
     @classmethod
-    def get_article_style(cls, style_id: str) -> Optional[Any]:
-        """获取指定ID的文章风格
+    def get_article_style(cls, style_name: str) -> Optional[Any]:
+        """获取指定名称的文章风格
 
         Args:
-            style_id: 风格ID
+            style_name: 风格名称
 
         Returns:
             Optional[Any]: 文章风格对象
@@ -182,7 +182,7 @@ class DBAdapter:
             from core.db.repository import article_style_repo
 
             # 获取文章风格
-            return article_style_repo.get(style_id)
+            return article_style_repo.get(style_name)
         except Exception as e:
             logger.error(f"获取文章风格失败: {str(e)}")
             return None
@@ -284,7 +284,6 @@ class DBAdapter:
                 style_dict = style.to_dict()
             else:
                 style_dict = {
-                    "id": style.id,
                     "name": style.name,
                     "description": getattr(style, "description", ""),
                     "is_enabled": getattr(style, "is_enabled", True),
@@ -297,15 +296,15 @@ class DBAdapter:
                 }
 
             # 检查是否已存在
-            existing = article_style_repo.get(style.id)
+            existing = article_style_repo.get(style.name)
             if existing:
                 # 更新
-                article_style_repo.update(style.id, style_dict)
-                logger.info(f"已更新文章风格: {style.id}")
+                article_style_repo.update(style.name, style_dict)
+                logger.info(f"已更新文章风格: {style.name}")
             else:
                 # 创建
                 article_style_repo.create(style_dict)
-                logger.info(f"已创建文章风格: {style.id}")
+                logger.info(f"已创建文章风格: {style.name}")
 
             return True
         except Exception as e:
@@ -476,7 +475,7 @@ class DBAdapter:
                     "version": getattr(article, "version", 1),
                     "status": getattr(article, "status", "initialized"),
                     "is_published": getattr(article, "is_published", False),
-                    "style_id": getattr(article, "style_id", None),
+                    "style_name": getattr(article, "style_name", None),
                     "platform_id": getattr(article, "platform_id", None),
                     "platform_url": getattr(article, "platform_url", None),
                     "review": getattr(article, "review", {}),
@@ -881,7 +880,87 @@ class DBAdapter:
             from core.db.repository import topic_repo
 
             # 获取最新话题
-            return topic_repo.get_latest_topics(limit)
+            return topic_repo.get_latest(limit)
         except Exception as e:
             logger.error(f"获取最新话题失败: {str(e)}")
+            return []
+
+    @classmethod
+    def get_outline(cls, outline_id: str) -> Optional[Any]:
+        """获取指定ID的文章大纲
+
+        本方法不从数据库获取大纲，而是从临时存储中获取，
+        因为大纲是临时对象，不需要持久化到数据库。
+
+        Args:
+            outline_id: 大纲ID
+
+        Returns:
+            Optional[Any]: 大纲对象，如不存在则返回None
+        """
+        try:
+            # 从临时存储获取大纲
+            from core.models.managers.outline_manager import OutlineManager
+            return OutlineManager.get_outline(outline_id)
+        except Exception as e:
+            logger.error(f"获取大纲失败: {str(e)}")
+            return None
+
+    @classmethod
+    def save_outline(cls, outline: Any, outline_id: Optional[str] = None) -> Optional[str]:
+        """保存文章大纲到临时存储
+
+        本方法不将大纲保存到数据库，而是保存到临时存储，
+        因为大纲是临时对象，不需要持久化到数据库。
+
+        Args:
+            outline: 大纲对象
+            outline_id: 可选的大纲ID，如不提供则自动生成
+
+        Returns:
+            Optional[str]: 大纲ID，如保存失败则返回None
+        """
+        try:
+            # 保存到临时存储
+            from core.models.managers.outline_manager import OutlineManager
+            return OutlineManager.save_outline(outline, outline_id)
+        except Exception as e:
+            logger.error(f"保存大纲失败: {str(e)}")
+            return None
+
+    @classmethod
+    def delete_outline(cls, outline_id: str) -> bool:
+        """删除文章大纲
+
+        从临时存储中删除指定的大纲。
+
+        Args:
+            outline_id: 大纲ID
+
+        Returns:
+            bool: 是否成功删除
+        """
+        try:
+            # 从临时存储删除
+            from core.models.managers.outline_manager import OutlineManager
+            return OutlineManager.delete_outline(outline_id)
+        except Exception as e:
+            logger.error(f"删除大纲失败: {str(e)}")
+            return False
+
+    @classmethod
+    def list_outlines(cls) -> List[str]:
+        """列出所有大纲ID
+
+        获取当前存储在临时存储中的所有大纲ID。
+
+        Returns:
+            List[str]: 大纲ID列表
+        """
+        try:
+            # 列出临时存储中的所有大纲
+            from core.models.managers.outline_manager import OutlineManager
+            return OutlineManager.list_outlines()
+        except Exception as e:
+            logger.error(f"列出大纲失败: {str(e)}")
             return []

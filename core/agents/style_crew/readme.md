@@ -2,7 +2,198 @@
 
 ## 概述
 
-风格化团队负责将内容按照不同平台的风格规范进行改写和适配。该模块实现了一个完整的风格化工作流，包括平台分析、风格建议生成、内容适配和质量检查四个主要步骤。
+StyleCrew 是一个基于 CrewAI 框架构建的智能风格适配团队，专门负责内容风格化调整和平台风格适配。该模块采用多智能体协作模式，提供全面的风格处理服务，从平台风格分析到内容风格调整，确保内容符合特定平台或风格的要求。
+
+## 架构设计
+
+风格化系统采用三层架构设计，具有清晰的职责边界和数据流：
+
+### 1. TeamAdapter层 (StyleTeamAdapter)
+- **位置**: 控制器和具体团队之间的桥梁
+- **输入**: outline_id 或内容文本，style_id 或 style_type
+- **处理**: 不包含业务逻辑，只负责参数传递和结果转换
+  - 解析outline_id为具体内容
+  - 根据style_id或style_type确定风格配置
+  - 调用StyleAdapter层执行风格适配
+- **输出**: 将StyleAdapter返回的BasicArticle转换为Article类
+
+### 2. StyleAdapter层
+- **位置**: TeamAdapter和StyleCrew之间的适配层
+- **输入**:
+  - content文本内容
+  - style_config风格配置
+  - 其他选项
+- **处理**:
+  - 解析风格配置
+  - 调用StyleCrew，传递具体参数
+  - 处理异常和状态跟踪
+- **输出**:
+  - 返回BasicArticle类
+  - 不保存风格处理结果
+
+### 3. StyleCrew层
+- **位置**: 核心风格化实现层
+- **输入**:
+  - 具体的文本内容
+  - 风格配置参数
+  - 平台信息
+- **处理**:
+  - 执行具体风格化任务
+  - 不处理ID解析或外部关联
+- **输出**:
+  - 返回StyleWorkflowResult对象，包含处理后的内容
+
+## 数据流
+
+```
+控制器 → StyleTeamAdapter → StyleAdapter → StyleCrew → StyleAdapter → StyleTeamAdapter → 控制器
+   |           |                |             |            |              |                |
+outline_id → content    →    风格参数   → 执行风格化 →   →   → BasicArticle → Article  → 结果应用
+style_id  → style_config →     |         风格检查                ↑
+                                ↓                               |
+                           风格化处理 ————————————————————————————
+```
+
+## 核心功能
+
+- **平台风格分析**：分析特定平台的风格特点和偏好
+- **内容风格调整**：将内容调整为符合特定风格的形式
+- **风格推荐**：根据内容和平台特点提供风格建议
+- **质量检查**：评估风格适配后内容的质量和符合度
+
+## 关键类
+
+### StyleCrew
+
+核心风格化实现类，管理风格化智能体和执行风格化流程。
+
+```python
+style_crew = StyleCrew()
+result = await style_crew.style_text(
+    text="这是一段需要风格化的文本内容",
+    style_config={
+        "style": "formal",
+        "tone": "professional",
+        "formality": 3
+    }
+)
+```
+
+### StyleTeamAdapter
+
+风格团队适配器，处理参数转换和结果映射。
+
+```python
+adapter = StyleTeamAdapter()
+result = await adapter.adapt_style(
+    content="outline_123",  # 可以是outline_id、文本内容或Article对象
+    style_id="zhihu_style",  # 或使用style_type="知乎"
+    platform_id="zhihu"
+)
+```
+
+### StyleWorkflowResult
+
+存储风格化处理结果的对象，包含平台分析、风格建议、处理后内容和质量检查结果。
+
+```python
+result.platform_analysis    # 平台风格分析
+result.style_recommendations # 风格建议
+result.adapted_content      # 适配后的内容
+result.quality_check        # 质量检查结果
+result.final_article        # 最终文章对象
+```
+
+## 智能体组成
+
+StyleCrew 由四个专业智能体组成，各自负责风格化流程的不同阶段：
+
+1. **平台分析员 (PlatformAnalystAgent)**：分析平台的风格特点和偏好
+2. **风格专家 (StyleExpertAgent)**：提供具体的风格改写建议
+3. **内容适配员 (ContentAdapterAgent)**：执行内容的风格适配
+4. **质量检查员 (QualityCheckerAgent)**：评估风格适配结果的质量
+
+## 工作流程
+
+1. **参数解析**:
+   - StyleTeamAdapter解析输入内容和风格ID
+   - 生成风格配置和平台信息
+
+2. **平台分析**:
+   - 分析平台的风格特点
+   - 确定内容应遵循的风格规范
+
+3. **风格推荐**:
+   - 根据平台分析和内容特点提供风格建议
+   - 确定具体的风格调整策略
+
+4. **内容适配**:
+   - 根据风格建议调整内容
+   - 保持内容核心信息的同时改变表达方式
+
+5. **质量检查**:
+   - 评估适配后内容的质量
+   - 提供改进建议
+
+6. **结果封装**:
+   - 将处理结果封装为StyleWorkflowResult
+   - 转换为BasicArticle或Article返回
+
+## 使用示例
+
+### 基本风格适配流程
+
+```python
+from core.agents.style_crew.style_adapter import StyleTeamAdapter
+
+# 初始化风格适配器
+adapter = StyleTeamAdapter()
+await adapter.initialize()
+
+# 执行风格适配
+result = await adapter.adapt_style(
+    content="这是一段需要调整风格的内容，当前风格可能过于口语化，需要调整为更专业的表达。",
+    style_id="professional",
+    platform_id="zhihu"
+)
+
+# 使用风格适配结果
+print(f"适配后的内容: {result.content}")
+```
+
+### 平台风格分析流程
+
+```python
+from core.agents.style_crew.style_adapter import StyleTeamAdapter
+
+# 初始化风格适配器
+adapter = StyleTeamAdapter()
+await adapter.initialize()
+
+# 分析平台风格
+platform_analysis = await adapter.analyze_platform(
+    platform_id="xiaohongshu",
+    options={"detail_level": "high"}
+)
+
+# 分析结果
+print(f"平台名称: {platform_analysis['platform_name']}")
+print(f"语言风格: {platform_analysis['analysis']['language_style']}")
+print(f"内容结构建议: {platform_analysis['analysis']['content_structure']}")
+```
+
+## 配置选项
+
+风格化系统支持多种配置选项，可以根据不同平台和内容类型调整风格参数：
+
+| 风格类型 | 语气 | 正式程度 | 情感表达 | 表情符号 |
+|---------|------|---------|---------|---------|
+| formal  | professional | 3 | 否 | 否 |
+| casual  | friendly    | 1 | 是 | 是 |
+| academic | serious    | 5 | 否 | 否 |
+| social   | engaging   | 2 | 是 | 是 |
+
+通过调整这些配置，可以控制风格化过程的特点，满足不同平台和内容类型的需求。
 
 ## 目录结构
 
@@ -92,24 +283,6 @@ python run_style_crew.py example_article.json output.json --platform zhihu --ver
 6. **微博 (weibo)**: 八卦爆料，话题引导，情绪化表达
 7. **CSDN (csdn)**: 实用技术，问题解决导向，代码与讲解结合
 8. **微信公众号 (wechat)**: 深度思考，价值传递，理性分析
-
-## 工作流程
-
-风格化团队的工作流程包含以下步骤：
-
-1. **平台分析**: 分析目标平台的内容特点和风格规范
-2. **风格建议生成**: 根据平台特点和原始内容，制定风格改写策略
-3. **内容适配**: 根据风格建议对内容进行实际改写
-4. **质量检查**: 检查适配后内容的质量和合规性
-
-## 智能体角色
-
-风格团队包含四个主要角色：
-
-1. **平台分析师(PlatformAnalystAgent)**: 负责分析平台特点和风格规范
-2. **风格专家(StyleExpertAgent)**: 负责制定风格改写策略
-3. **内容适配器(ContentAdapterAgent)**: 负责执行具体的改写工作
-4. **质量检查员(QualityCheckerAgent)**: 负责检查改写后内容的质量
 
 ## 输入/输出格式
 

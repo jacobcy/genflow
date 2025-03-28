@@ -19,7 +19,8 @@ sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 from core.agents.style_crew import StyleCrew
 from core.models.article import Article
 from core.models.platform import Platform
-from core.constants.style_types import get_platform_style_type, get_style_features, get_style_description
+from core.models.content_manager import ContentManager
+from core.models.article_style import ArticleStyle
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,6 +54,15 @@ def get_platform_by_name(platform_name):
     Returns:
         Platform对象，如未找到则返回None
     """
+    # 优先使用ContentManager获取平台
+    try:
+        platform = ContentManager.get_platform(platform_name)
+        if platform:
+            return platform
+    except Exception as e:
+        logger.warning(f"从ContentManager获取平台失败: {str(e)}")
+
+    # 备用方案：直接从文件加载
     platforms_dir = Path(__file__).parent / "platforms"
     platform_files = glob.glob(str(platforms_dir / "*.json"))
 
@@ -64,12 +74,25 @@ def get_platform_by_name(platform_name):
     return None
 
 def get_default_platform():
-    """获取默认平台配置（默认使用第一个找到的平台）
+    """获取默认平台配置
 
     Returns:
         Platform对象
     """
-    platforms_dir = Path(__file__).parent.parent.parent / "constants" / "platforms"
+    # 优先使用ContentManager获取默认平台
+    try:
+        platforms = ContentManager.get_all_platforms()
+        if platforms:
+            # 尝试获取默认平台
+            if "default" in platforms:
+                return platforms["default"]
+            # 或者返回第一个平台
+            return next(iter(platforms.values()))
+    except Exception as e:
+        logger.warning(f"从ContentManager获取平台失败: {str(e)}")
+
+    # 备用方案：直接从文件加载
+    platforms_dir = Path(__file__).parent.parent.parent / "models" / "platforms"
     platform_files = glob.glob(str(platforms_dir / "*.json"))
 
     if platform_files:
@@ -89,6 +112,15 @@ def list_available_platforms():
     Returns:
         平台列表，每个元素为(id, name)元组
     """
+    # 优先使用ContentManager获取所有平台
+    try:
+        platforms_dict = ContentManager.get_all_platforms()
+        if platforms_dict:
+            return [(platform.id, platform.name) for platform in platforms_dict.values()]
+    except Exception as e:
+        logger.warning(f"从ContentManager获取平台列表失败: {str(e)}")
+
+    # 备用方案：直接从文件加载
     platforms_dir = Path(__file__).parent / "platforms"
     platform_files = glob.glob(str(platforms_dir / "*.json"))
     platforms = []
@@ -114,6 +146,9 @@ async def run_style_adaptation(input_file: str,
         verbose: 是否显示详细日志
         list_platforms: 是否只列出可用平台
     """
+    # 初始化ContentManager
+    ContentManager.initialize()
+
     if verbose:
         logger.setLevel(logging.DEBUG)
 
@@ -156,11 +191,11 @@ async def run_style_adaptation(input_file: str,
         return
 
     # 获取预定义风格信息
-    platform_style_type = get_platform_style_type(platform.id)
-    if platform_style_type:
-        style_features = get_style_features(platform_style_type)
-        style_description = get_style_description(platform_style_type)
-        logger.info(f"目标平台: {platform.name}, 预定义风格: {platform_style_type}")
+    platform_style = ContentManager.get_article_style(platform.id)
+    if platform_style:
+        style_features = platform_style.get_style_summary()
+        style_description = platform_style.description
+        logger.info(f"目标平台: {platform.name}, 预定义风格: {platform_style.name}")
         logger.info(f"风格描述: {style_description}")
     else:
         logger.info(f"目标平台: {platform.name}, 无预定义风格")

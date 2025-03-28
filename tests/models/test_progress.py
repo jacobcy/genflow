@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 # 导入被测试模块
 from core.models.progress import ArticleProductionProgress
-from core.models.enums import ProductionStage, StageStatus
+from core.models.util.enums import ProductionStage, StageStatus
 
 class TestArticleProductionProgressInitialization:
     """测试ArticleProductionProgress的初始化功能"""
