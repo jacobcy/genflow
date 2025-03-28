@@ -11,15 +11,24 @@ from core.models.content_manager import ContentManager
 from core.models.topic import Topic
 from core.models.research import BasicResearch, TopicResearch
 from core.agents.research_crew import ResearchCrew
+from core.agents.research_crew.research_protocol import ResearchRequest, ResearchResponse, FactVerificationRequest, FactVerificationResponse
 
 class ResearchTeamAdapter(BaseTeamAdapter):
-    """研究团队适配器
+    """研究团队适配器 - 适配层
+
+    这个类是研究系统的适配层，负责转换外部接口的数据格式，并调用实现层的功能。
 
     职责：
     1. 解析输入的话题信息（从Topic对象或topic_id）
     2. 根据content_type确定研究配置
-    3. 调用ResearchCrew执行研究
-    4. 返回BasicResearch或TopicResearch对象
+    3. 创建ResearchRequest对象并调用ResearchCrew执行研究
+    4. 将ResearchResponse转换为BasicResearch或TopicResearch对象
+    5. 管理研究状态跟踪
+
+    与三层架构的关系：
+    - 属于适配层，负责接口转换和参数处理
+    - 通过协议层的数据对象与实现层通信
+    - 将实现层返回的结果转换为领域模型对象
 
     注意：本层不保存研究结果，只负责参数转换和调用下层
     """
@@ -46,8 +55,7 @@ class ResearchTeamAdapter(BaseTeamAdapter):
     ) -> BasicResearch:
         """研究话题
 
-        将输入的topic信息转换为ResearchCrew需要的格式，
-        并根据content_type确定研究配置。
+        适配外部接口调用，转换为内部研究请求，并将结果转换为外部所需格式。
 
         Args:
             topic: 话题对象、字符串或包含话题信息的字典
@@ -58,55 +66,133 @@ class ResearchTeamAdapter(BaseTeamAdapter):
             BasicResearch: 研究结果，如有topic_id则返回TopicResearch
         """
         try:
-            # 提取话题信息
+            # 1. 提取基本话题信息
             topic_title, topic_id, content_type = self._extract_topic_info(topic)
-
-            # 如果没有指定content_type，使用默认类型
-            if not content_type:
-                content_type = "article"
-                logger.info(f"未指定内容类型，使用默认类型: {content_type}")
-
-            # 获取内容类型配置
-            content_type_obj = ContentManager.get_content_type(content_type)
-
-            # 根据内容类型调整研究深度（如果未指定）
-            if content_type_obj and not depth:
-                depth = self._determine_depth_from_content_type(content_type_obj)
-                logger.info(f"根据内容类型 {content_type} 设置研究深度: {depth}")
-
-            # 获取平台信息
-            platform_info = self._get_platform_info(topic)
-
-            # 准备研究选项
-            research_options = self._prepare_research_options(
-                options, content_type_obj, platform_info
-            )
-
-            # 生成研究配置
-            research_config = self._create_research_config(content_type, content_type_obj)
-
-            # 调用ResearchCrew执行研究
-            # 注意：传递给ResearchCrew的是具体参数，不是ID
-            result = await self.crew.research_topic(
-                topic=topic_title,  # 只传递标题，不传递整个对象
-                research_config=research_config,  # 传递完整的研究配置
-                depth=depth,
-                options=research_options
-            )
 
             # 记录研究状态
             if topic_id:
-                self._research_status[topic_id] = "completed"
-                # 如果有topic_id，返回TopicResearch对象
-                return TopicResearch.from_basic_research(result, topic_id)
+                self._research_status[topic_id] = "in_progress"
 
-            # 没有topic_id，直接返回BasicResearch
-            return result
+            # 使用默认内容类型（如果未指定）
+            if not content_type:
+                content_type = "article"
+
+            # 2. 准备元数据
+            metadata = {}
+
+            # 如果有内容类型对象，添加到元数据
+            try:
+                content_type_obj = ContentManager.get_content_type(content_type)
+                if content_type_obj:
+                    metadata["content_type_info"] = content_type_obj.get_type_summary()
+            except Exception:
+                pass
+
+            # 3. 准备选项
+            research_options = options or {}
+
+            # 添加平台信息（如果有）
+            if hasattr(topic, 'platform') and topic.platform:
+                research_options["platform_id"] = topic.platform.id if hasattr(topic.platform, 'id') else str(topic.platform)
+
+            # 4. 创建研究请求对象
+            request = ResearchRequest(
+                topic_title=topic_title,
+                content_type=content_type,
+                depth=depth,
+                options=research_options,
+                metadata=metadata,
+                topic_id=topic_id
+            )
+
+            # 5. 调用研究团队执行研究
+            logger.info(f"开始调用研究团队执行话题研究: {topic_title}")
+            response = await self.crew.research_topic(request)
+
+            # 6. 转换结果
+            if topic_id:
+                self._research_status[topic_id] = "completed"
+                # 如果有topic_id，转换为TopicResearch
+                return self._to_topic_research(response, topic_id)
+
+            # 没有topic_id，转换为BasicResearch
+            return self._to_basic_research(response)
 
         except Exception as e:
             if topic_id:
                 self._research_status[topic_id] = "failed"
             raise RuntimeError(f"研究话题失败: {str(e)}")
+
+    def _to_basic_research(self, response: ResearchResponse) -> BasicResearch:
+        """将ResearchResponse转换为BasicResearch
+
+        Args:
+            response: 研究响应对象
+
+        Returns:
+            BasicResearch: 基础研究结果
+        """
+        from core.models.research import ExpertInsight, KeyFinding, Source
+
+        # 转换专家见解
+        expert_insights = []
+        for expert in response.experts:
+            insight = ExpertInsight(
+                expert_name=expert.get("name", "未知专家"),
+                content=expert.get("insight", ""),
+                field=expert.get("field", None),
+                credentials=expert.get("credentials", None)
+            )
+            expert_insights.append(insight)
+
+        # 转换关键发现
+        key_findings = []
+        for finding in response.key_findings:
+            kf = KeyFinding(
+                content=finding.get("content", ""),
+                importance=finding.get("importance", 0.5),
+                sources=[]
+            )
+            key_findings.append(kf)
+
+        # 转换信息来源
+        sources = []
+        for source in response.sources:
+            src = Source(
+                name=source.get("name", "未知来源"),
+                url=source.get("url", None),
+                author=source.get("author", None),
+                publish_date=source.get("date", None),
+                content_snippet=source.get("snippet", None),
+                reliability_score=source.get("reliability", 0.5)
+            )
+            sources.append(src)
+
+        # 创建BasicResearch对象
+        return BasicResearch(
+            title=response.title,
+            content_type=response.content_type,
+            background=response.background,
+            expert_insights=expert_insights,
+            key_findings=key_findings,
+            sources=sources,
+            data_analysis=response.data_analysis,
+            report=response.report,
+            metadata=response.metadata
+        )
+
+    def _to_topic_research(self, response: ResearchResponse, topic_id: str) -> TopicResearch:
+        """将ResearchResponse转换为TopicResearch
+
+        Args:
+            response: 研究响应对象
+            topic_id: 话题ID
+
+        Returns:
+            TopicResearch: 话题研究结果
+        """
+        basic_research = self._to_basic_research(response)
+        return TopicResearch.from_basic_research(basic_research, topic_id)
 
     def _extract_topic_info(self, topic) -> tuple:
         """从输入的topic提取关键信息
@@ -249,28 +335,32 @@ class ResearchTeamAdapter(BaseTeamAdapter):
             Dict[str, Any]: 验证结果
         """
         try:
-            # 整合选项
-            merged_options = options or {}
-            merged_options["thoroughness"] = thoroughness
-
-            # 调用底层方法
-            result = await self.crew.verify_facts(
+            # 创建事实验证请求对象
+            request = FactVerificationRequest(
                 statements=statements,
                 thoroughness=thoroughness,
-                **merged_options
+                options=options or {}
             )
 
-            return result
+            # 调用ResearchCrew执行事实验证
+            logger.info(f"开始验证 {len(statements)} 个事实陈述")
+            response = await self.crew.verify_facts(request)
+
+            # 直接返回验证结果
+            return {
+                "results": response.results,
+                "metadata": response.metadata
+            }
         except Exception as e:
-            raise RuntimeError(f"事实验证失败: {str(e)}")
+            raise RuntimeError(f"验证事实失败: {str(e)}")
 
     async def get_research_status(self, topic_id: str) -> str:
-        """获取研究状态
+        """获取指定话题ID的研究状态
 
         Args:
             topic_id: 话题ID
 
         Returns:
-            str: 研究状态
+            str: 研究状态(pending/in_progress/completed/failed)
         """
-        return self._research_status.get(topic_id, "not_found")
+        return self._research_status.get(topic_id, "pending")

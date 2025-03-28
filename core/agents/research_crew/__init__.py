@@ -8,6 +8,12 @@ from core.agents.research_crew.research_agents import ResearchAgents
 from core.agents.research_crew.research_crew import ResearchCrew, ResearchWorkflowResult
 from core.models.research import BasicResearch, TopicResearch
 from core.agents.research_crew.research_adapter import ResearchTeamAdapter
+from core.agents.research_crew.research_protocol import (
+    ResearchRequest,
+    ResearchResponse,
+    FactVerificationRequest,
+    FactVerificationResponse
+)
 
 __all__ = [
     'ResearchTools',
@@ -16,5 +22,9 @@ __all__ = [
     'ResearchWorkflowResult',
     'BasicResearch',
     'TopicResearch',
-    'ResearchTeamAdapter'
+    'ResearchTeamAdapter',
+    'ResearchRequest',
+    'ResearchResponse',
+    'FactVerificationRequest',
+    'FactVerificationResponse'
 ]

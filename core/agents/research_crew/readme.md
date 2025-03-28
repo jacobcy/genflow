@@ -6,16 +6,15 @@ ResearchCrew 是一个基于 CrewAI 框架构建的智能研究团队，专门�
 
 ## 架构设计
 
-研究系统采用三层架构设计，具有清晰的职责边界和数据流：
+研究系统采用三层架构设计，具有清晰的职责边界、统一的数据协议和优化的数据流：
 
-### 1. TeamAdapter层
-- **位置**: 控制器和具体团队之间的桥梁
-- **输入**: topic_id 或 Topic对象
-- **处理**: 不包含业务逻辑，只负责参数传递和结果转换
-- **输出**: 将ResearchAdapter返回的研究结果传递给控制器
+### 1. 协议层 (Protocol Layer)
+- **位置**: 所有层之间统一的数据传输协议
+- **组件**: `ResearchRequest`, `ResearchResponse`, `FactVerificationRequest`, `FactVerificationResponse`
+- **职责**: 定义标准化的请求和响应对象，确保层间数据传递的一致性
 
-### 2. ResearchAdapter层 (ResearchTeamAdapter)
-- **位置**: TeamAdapter和ResearchCrew之间的适配层
+### 2. 适配层 (ResearchTeamAdapter)
+- **位置**: 控制器和研究团队之间的桥梁
 - **输入**:
   - topic_id、Topic对象或话题字符串
   - content_type (默认为"article")
@@ -23,31 +22,32 @@ ResearchCrew 是一个基于 CrewAI 框架构建的智能研究团队，专门�
 - **处理**:
   - 解析话题信息(topic_title, topic_id)
   - 根据content_type生成研究配置
-  - 调用ResearchCrew，传递具体参数
+  - 创建`ResearchRequest`对象
+  - 调用ResearchCrew，传递请求对象
+  - 将`ResearchResponse`转换为BasicResearch或TopicResearch
 - **输出**:
   - 根据是否有topic_id返回BasicResearch或TopicResearch
   - 不保存研究结果
 
-### 3. ResearchCrew层
+### 3. 实现层 (ResearchCrew)
 - **位置**: 核心研究实现层
 - **输入**:
-  - 话题标题字符串
-  - 研究配置参数(深度、专家需求等)
+  - `ResearchRequest`对象，包含话题标题、内容类型和研究配置
 - **处理**:
   - 执行具体研究任务
-  - 不处理content_type解析
   - 不处理topic_id关联逻辑
 - **输出**:
-  - 返回BasicResearch对象
+  - 返回`ResearchResponse`对象，包含所有研究结果
 
 ## 数据流
 
 ```
-控制器 → TeamAdapter → ResearchAdapter → ResearchCrew → ResearchAdapter → TeamAdapter → 控制器
-   |        |               |                |               |                |             |
-topic_id → topic_id → (topic_title,    → 研究参数 →   →   → BasicResearch → TopicResearch → 结果应用
-                     research_config)                          ↑                ↑
-                                                      (不含topic_id)    (包含topic_id)
+控制器 → ResearchAdapter → ResearchCrew → ResearchAdapter → 控制器
+   |             |               |               |               |
+topic_id/Topic → ResearchRequest → 执行研究 → ResearchResponse → BasicResearch/TopicResearch
+                     ↑                                |
+                (包含各种参数)                        ↓
+                                              (完整研究结果)
 ```
 
 ## 核心功能
@@ -61,16 +61,46 @@ topic_id → topic_id → (topic_title,    → 研究参数 →   →   → Basi
 
 ## 关键类
 
+### 协议类 (Protocol Classes)
+
+定义层间数据传输的标准结构，优化数据流动。
+
+```python
+# 研究请求对象
+request = ResearchRequest(
+    topic_title="人工智能在医疗领域的应用",
+    content_type="technical",
+    depth="deep",
+    config=research_config,
+    options={"platform_id": "medium"}
+)
+
+# 研究响应对象
+response = ResearchResponse(
+    title="人工智能在医疗领域的应用",
+    content_type="technical",
+    background="...",
+    report="...",
+    experts=[...],
+    key_findings=[...],
+    sources=[...]
+)
+```
+
 ### ResearchCrew
 
 核心研究实现类，管理研究智能体和执行研究流程。
 
 ```python
 research_crew = ResearchCrew()
-result = await research_crew.research_topic(
-    topic="人工智能在医疗领域的应用",
-    research_config={"depth": "deep", "needs_expert": True},
-    depth="deep"
+response = await research_crew.research_topic(
+    request=ResearchRequest(
+        topic_title="人工智能在医疗领域的应用",
+        content_type="technical",
+        depth="deep",
+        config=research_config,
+        options={}
+    )
 )
 ```
 
@@ -113,9 +143,9 @@ ResearchCrew 由四个专业智能体组成，各自负责研究流程的不同�
 
 ## 工作流程
 
-1. **参数解析**:
+1. **参数解析与请求构建**:
    - ResearchAdapter解析话题信息和内容类型
-   - 生成研究配置，转换为ResearchCrew需要的格式
+   - 生成研究配置，创建ResearchRequest对象
 
 2. **背景研究**:
    - 分析研究主题的核心概念
@@ -137,73 +167,49 @@ ResearchCrew 由四个专业智能体组成，各自负责研究流程的不同�
    - 生成结构化报告
    - 提出基于研究的建议
 
-6. **结果转换**:
-   - 将ResearchWorkflowResult转换为BasicResearch
+6. **响应构建与结果转换**:
+   - 创建ResearchResponse对象
+   - 适配器层将响应转换为BasicResearch
    - 如有topic_id，则创建TopicResearch
 
-## 使用示例
+## 事实验证流程
 
-### 基本研究流程
-
-```python
-from core.agents.research_crew.research_adapter import ResearchTeamAdapter
-from core.models.topic import Topic
-
-# 创建研究主题
-topic = Topic(
-    id="t123",
-    title="量子计算的商业应用",
-    content_type="technical"
-)
-
-# 初始化研究适配器
-adapter = ResearchTeamAdapter()
-await adapter.initialize()
-
-# 执行研究
-result = await adapter.research_topic(
-    topic=topic,
-    depth="deep"
-)
-
-# 使用研究结果
-print(f"研究标题: {result.title}")
-print(f"关联话题ID: {result.topic_id}")
-print(f"背景信息长度: {len(result.background or '')}")
-print(f"专家见解数量: {len(result.expert_insights)}")
-print(f"研究报告摘要: {result.summary[:200] if result.summary else 'N/A'}")
-```
-
-### 事实验证流程
+事实验证功能同样使用标准化的请求/响应对象：
 
 ```python
-from core.agents.research_crew.research_adapter import ResearchTeamAdapter
-
-# 初始化研究适配器
-adapter = ResearchTeamAdapter()
-await adapter.initialize()
-
-# 需要验证的陈述列表
-statements = [
-    "中国是全球最大的可再生能源投资国",
-    "2023年全球AI市场规模达到1500亿美元",
-    "特斯拉Model 3在2022年是全球销量最高的电动汽车"
-]
-
-# 执行事实验证
-verification_results = await adapter.verify_facts(
-    statements=statements,
-    thoroughness="high"
+# 创建验证请求
+request = FactVerificationRequest(
+    statements=[
+        "中国是全球最大的可再生能源投资国",
+        "2023年全球AI市场规模达到1500亿美元"
+    ],
+    thoroughness="high",
+    options={"include_sources": True}
 )
+
+# 获取验证结果
+response = await crew.verify_facts(request)
 
 # 分析验证结果
-for statement, result in verification_results.items():
-    print(f"陈述: {statement}")
-    print(f"验证结果: {'✓ 正确' if result['is_verified'] else '✗ 不正确'}")
-    print(f"置信度: {result['confidence_score']}/10")
-    print(f"证据来源: {', '.join(result['sources'][:3])}")
-    print(f"补充说明: {result['notes']}\n")
+for result in response.results:
+    print(f"陈述: {result['statement']}")
+    print(f"验证结果: {'✓ 正确' if result['verified'] else '✗ 不正确'}")
+    print(f"置信度: {result['confidence']}")
+    print(f"解释: {result['explanation']}")
+    for source in result['sources']:
+        print(f"  来源: {source['name']} {source['url']}")
 ```
+
+## 优化设计
+
+本模块采用以下设计优化：
+
+1. **统一数据协议**：使用标准化的请求/响应对象，减少参数解析和数据转换的冗余
+2. **简化层次结构**：使用三层架构（协议层、适配层、实现层），减少不必要的中间层
+3. **清晰职责边界**：适配层负责外部接口转换，实现层专注于核心功能执行
+4. **减少中间状态**：直接构建最终响应对象，避免多次对象转换
+5. **一致的数据流**：所有操作遵循相同的数据流模式
+6. **类型安全**：使用Pydantic模型确保数据结构的一致性和验证
 
 ## 配置选项
 
