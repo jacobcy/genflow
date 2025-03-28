@@ -4,19 +4,43 @@
 作为ContentManager与数据库之间的业务处理层。
 """
 
-from typing import Dict, List, Optional, Any, Type, TypeVar
+from typing import Dict, List, Optional, Any, Type, TypeVar, Union, Tuple
 import json
 import importlib
 import time
+import logging
 from loguru import logger
 from datetime import datetime, timedelta
 from pathlib import Path
 import os
 
 from .db_adapter import DBAdapter
+try:
+    from .redis_tool import RedisTool
+except ImportError:
+    class RedisTool:
+        @staticmethod
+        def get_all_topics():
+            return []
+
+        @staticmethod
+        def clear_topics():
+            pass
+
+try:
+    from core.models.topic import Topic
+except ImportError:
+    # 处理导入失败情况，定义一个占位Topic类
+    class Topic:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
 
 # 定义泛型类型变量
-T = TypeVar('T')
+T = Any
+
+# 日志配置
+logger = logging.getLogger(__name__)
 
 class TopicService:
     """话题服务类
@@ -42,7 +66,6 @@ class TopicService:
             if topic_dict:
                 # 导入话题模型
                 try:
-                    from core.models.topic import Topic
                     return Topic.from_dict(topic_dict)
                 except ImportError:
                     logger.warning("话题模型导入失败，返回原始数据字典")
@@ -105,7 +128,6 @@ class TopicService:
 
             # 转换为话题对象
             try:
-                from core.models.topic import Topic
                 return [Topic.from_dict(topic_dict) for topic_dict in topics_dicts]
             except ImportError:
                 logger.warning("话题模型导入失败，返回原始数据列表")
@@ -130,7 +152,6 @@ class TopicService:
 
             # 转换为话题对象
             try:
-                from core.models.topic import Topic
                 return [Topic.from_dict(topic_dict) for topic_dict in topics_dicts]
             except ImportError:
                 logger.warning("话题模型导入失败，返回原始数据列表")
@@ -157,48 +178,56 @@ class TopicService:
             return False
 
     @classmethod
-    def sync_from_redis(cls, topics_data: List[Dict[str, Any]]) -> List[str]:
-        """从Redis同步话题数据到数据库（仅用于批量迁移）
-
-        注意：此方法主要用于批量迁移或备份目的，正常内容生产流程中
-        不应该直接调用此方法，而应使用select_topic_for_production方法
-        来选择并持久化单个话题。
+    def get_trending_topics(cls, platform: Optional[str] = None, limit: int = 10) -> List[Any]:
+        """获取热门话题
 
         Args:
-            topics_data: 话题数据列表
-
-        Returns:
-            List[str]: 成功同步的话题ID列表
-        """
-        try:
-            # 使用数据库适配器同步话题
-            logger.warning("执行话题批量同步操作，正常流程中不建议使用此方法")
-            return DBAdapter.sync_topics_from_redis(topics_data)
-        except Exception as e:
-            logger.error(f"从Redis同步话题数据失败: {str(e)}")
-            return []
-
-    @classmethod
-    def get_trending_topics(cls, limit: int = 100) -> List[Any]:
-        """获取热门话题列表
-
-        Args:
+            platform: 平台名称
             limit: 返回数量限制
 
         Returns:
             List[Any]: 话题对象列表
         """
         try:
-            # 使用数据库适配器获取热门话题
-            topics_dicts = DBAdapter.get_trending_topics(limit)
+            # 初始化数据库
+            if not DBAdapter.initialize():
+                return []
 
-            # 转换为话题对象
-            try:
-                from core.models.topic import Topic
-                return [Topic.from_dict(topic_dict) for topic_dict in topics_dicts]
-            except ImportError:
-                logger.warning("话题模型导入失败，返回原始数据列表")
-                return topics_dicts
+            # 导入仓库
+            from core.db.repository import topic_repo
+
+            # 获取最新话题
+            topics = topic_repo.get_latest(limit=limit)
+            if not topics:
+                return []
+
+            # 过滤平台
+            if platform:
+                topics = [t for t in topics if t.platform == platform]
+
+            # 转换为Topic模型
+            result = []
+            for t in topics:
+                # 转换为字典
+                topic_dict = t.to_dict()
+
+                # 创建Topic对象
+                topic = Topic(
+                    id=topic_dict.get('id'),
+                    title=topic_dict.get('title'),
+                    platform=topic_dict.get('platform', ''),
+                    description=topic_dict.get('description', ''),
+                    url=topic_dict.get('url', ''),
+                    mobile_url=topic_dict.get('mobile_url', ''),
+                    cover=topic_dict.get('cover', ''),
+                    hot=topic_dict.get('hot', 0),
+                    trend_score=topic_dict.get('trend_score', 0),
+                    source_time=topic_dict.get('source_time', 0),
+                    expire_time=topic_dict.get('expire_time', 0)
+                )
+                result.append(topic)
+
+            return result
         except Exception as e:
             logger.error(f"获取热门话题失败: {str(e)}")
             return []
@@ -214,84 +243,90 @@ class TopicService:
             List[Any]: 话题对象列表
         """
         try:
-            # 使用数据库适配器获取最新话题
-            topics_dicts = DBAdapter.get_latest_topics(limit)
+            # 初始化数据库
+            if not DBAdapter.initialize():
+                return []
 
-            # 转换为话题对象
-            try:
-                from core.models.topic import Topic
-                return [Topic.from_dict(topic_dict) for topic_dict in topics_dicts]
-            except ImportError:
-                logger.warning("话题模型导入失败，返回原始数据列表")
-                return topics_dicts
+            # 导入仓库
+            from core.db.repository import topic_repo
+
+            # 获取最新话题
+            topics = topic_repo.get_latest(limit=limit)
+            if not topics:
+                return []
+
+            # 转换为Topic模型
+            result = []
+            for t in topics:
+                # 转换为字典
+                topic_dict = t.to_dict()
+
+                # 创建Topic对象
+                topic = Topic(
+                    id=topic_dict.get('id'),
+                    title=topic_dict.get('title'),
+                    platform=topic_dict.get('platform', ''),
+                    description=topic_dict.get('description', ''),
+                    url=topic_dict.get('url', ''),
+                    mobile_url=topic_dict.get('mobile_url', ''),
+                    cover=topic_dict.get('cover', ''),
+                    hot=topic_dict.get('hot', 0),
+                    trend_score=topic_dict.get('trend_score', 0),
+                    source_time=topic_dict.get('source_time', 0),
+                    expire_time=topic_dict.get('expire_time', 0)
+                )
+                result.append(topic)
+
+            return result
         except Exception as e:
             logger.error(f"获取最新话题失败: {str(e)}")
             return []
 
     @classmethod
-    def select_topic_for_production(cls, platform: str, content_type: str = None) -> Optional[Any]:
-        """选择一个待处理状态的话题用于内容生产并更新其状态
+    def process_data(cls) -> bool:
+        """处理话题数据
 
-        从数据库中获取状态为pending的话题，按照综合评分选择最适合的一个，
-        并将其状态更新为selected
-
-        注意：该方法假设话题已经被保存到数据库中，controller层应该
-        确保在调用此方法前，已经将所需的话题保存到了数据库。
-
-        Args:
-            platform: 平台标识
-            content_type: 内容类型ID，可选
+        从Redis获取话题数据，保存到数据库
 
         Returns:
-            Optional[Any]: 选择的话题对象，如无合适话题则返回None
+            bool: 是否处理成功
         """
         try:
-            # 获取待处理的话题
-            topics_dicts = DBAdapter.get_topics_by_status("pending")
+            # 获取话题数据
+            topics = RedisTool.get_all_topics()
+            if not topics:
+                logger.info("没有发现话题数据")
+                return True
 
-            # 按平台过滤
-            if platform:
-                topics_dicts = [t for t in topics_dicts if t.get('platform') == platform]
+            # 初始化数据库
+            if not DBAdapter.initialize():
+                logger.error("数据库初始化失败")
+                return False
 
-            # 按内容类型过滤
-            if content_type:
-                topics_dicts = [t for t in topics_dicts if not t.get('content_type') or
-                              t.get('content_type') == content_type]
+            # 导入仓库
+            from core.db.repository import topic_repo
 
-            if not topics_dicts:
-                logger.warning(f"数据库中未找到符合条件的待处理话题: 平台={platform}, 内容类型={content_type}")
-                return None
+            # 保存话题数据
+            for item in topics:
+                # 验证必须的字段
+                if 'id' not in item or 'title' not in item:
+                    logger.warning(f"话题数据缺少必要字段: {item}")
+                    continue
 
-            # 根据时间和热度排序（简单的加权评分）
-            now = int(time.time())
+                # 检查是否已存在
+                existing = topic_repo.get(item['id'])
+                if existing:
+                    # 更新话题
+                    topic_repo.update(item['id'], item)
+                    logger.info(f"更新话题: {item['id']}")
+                else:
+                    # 创建话题
+                    topic_repo.create(item)
+                    logger.info(f"创建话题: {item['id']}")
 
-            def score_topic(topic):
-                age = now - topic.get('fetch_time', now)
-                age_factor = max(0, 1 - (age / (7 * 24 * 3600)))  # 7天内的时效性
-                hot_score = topic.get('hot', 0) / 100 if topic.get('hot', 0) > 0 else 0
-                trend_score = topic.get('trend_score', 0) if topic.get('trend_score', 0) > 0 else 0
-                return (age_factor * 0.4) + (hot_score * 0.3) + (trend_score * 0.3)
-
-            # 按综合得分排序
-            topics_dicts.sort(key=score_topic, reverse=True)
-
-            # 选择得分最高的话题
-            selected_topic_dict = topics_dicts[0]
-
-            # 更新状态为selected
-            if DBAdapter.update_topic_status(selected_topic_dict['id'], "selected"):
-                logger.info(f"已选择话题[{selected_topic_dict['id']}:{selected_topic_dict.get('title', '')}]用于内容生产")
-
-                # 转换为话题对象
-                try:
-                    from core.models.topic import Topic
-                    return Topic.from_dict(selected_topic_dict)
-                except ImportError:
-                    logger.warning("话题模型导入失败，返回原始数据字典")
-                    return selected_topic_dict
-            else:
-                logger.error(f"更新话题[{selected_topic_dict['id']}]状态失败")
-                return None
+            # 清理Redis数据
+            RedisTool.clear_topics()
+            return True
         except Exception as e:
-            logger.error(f"选择话题失败: {str(e)}")
-            return None
+            logger.error(f"处理话题数据失败: {str(e)}")
+            return False

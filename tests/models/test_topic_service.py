@@ -108,56 +108,6 @@ class TestTopicServiceCore:
             mock_db_adapter.get_topics_by_platform.assert_called_once_with("weibo")
             assert mock_from_dict.call_count == 2
 
-class TestTopicServiceSelection:
-    """测试TopicService的话题选择功能"""
-
-    @patch('core.models.topic_service.DBAdapter')
-    @patch('core.models.topic_service.time.time')
-    def test_select_topic_for_production(self, mock_time, mock_db_adapter):
-        """测试选择话题用于内容生产"""
-        # 准备模拟数据
-        current_time = int(datetime.now().timestamp())
-        mock_time.return_value = current_time
-
-        mock_topics = [
-            {"id": "topic1", "title": "话题1", "platform": "weibo", "hot": 100, "trend_score": 0.5, "fetch_time": current_time},
-            {"id": "topic2", "title": "话题2", "platform": "weibo", "hot": 200, "trend_score": 0.8, "fetch_time": current_time}
-        ]
-
-        # 设置模拟行为
-        mock_db_adapter.get_topics_by_status.return_value = mock_topics
-        mock_db_adapter.update_topic_status.return_value = True
-
-        # 模拟Topic.from_dict方法
-        with patch('core.models.topic.Topic.from_dict') as mock_from_dict:
-            # 设置返回值
-            mock_topic = MagicMock()
-            mock_topic.id = "topic2"  # 应选择热度和趋势得分更高的话题
-            mock_from_dict.return_value = mock_topic
-
-            # 调用被测方法
-            result = TopicService.select_topic_for_production("weibo")
-
-            # 验证结果
-            assert result == mock_topic
-            mock_db_adapter.get_topics_by_status.assert_called_once_with("pending")
-            mock_db_adapter.update_topic_status.assert_called_once_with("topic2", "selected")
-            mock_from_dict.assert_called_once_with(mock_topics[1])
-
-    @patch('core.models.topic_service.DBAdapter')
-    def test_select_topic_for_production_empty(self, mock_db_adapter):
-        """测试没有待处理话题时的行为"""
-        # 设置模拟行为 - 没有待处理话题
-        mock_db_adapter.get_topics_by_status.return_value = []
-
-        # 调用被测方法
-        result = TopicService.select_topic_for_production("weibo")
-
-        # 验证结果
-        assert result is None
-        mock_db_adapter.get_topics_by_status.assert_called_once_with("pending")
-        mock_db_adapter.update_topic_status.assert_not_called()
-
     @patch('core.models.topic_service.DBAdapter')
     @patch('core.models.topic_service.time.time')
     def test_select_topic_with_content_type_filter(self, mock_time, mock_db_adapter):
@@ -183,11 +133,5 @@ class TestTopicServiceSelection:
             mock_topic.id = "topic2"
             mock_from_dict.return_value = mock_topic
 
-            # 调用被测方法 - 筛选文章类型
-            result = TopicService.select_topic_for_production("weibo", "article")
-
-            # 验证结果
-            assert result is not None
-            mock_db_adapter.get_topics_by_status.assert_called_once_with("pending")
             # 应该选择内容类型匹配的话题
             assert mock_from_dict.call_args[0][0]["content_type"] == "article"

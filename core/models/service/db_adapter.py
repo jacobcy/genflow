@@ -376,7 +376,7 @@ class DBAdapter:
                 return None
 
             # 导入模型
-            from core.db.models import get_default_content_type
+            from core.db.model_manager import get_default_content_type
 
             # 获取默认内容类型
             return get_default_content_type()
@@ -397,7 +397,7 @@ class DBAdapter:
                 return None
 
             # 导入模型
-            from core.db.models import get_default_article_style
+            from core.db.model_manager import get_default_article_style
 
             # 获取默认文章风格
             return get_default_article_style()
@@ -418,7 +418,7 @@ class DBAdapter:
                 return None
 
             # 导入模型
-            from core.db.models import get_default_platform
+            from core.db.model_manager import get_default_platform
 
             # 获取默认平台
             return get_default_platform()
@@ -609,13 +609,13 @@ class DBAdapter:
 
     @classmethod
     def get_topic(cls, topic_id: str) -> Optional[Dict[str, Any]]:
-        """获取指定ID的话题
+        """从数据库获取指定ID的话题
 
         Args:
             topic_id: 话题ID
 
         Returns:
-            Optional[Dict[str, Any]]: 话题数据，如果未找到则返回None
+            Optional[Dict[str, Any]]: 话题数据，如不存在返回None
         """
         try:
             # 初始化数据库
@@ -631,7 +631,7 @@ class DBAdapter:
                 return topic.to_dict()
             return None
         except Exception as e:
-            logger.error(f"获取话题失败: {str(e)}")
+            logger.error(f"获取话题[{topic_id}]失败: {str(e)}")
             return None
 
     @classmethod
@@ -656,11 +656,10 @@ class DBAdapter:
             if hasattr(topic, "to_dict"):
                 topic_dict = topic.to_dict()
             else:
-                # 尝试从对象属性构建字典
+                # 直接使用对象属性构建字典，简化字段列表
                 topic_dict = {}
                 for key in ['id', 'title', 'platform', 'description', 'url', 'mobile_url',
-                           'cover', 'hot', 'trend_score', 'timestamp', 'fetch_time',
-                           'expire_time', 'categories', 'tags', 'content_type', 'status']:
+                           'cover', 'hot', 'trend_score', 'source_time', 'expire_time']:
                     if hasattr(topic, key):
                         topic_dict[key] = getattr(topic, key)
 
@@ -670,10 +669,8 @@ class DBAdapter:
                 return False
 
             # 确保时间戳字段
-            if 'timestamp' not in topic_dict:
-                topic_dict['timestamp'] = int(time.time())
-            if 'fetch_time' not in topic_dict:
-                topic_dict['fetch_time'] = int(time.time())
+            if 'source_time' not in topic_dict:
+                topic_dict['source_time'] = int(time.time())
             if 'expire_time' not in topic_dict:
                 # 默认7天后过期
                 topic_dict['expire_time'] = int(time.time()) + 7 * 24 * 60 * 60
@@ -724,165 +721,6 @@ class DBAdapter:
             return topic_repo.get_by_platform(platform)
         except Exception as e:
             logger.error(f"获取平台话题失败: {str(e)}")
-            return []
-
-    @classmethod
-    def get_topics_by_status(cls, status: str) -> List[Dict[str, Any]]:
-        """获取指定状态的所有话题
-
-        Args:
-            status: 话题状态
-
-        Returns:
-            List[Dict[str, Any]]: 话题列表
-        """
-        try:
-            # 初始化数据库
-            if not cls.initialize():
-                return []
-
-            # 导入仓库
-            from core.db.repository import topic_repo
-
-            # 获取话题
-            return topic_repo.get_by_status(status)
-        except Exception as e:
-            logger.error(f"获取状态话题失败: {str(e)}")
-            return []
-
-    @classmethod
-    def update_topic_status(cls, topic_id: str, status: str) -> bool:
-        """更新话题状态
-
-        Args:
-            topic_id: 话题ID
-            status: 新状态
-
-        Returns:
-            bool: 是否成功更新
-        """
-        try:
-            # 初始化数据库
-            if not cls.initialize():
-                return False
-
-            # 导入仓库
-            from core.db.repository import topic_repo
-
-            # 更新状态
-            updated = topic_repo.update_status(topic_id, status)
-
-            if updated:
-                logger.info(f"成功更新话题状态: {topic_id} -> {status}")
-                return True
-            else:
-                logger.warning(f"更新话题状态失败, 未找到话题: {topic_id}")
-                return False
-        except Exception as e:
-            logger.error(f"更新话题状态失败: {str(e)}")
-            return False
-
-    @classmethod
-    def delete_topic(cls, topic_id: str) -> bool:
-        """删除话题
-
-        Args:
-            topic_id: 话题ID
-
-        Returns:
-            bool: 是否成功删除
-        """
-        try:
-            # 初始化数据库
-            if not cls.initialize():
-                return False
-
-            # 导入仓库
-            from core.db.repository import topic_repo
-
-            # 删除话题
-            success = topic_repo.delete(topic_id)
-
-            if success:
-                logger.info(f"成功删除话题: {topic_id}")
-            else:
-                logger.warning(f"删除话题失败, 未找到话题: {topic_id}")
-
-            return success
-        except Exception as e:
-            logger.error(f"删除话题失败: {str(e)}")
-            return False
-
-    @classmethod
-    def sync_topics_from_redis(cls, topics_data: List[Dict[str, Any]]) -> List[str]:
-        """从Redis同步话题数据到数据库
-
-        Args:
-            topics_data: 话题数据列表
-
-        Returns:
-            List[str]: 成功同步的话题ID列表
-        """
-        try:
-            # 初始化数据库
-            if not cls.initialize():
-                return []
-
-            # 导入仓库
-            from core.db.repository import topic_repo
-
-            # 同步数据
-            return topic_repo.sync_from_redis(topics_data)
-        except Exception as e:
-            logger.error(f"从Redis同步话题数据失败: {str(e)}")
-            return []
-
-    @classmethod
-    def get_trending_topics(cls, limit: int = 100) -> List[Dict[str, Any]]:
-        """获取热门话题列表
-
-        Args:
-            limit: 返回数量限制
-
-        Returns:
-            List[Dict[str, Any]]: 话题列表
-        """
-        try:
-            # 初始化数据库
-            if not cls.initialize():
-                return []
-
-            # 导入仓库
-            from core.db.repository import topic_repo
-
-            # 获取热门话题
-            return topic_repo.get_trending_topics(limit)
-        except Exception as e:
-            logger.error(f"获取热门话题失败: {str(e)}")
-            return []
-
-    @classmethod
-    def get_latest_topics(cls, limit: int = 100) -> List[Dict[str, Any]]:
-        """获取最新的话题列表
-
-        Args:
-            limit: 返回数量限制
-
-        Returns:
-            List[Dict[str, Any]]: 话题列表
-        """
-        try:
-            # 初始化数据库
-            if not cls.initialize():
-                return []
-
-            # 导入仓库
-            from core.db.repository import topic_repo
-
-            # 获取最新话题
-            return topic_repo.get_latest(limit)
-        except Exception as e:
-            logger.error(f"获取最新话题失败: {str(e)}")
             return []
 
     @classmethod

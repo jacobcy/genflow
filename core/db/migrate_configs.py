@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Set
 from loguru import logger
 
 from core.db.session import get_db, init_db
-from core.db.models import ContentType, ArticleStyle, Platform
+from core.db import ContentType, ArticleStyle, Platform
 from core.db.initialize import initialize_all
 
 def migrate_content_types(sync_mode: bool = False):

@@ -255,10 +255,6 @@ from core.models.topic_service import TopicService
 # 获取热门话题
 hot_topics = TopicService.get_trending_topics(10)
 
-# 为内容生产选择话题
-selected_topic = TopicService.select_topic_for_production("weibo")
-```
-
 ```python
 # 文章服务示例
 from core.models.article_service import ArticleService

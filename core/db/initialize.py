@@ -9,8 +9,8 @@ import json
 from loguru import logger
 
 from core.db.session import init_db, get_db
-from core.db.models import (
-    ContentType, ArticleStyle, Platform, Topic, Article,
+from core.db import ContentType, ArticleStyle, Platform, Topic, Article
+from core.db.model_manager import (
     get_default_content_type, get_default_article_style, get_default_platform
 )
 

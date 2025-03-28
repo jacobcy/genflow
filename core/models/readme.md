@@ -159,9 +159,6 @@ ContentManager.sync_configs_to_db()
 
 # 完整同步配置
 ContentManager.sync_configs_to_db_full()
-
-# 从Redis同步主题数据
-saved_ids = ContentManager.sync_topics_from_redis(topics_data)
 ```
 
 ### 主题选择和趋势
@@ -173,8 +170,6 @@ trending_topics = ContentManager.get_trending_topics(limit=10)
 # 获取最新主题
 latest_topics = ContentManager.get_latest_topics(limit=5)
 
-# 智能选择生产主题
-selected_topic = ContentManager.select_topic_for_production("linkedin", "thought_leadership")
 ```
 
 ## 设计原则

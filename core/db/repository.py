@@ -10,7 +10,7 @@ from datetime import datetime
 import logging
 
 from core.db.session import get_db, get_or_create
-from core.db.models import ContentType, ArticleStyle, Platform, Article, Topic
+from core.db import  ContentType, ArticleStyle, Platform, Article, Topic
 
 # 创建logger
 logger = logging.getLogger(__name__)
@@ -241,7 +241,7 @@ class PlatformRepository(BaseRepository[Platform]):
         return self.db.query(Platform).filter(Platform.name.ilike(f"%{name}%")).all()
 
 class ArticleRepository(BaseRepository[Article]):
-    """文章数据仓库"""
+    """文章数据仓库，提供基础的CRUD操作"""
 
     def __init__(self, db: Optional[Session] = None):
         """初始化仓库
@@ -251,123 +251,45 @@ class ArticleRepository(BaseRepository[Article]):
         """
         super().__init__(Article, db)
 
-    def get_by_status(self, status: str) -> List[Dict[str, Any]]:
-        """获取指定状态的所有文章
-
-        Args:
-            status: 文章状态
-
-        Returns:
-            List[Dict]: 文章列表
-        """
-        articles = self.db.query(self.model).filter(self.model.status == status).all()
-        return [article.to_dict() for article in articles]
-
-    def get_by_topic_id(self, topic_id: str) -> List[Dict[str, Any]]:
+    def get_by_topic_id(self, topic_id: str) -> List[Article]:
         """获取指定话题的所有文章
 
         Args:
             topic_id: 话题ID
 
         Returns:
-            List[Dict]: 文章列表
+            List[Article]: 文章列表
         """
-        articles = self.db.query(self.model).filter(self.model.topic_id == topic_id).all()
-        return [article.to_dict() for article in articles]
+        return self.db.query(self.model).filter(self.model.topic_id == topic_id).all()
 
-    def update_status(self, id: str, status: str) -> Optional[Dict[str, Any]]:
-        """更新文章状态
+    def query_by_time_range(self, start_time: int, end_time: int) -> List[Article]:
+        """通过时间范围查询文章
 
         Args:
-            id: 文章ID
-            status: 新状态
+            start_time: 开始时间戳
+            end_time: 结束时间戳
 
         Returns:
-            Optional[Dict]: 更新后的文章数据，如果文章不存在则返回None
+            List[Article]: 文章列表
         """
-        article = self.get(id)
-        if not article:
-            return None
+        return self.db.query(self.model).filter(
+            self.model.created_at >= start_time,
+            self.model.created_at <= end_time
+        ).all()
 
-        # 更新状态和时间
-        now = datetime.now()
-        db_article = self.db.query(self.model).filter(self.model.id == id).first()
-
-        # 获取现有元数据并更新状态历史
-        try:
-            metadata = json.loads(db_article.metadata) if db_article.metadata else {}
-        except:
-            metadata = {}
-
-        if "status_history" not in metadata:
-            metadata["status_history"] = []
-
-        metadata["status_history"].append({
-            "status": status,
-            "timestamp": now.isoformat()
-        })
-
-        # 更新数据库记录
-        db_article.status = status
-        db_article.updated_at = now
-        db_article.metadata = json.dumps(metadata)
-
-        try:
-            self.db.commit()
-            self.db.refresh(db_article)
-            return db_article.to_dict()
-        except:
-            self.db.rollback()
-            return None
-
-    def create_or_update(self, article_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """创建或更新文章
+    def get_latest(self, limit: int = 10) -> List[Article]:
+        """获取最新文章列表
 
         Args:
-            article_data: 文章数据
+            limit: 返回数量限制
 
         Returns:
-            Optional[Dict]: 创建或更新后的文章数据，失败则返回None
+            List[Article]: 文章列表
         """
-        article_id = article_data.get("id")
-        if not article_id:
-            return None
-
-        existing = self.get(article_id)
-
-        try:
-            if existing:
-                # 更新现有文章
-                db_article = self.db.query(self.model).filter(self.model.id == article_id).first()
-
-                # 更新所有字段
-                for key, value in article_data.items():
-                    if key in ["sections", "tags", "keywords", "images", "categories", "review", "metadata"]:
-                        # JSON字段需要序列化
-                        setattr(db_article, key, json.dumps(value))
-                    elif key not in ["created_at"]:  # 创建时间不更新
-                        setattr(db_article, key, value)
-
-                # 确保更新时间
-                db_article.updated_at = datetime.now()
-
-                self.db.commit()
-                self.db.refresh(db_article)
-                return db_article.to_dict()
-            else:
-                # 创建新文章
-                db_article = Article.from_dict(article_data)
-                self.db.add(db_article)
-                self.db.commit()
-                self.db.refresh(db_article)
-                return db_article.to_dict()
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"创建或更新文章失败: {str(e)}")
-            return None
+        return self.db.query(self.model).order_by(self.model.created_at.desc()).limit(limit).all()
 
 class TopicRepository(BaseRepository[Topic]):
-    """话题数据仓库"""
+    """话题数据仓库，提供基础的CRUD操作"""
 
     def __init__(self, db: Optional[Session] = None):
         """初始化仓库
@@ -377,126 +299,42 @@ class TopicRepository(BaseRepository[Topic]):
         """
         super().__init__(Topic, db)
 
-    def get_by_platform(self, platform: str) -> List[Dict[str, Any]]:
+    def get_by_platform(self, platform: str) -> List[Topic]:
         """获取指定平台的所有话题
 
         Args:
             platform: 平台标识
 
         Returns:
-            List[Dict]: 话题列表
+            List[Topic]: 话题列表
         """
-        topics = self.db.query(self.model).filter(self.model.platform == platform).all()
-        return [topic.to_dict() for topic in topics]
+        return self.db.query(self.model).filter(self.model.platform == platform).all()
 
-    def get_by_status(self, status: str) -> List[Dict[str, Any]]:
-        """获取指定状态的所有话题
+    def query_by_time_range(self, start_time: int, end_time: int) -> List[Topic]:
+        """通过时间范围查询话题
 
         Args:
-            status: 话题状态
+            start_time: 开始时间戳
+            end_time: 结束时间戳
 
         Returns:
-            List[Dict]: 话题列表
+            List[Topic]: 话题列表
         """
-        topics = self.db.query(self.model).filter(self.model.status == status).all()
-        return [topic.to_dict() for topic in topics]
+        return self.db.query(self.model).filter(
+            self.model.source_time >= start_time,
+            self.model.source_time <= end_time
+        ).all()
 
-    def update_status(self, id: str, status: str) -> Optional[Dict[str, Any]]:
-        """更新话题状态
-
-        Args:
-            id: 话题ID
-            status: 新状态
-
-        Returns:
-            Optional[Dict]: 更新后的话题数据，如果话题不存在则返回None
-        """
-        topic = self.get(id)
-        if not topic:
-            return None
-
-        # 更新状态和时间
-        topic.status = status
-        topic.updated_at = datetime.now()
-
-        try:
-            self.db.commit()
-            self.db.refresh(topic)
-            return topic.to_dict()
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"更新话题状态失败: {str(e)}")
-            return None
-
-    def sync_from_redis(self, topics_data: List[Dict[str, Any]]) -> List[str]:
-        """从Redis同步话题数据到数据库
-
-        Args:
-            topics_data: 话题数据列表
-
-        Returns:
-            List[str]: 成功同步的话题ID列表
-        """
-        synced_ids = []
-
-        for topic_data in topics_data:
-            topic_id = topic_data.get("id")
-            if not topic_id:
-                continue
-
-            try:
-                # 检查是否存在
-                existing = self.get(topic_id)
-
-                if existing:
-                    # 更新现有话题
-                    for key, value in topic_data.items():
-                        if key in ["categories", "tags"]:
-                            # 序列化JSON字段
-                            setattr(existing, key, json.dumps(value))
-                        elif key != "created_at":  # 创建时间不更新
-                            setattr(existing, key, value)
-
-                    # 确保更新时间
-                    existing.updated_at = datetime.now()
-                    self.db.commit()
-                    self.db.refresh(existing)
-                else:
-                    # 创建新话题
-                    new_topic = Topic.from_dict(topic_data)
-                    self.db.add(new_topic)
-                    self.db.commit()
-
-                synced_ids.append(topic_id)
-            except Exception as e:
-                self.db.rollback()
-                logger.error(f"同步话题数据失败 {topic_id}: {str(e)}")
-
-        return synced_ids
-
-    def get_latest_topics(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """获取最新的话题列表
+    def get_latest(self, limit: int = 10) -> List[Topic]:
+        """获取最新话题列表，按照source_time降序排序
 
         Args:
             limit: 返回数量限制
 
         Returns:
-            List[Dict]: 话题列表
+            List[Topic]: 话题列表
         """
-        topics = self.db.query(self.model).order_by(self.model.fetch_time.desc()).limit(limit).all()
-        return [topic.to_dict() for topic in topics]
-
-    def get_trending_topics(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """获取热门话题列表
-
-        Args:
-            limit: 返回数量限制
-
-        Returns:
-            List[Dict]: 话题列表
-        """
-        topics = self.db.query(self.model).order_by(self.model.trend_score.desc()).limit(limit).all()
-        return [topic.to_dict() for topic in topics]
+        return self.db.query(self.model).order_by(self.model.source_time.desc()).limit(limit).all()
 
 # 创建仓库实例
 content_type_repo = ContentTypeRepository()

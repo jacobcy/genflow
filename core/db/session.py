@@ -104,7 +104,7 @@ def export_to_json(export_path: Optional[str] = None) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: 导出的数据字典
     """
-    from core.db.models import ContentType, ArticleStyle, Platform
+    from core.db import  ContentType, ArticleStyle, Platform
 
     result = {}
 
@@ -138,7 +138,7 @@ def import_from_json(import_path: str) -> bool:
     Returns:
         bool: 是否成功导入
     """
-    from core.db.models import ContentType, ArticleStyle, Platform
+    from core.db import  ContentType, ArticleStyle, Platform
 
     if not os.path.exists(import_path):
         logger.error(f"导入文件不存在: {import_path}")
