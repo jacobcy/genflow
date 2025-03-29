@@ -7,7 +7,7 @@ from core.tools.base import BaseTool, ToolResult
 from core.tools.nlp_tools.processor import NLPAggregator
 from core.tools.content_collectors.collector import ContentCollector
 from core.tools.style_tools.adapter import StyleAdapter
-from core.models.platform import Platform
+from core.models.platform.platform import Platform
 
 @dataclass
 class ArticleSection:

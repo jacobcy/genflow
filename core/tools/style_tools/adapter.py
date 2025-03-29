@@ -6,9 +6,9 @@ from core.tools.nlp_tools.processor import NLPAggregator
 
 # 避免循环导入
 if TYPE_CHECKING:
-    from core.models.article import Article
-from core.models.platform import Platform
-from core.models.article_style import StyleRules
+    from core.models.article.article import Article
+from core.models.platform.platform import Platform
+from core.models.style.article_style import StyleRules
 
 class StyleAdapter:
     """平台风格适配器"""

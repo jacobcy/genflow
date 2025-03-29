@@ -476,9 +476,8 @@ class TrendingTopics(BaseTool):
                     processed_topic = {
                         "title": title,
                         "platform": platform,
-                        "timestamp": timestamp,
+                        "source_time": timestamp,
                         "hot": hot,
-                        "fetch_time": int(current_time.timestamp()),
                         "expire_time": int((current_time + timedelta(days=7)).timestamp())
                     }
 

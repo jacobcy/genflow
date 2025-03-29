@@ -90,7 +90,7 @@ class TopicProcessor:
             "title": title,
             "platform": platform,
             "raw_data": raw_topic,  # 保留原始数据
-            "update_time": self._standardize_time(raw_topic.get("timestamp")),
+            "source_time": self._standardize_time(raw_topic.get("timestamp")),
         }
 
         # 处理URL

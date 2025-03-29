@@ -5,6 +5,7 @@
 import logging
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
+import time
 
 from .platform_weights import (
     calculate_normalized_hot_score,
@@ -115,29 +116,23 @@ class TopicProcessor:
                 hot_value = parse_hot_value(topic.get("hot"))
                 hot_score = calculate_normalized_hot_score(platform, hot_value)
 
-                # 处理时间戳
+                # 尝试从原始数据中获取时间戳
                 timestamp = topic.get("timestamp")
-                try:
-                    if timestamp is not None:
-                        if isinstance(timestamp, (int, float)):
-                            timestamp = int(timestamp)
-                        elif isinstance(timestamp, str):
-                            timestamp = int(float(timestamp))
-                        else:
-                            timestamp = crawl_time
-                    else:
-                        timestamp = crawl_time
-                except (TypeError, ValueError):
-                    timestamp = crawl_time
-                    logger.debug(f"时间戳解析失败，使用抓取时间: {crawl_time}")
+                if timestamp:
+                    try:
+                        timestamp = int(timestamp)  # 转为整数
+                    except (ValueError, TypeError):
+                        timestamp = int(time.time())  # 转换失败则使用当前时间
+                else:
+                    timestamp = int(time.time())  # 没有时间戳则使用当前时间
 
                 # 创建基础话题数据
                 processed_topic = {
                     "title": str(title).strip(),
                     "platform": platform,
-                    "timestamp": timestamp,
+                    "source_time": timestamp,
                     "hot_score": hot_score,
-                    "fetch_time": crawl_time,
+                    "crawl_time": crawl_time,
                     "expire_time": expire_time
                 }
 
@@ -178,7 +173,7 @@ class TopicProcessor:
             logger.debug(f"使用平台 {platform} 默认热度值: {hot_score}")
 
         # 获取时间戳，优先使用原始时间戳，否则使用抓取时间
-        timestamp = topic.get("timestamp") or topic.get("fetch_time", 0)
+        timestamp = topic.get("source_time") or topic.get("crawl_time", 0)
         current_time = datetime.now().timestamp()
         time_factor = max(0, 1 - (current_time - timestamp) / (7 * 24 * 3600))  # 7天时效性衰减
 
@@ -238,3 +233,21 @@ class TopicFilter:
                 matched.append(topic)
 
         return matched
+
+def calculate_time_weight(topic: Dict) -> float:
+    """计算时间权重
+
+    基于话题发布/更新时间，计算时效性权重。
+    时间越近权重越高，时间越久权重越低。
+
+    Args:
+        topic: 话题数据
+
+    Returns:
+        float: 时间权重(0.1-1.0)
+    """
+    # 获取话题的时间戳，如果没有则使用抓取时间
+    timestamp = topic.get("source_time") or topic.get("crawl_time", 0)
+    current_time = datetime.now().timestamp()
+    time_factor = max(0, 1 - (current_time - timestamp) / (7 * 24 * 3600))  # 7天时效性衰减
+    return time_factor

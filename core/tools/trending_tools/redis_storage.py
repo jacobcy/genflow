@@ -120,8 +120,7 @@ class RedisStorage:
                         "hot": topic.get("hot", 0),
                         "description": topic.get("description", ""),
                         "cover": topic.get("cover", ""),
-                        "timestamp": topic.get("timestamp", int(current_time)),
-                        "fetch_time": int(current_time),
+                        "source_time": topic.get("timestamp", int(current_time)),
                         "expire_time": int((datetime.now() + timedelta(days=7)).timestamp())
                     }
 
