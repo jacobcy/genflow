@@ -1,260 +1,256 @@
-# 内容管理器 (ContentManager)
+# GenFlow 核心模型 - 使用指南
 
 ## 概述
 
-ContentManager 是 GenFlow 系统的中枢管理模块，作为内容类型、文章风格、平台配置和数据的统一接口。它采用适配器模式，将上层应用与底层实现解耦，确保系统组件间高内聚低耦合，简化了数据流和访问控制。
+GenFlow 核心模型提供了内容管理的基础设施，包括风格、文章和配置管理。本指南面向业务层开发人员，说明如何正确地使用这些组件。
 
-## 核心功能
+## 快速入门
 
-- **内容类型管理**：加载、查询和保存内容类型配置
-- **风格配置管理**：获取和维护文章风格定义
-- **平台配置管理**：统一管理多平台发布规则和要求
-- **文章数据管理**：存储和检索文章相关数据
-- **主题数据管理**：处理研究主题的存储和状态追踪
-- **兼容性检查**：验证内容类型与风格的适配性
-- **配置同步**：在内存和持久化存储间同步配置
+### 1. 初始化
 
-## 系统架构
-
-ContentManager 在系统中的位置：
-
-```
-应用层(CrewAI团队) → ContentManager → 数据服务层 → 持久化存储
-```
-
-内部组织结构：
-
-```
-ContentManager
-    ├── ConfigService (配置管理)
-    │   ├── 内容类型配置
-    │   ├── 风格配置
-    │   └── 平台配置
-    ├── ArticleService (文章管理)
-    │   ├── 文章存储
-    │   ├── 主题管理
-    │   └── 状态追踪
-    └── DBAdapter (数据库适配)
-        ├── 数据持久化
-        ├── 查询接口
-        └── 事务管理
-```
-
-## 关键方法
-
-### 初始化和基本设置
+在应用启动时，需要初始化模型服务：
 
 ```python
-# 初始化管理器
+from core.models.content_manager import ContentManager
+
+# 默认使用数据库
 ContentManager.initialize(use_db=True)
 
-# 确保已初始化
-ContentManager.ensure_initialized()
+# 或仅使用文件系统
+# ContentManager.initialize(use_db=False)
 ```
 
-### 内容类型管理
+### 2. 风格管理
 
 ```python
-# 获取特定内容类型
-content_type = ContentManager.get_content_type("blog_post")
+# 获取风格
+formal_style = ContentManager.get_article_style("formal")
+if formal_style:
+    print(f"风格名称: {formal_style.name}")
+    print(f"风格描述: {formal_style.description}")
+    print(f"语气: {formal_style.tone}")
 
-# 获取所有内容类型
-all_types = ContentManager.get_all_content_types()
+# 获取所有风格
+all_styles = ContentManager.get_all_styles()
+for style_id, style in all_styles.items():
+    print(f"ID: {style_id}, 名称: {style.name}")
 
-# 按类别获取内容类型
-tech_type = ContentManager.get_content_type_by_category("technology")
+# 创建自定义风格
+custom_style = ContentManager.create_style_from_description(
+    "一种正式、专业的科技文章风格，适合技术博客",
+    {"style_name": "tech_formal"}
+)
 
-# 保存内容类型配置
-ContentManager.save_content_type(new_content_type)
+# 保存风格
+ContentManager.save_style(custom_style)
 ```
 
-### 风格管理
+### 3. 文章管理
 
 ```python
-# 获取特定风格
-style = ContentManager.get_article_style("formal_academic")
+# 获取文章
+article = ContentManager.get_article("article_123")
+if article:
+    print(f"标题: {article.title}")
+    print(f"状态: {article.status}")
 
-# 获取所有风格配置
-all_styles = ContentManager.get_all_article_styles()
+# 保存文章
+from core.models.article.article_model import Article
 
-# 获取平台默认风格
-wechat_style = ContentManager.get_platform_style("wechat")
+new_article = Article(
+    title="示例文章",
+    content="这是文章内容...",
+    status="draft"
+)
+ContentManager.save_article(new_article)
+print(f"文章ID: {new_article.id}")
 
-# 保存风格配置
-ContentManager.save_article_style(new_style)
+# 获取特定状态的文章
+draft_articles = ContentManager.get_articles_by_status("draft")
+print(f"草稿文章数量: {len(draft_articles)}")
+
+# 更新文章状态
+ContentManager.update_article_status(new_article.id, "published")
 ```
 
-### 平台管理
+## 核心API
+
+### ModelService (ContentManager)
 
 ```python
-# 获取平台配置
-platform = ContentManager.get_platform("medium")
-
-# 获取所有平台配置
-all_platforms = ContentManager.get_all_platforms()
-
-# 重新加载平台配置
-updated_platform = ContentManager.reload_platform("twitter")
-
-# 保存平台配置
-ContentManager.save_platform(new_platform)
+ContentManager.initialize(use_db=True)  # 初始化服务
 ```
 
-### 兼容性和推荐
+#### 风格相关方法
 
 ```python
-# 检查内容类型和风格是否兼容
-is_compatible = ContentManager.is_compatible("technical_guide", "casual_tone")
+# 获取风格
+style = ContentManager.get_article_style(style_name)
 
-# 获取内容类型的推荐风格
-recommended_style = ContentManager.get_recommended_style_for_content_type("news_article")
+# 获取默认风格
+default_style = ContentManager.get_default_style()
+
+# 获取所有风格
+all_styles = ContentManager.get_all_styles()
+
+# 创建风格
+style = ContentManager.create_style_from_description(description, options)
+
+# 查找特定类型的风格
+style = ContentManager.find_style_by_type(style_type)
+
+# 保存风格
+success = ContentManager.save_style(style)
 ```
 
-### 文章管理
+#### 文章相关方法
 
 ```python
 # 获取文章
 article = ContentManager.get_article(article_id)
 
 # 保存文章
-ContentManager.save_article(article)
-
-# 更新文章状态
-ContentManager.update_article_status(article, "published")
+success = ContentManager.save_article(article)
 
 # 获取特定状态的文章
-draft_articles = ContentManager.get_articles_by_status("draft")
+articles = ContentManager.get_articles_by_status(status)
 
-# 删除文章
-ContentManager.delete_article(article_id)
+# 更新文章状态
+success = ContentManager.update_article_status(article_id, status)
 ```
 
-### 主题管理
+## 数据模型
+
+### ArticleStyle
+
+风格对象包含以下主要属性：
 
 ```python
-# 获取研究主题
-topic = ContentManager.get_topic(topic_id)
-
-# 保存主题
-ContentManager.save_topic(topic)
-
-# 更新主题状态
-ContentManager.update_topic_status(topic_id, "researched")
-
-# 获取平台相关主题
-platform_topics = ContentManager.get_topics_by_platform("zhihu")
-
-# 获取特定状态的主题
-pending_topics = ContentManager.get_topics_by_status("pending")
-
-# 删除主题
-ContentManager.delete_topic(topic_id)
+class ArticleStyle:
+    name: str              # 风格名称
+    type: str              # 风格类型
+    description: str       # 描述
+    tone: str              # 语气
+    formality: int         # 正式程度(1-5)
+    content_types: list    # 适用的内容类型
 ```
 
-### 系统同步
+### Article
+
+文章对象包含以下主要属性：
 
 ```python
-# 同步配置到数据库
-ContentManager.sync_configs_to_db()
-
-# 完整同步配置
-ContentManager.sync_configs_to_db_full()
+class Article:
+    id: str                # 文章ID
+    title: str             # 标题
+    content: str           # 内容
+    author: str            # 作者
+    created_at: datetime   # 创建时间
+    updated_at: datetime   # 更新时间
+    status: str            # 状态
 ```
 
-### 主题选择和趋势
+## 最佳实践
+
+### 1. 初始化检查
+
+确保在使用服务前已初始化：
 
 ```python
-# 获取热门主题
-trending_topics = ContentManager.get_trending_topics(limit=10)
-
-# 获取最新主题
-latest_topics = ContentManager.get_latest_topics(limit=5)
-
+if not hasattr(ContentManager, 'initialized') or not ContentManager.initialized:
+    ContentManager.initialize()
 ```
 
-## 设计原则
+### 2. 错误处理
 
-ContentManager 遵循以下设计原则：
-
-1. **单一职责**：每个组件专注于自己的职责
-2. **开放封闭**：支持扩展而不修改现有代码
-3. **接口一致性**：对外提供统一稳定接口
-4. **依赖注入**：松耦合设计，易于测试
-5. **防御性编程**：异常处理和日志记录
-
-## 与其他模块的集成
-
-ContentManager 作为核心模块，与以下模块紧密集成：
-
-- **WritingCrew**：提供内容类型配置和保存文章
-- **StyleCrew**：提供风格配置和平台风格指南
-- **ResearchCrew**：管理研究主题和获取待处理主题
-- **ReviewCrew**：提供质量评估标准和更新文章状态
-
-## 使用示例
-
-### 基本配置获取
+始终检查返回值，不假设操作成功：
 
 ```python
-from core.models.content_manager import ContentManager
+style = ContentManager.get_article_style("formal")
+if not style:
+    # 处理风格不存在情况
+    style = ContentManager.get_default_style()
 
-# 初始化管理器
-ContentManager.initialize()
-
-# 获取博客文章类型配置
-blog_type = ContentManager.get_content_type("blog_post")
-print(f"博客文章要求最小字数: {blog_type.min_word_count}")
-print(f"博客文章建议结构: {blog_type.structure}")
-
-# 获取知乎平台配置
-zhihu = ContentManager.get_platform("zhihu")
-print(f"知乎平台特性: {zhihu.features}")
-print(f"知乎平台风格指南: {zhihu.style_guide}")
-
-# 查找适合科技类内容的风格
-formal_style = ContentManager.get_article_style("tech_formal")
-if ContentManager.is_compatible("tech_article", "tech_formal"):
-    print("该风格适合科技文章")
+success = ContentManager.save_article(article)
+if not success:
+    # 处理保存失败情况
+    logger.error(f"无法保存文章: {article.id}")
 ```
 
-### 内容创作流程管理
+### 3. 资源释放
+
+某些操作可能需要手动释放资源：
 
 ```python
-from core.models.content_manager import ContentManager
-from core.models.topic import Topic
-from core.models.article import Article
-
-# 获取待处理主题
-pending_topics = ContentManager.get_topics_by_status("ready_for_writing")
-topic = pending_topics[0]
-
-# 更新主题状态
-ContentManager.update_topic_status(topic.id, "writing_in_progress")
-
-# 创建文章
-article = Article(
-    title="人工智能的未来发展趋势",
-    topic_id=topic.id,
-    platform="medium",
-    content_type="tech_analysis",
-    status="draft"
-)
-
-# 保存文章
-ContentManager.save_article(article)
-
-# 获取内容类型配置
-content_type = ContentManager.get_content_type(article.content_type)
-print(f"需要写作的最小字数: {content_type.min_word_count}")
-print(f"建议包含的部分: {content_type.sections}")
-
-# 获取平台风格配置
-platform = ContentManager.get_platform(article.platform)
-style = ContentManager.get_platform_style(article.platform)
-print(f"平台风格指南: {platform.style_guide}")
-print(f"文章语气建议: {style.tone}")
-
-# 完成后更新状态
-ContentManager.update_article_status(article, "ready_for_review")
-ContentManager.update_topic_status(topic.id, "writing_completed")
+try:
+    # 执行操作
+    ContentManager.sync_configs_to_db()
+finally:
+    # 确保资源释放
+    pass  # 当前版本不需要手动释放资源
 ```
+
+### 4. 批量操作
+
+对于批量操作，使用适当的方法避免多次调用：
+
+```python
+# 错误示例：多次单独保存
+for article in articles:
+    ContentManager.save_article(article)  # 低效
+
+# 正确示例：使用批量API
+# ContentManager目前不支持批量操作，但未来可能会支持
+# 目前可以这样优化:
+from concurrent.futures import ThreadPoolExecutor
+
+with ThreadPoolExecutor(max_workers=4) as executor:
+    futures = [executor.submit(ContentManager.save_article, article) for article in articles]
+    results = [future.result() for future in futures]
+```
+
+## 常见问题
+
+### Q: 如何获取系统中所有支持的风格？
+
+```python
+styles = ContentManager.get_all_styles()
+print(f"系统支持 {len(styles)} 种风格")
+```
+
+### Q: 如何验证文章状态更新成功？
+
+```python
+article_id = "article_123"
+new_status = "published"
+
+# 更新状态
+success = ContentManager.update_article_status(article_id, new_status)
+
+# 验证更新
+if success:
+    article = ContentManager.get_article(article_id)
+    if article and article.status == new_status:
+        print("状态更新成功")
+    else:
+        print("状态更新失败或验证失败")
+else:
+    print("状态更新操作返回失败")
+```
+
+### Q: 支持哪些文章状态？
+
+常用的文章状态包括：
+
+- `draft` - 草稿
+- `review` - 审核中
+- `published` - 已发布
+- `archived` - 已归档
+
+### Q: 如何提高大量文章处理的性能？
+
+目前核心层没有提供批量处理API，业务层可以考虑：
+
+1. 使用线程池并行处理
+2. 实现自己的缓存层
+3. 优化查询频率，减少不必要的数据获取

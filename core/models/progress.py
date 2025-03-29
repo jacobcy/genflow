@@ -1,12 +1,12 @@
 """进度跟踪模型"""
 from typing import Dict, Optional, List
 from datetime import datetime
-from .article import Article
-from .util.enums import ProductionStage, StageStatus
+from .article.article import Article
+from .infra.enums import ProductionStage, StageStatus
 
 # 导入ArticleService，使用try-except块避免循环导入
 try:
-    from .service.article_service import ArticleService
+    from .article.article_service import ArticleService
 except ImportError:
     # 如果在导入时发生循环导入，将在方法中动态导入
     ArticleService = None
