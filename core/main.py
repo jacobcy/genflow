@@ -4,7 +4,7 @@ import argparse
 import random
 from typing import List, Optional, Tuple
 from core.controllers.content_controller import ContentController
-from core.models.platform import get_default_platform
+from core.models.platform.platform import get_default_platform
 from core.models.progress import ProductionStage
 
 # 预定义类别和风格列表

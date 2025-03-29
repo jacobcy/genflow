@@ -1,7 +1,7 @@
 import asyncio
 from core.controllers.crewai_sequential_controller import CrewAISequentialController
 from core.controllers.crewai_hierarchical_controller import CrewAIManagerController
-from core.models.article import Article
+from core.models.article.article import Article
 
 async def test_sequential():
     # 创建文章对象

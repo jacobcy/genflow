@@ -22,7 +22,7 @@ from core.agents.research_crew import ResearchCrew
 from core.agents.writing_crew import WritingCrew
 from core.agents.style_crew import StyleCrew
 from core.agents.review_crew import ReviewCrew
-from core.models.platform import get_default_platform
+from core.models.platform.platform import get_default_platform
 from core.controllers.team_adapter import (
     ResearchTeamAdapter,
     TopicTeamAdapter,
@@ -32,7 +32,7 @@ from core.controllers.team_adapter import (
 )
 from src.schemas.crews import TeamRequest, InitializeRequest
 from src.schemas.common import APIResponse
-from core.models.topic import Topic
+from core.models.topic.topic import Topic
 
 # 配置日志
 logger = logging.getLogger(__name__)
