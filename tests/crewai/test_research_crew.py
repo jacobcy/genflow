@@ -17,8 +17,8 @@ from core.agents.research_crew.research_crew import (
     RESEARCH_DEPTH_DEEP,
     get_research_config
 )
-from core.models.research import BasicResearch, TopicResearch, ExpertInsight, KeyFinding
-from core.models.article_outline import ArticleOutline, OutlineSection, ArticleSectionType
+from core.models.research.research import BasicResearch, TopicResearch, ExpertInsight, KeyFinding
+from core.models.outline.article_outline import ArticleOutline, OutlineSection, ArticleSectionType
 from core.models.content_manager import ContentManager
 from core.config import Config
 from crewai import Crew, Task, Agent

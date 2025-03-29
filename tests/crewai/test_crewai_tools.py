@@ -17,7 +17,7 @@ from core.agents.research_crew.research_tools import ResearchTools
 from core.agents.review_crew.review_tools import ReviewTools
 from core.agents.topic_crew.topic_tools import TopicTools
 from core.agents.writing_crew.writing_tools import WritingTools
-from core.models.platform import Platform
+from core.models.platform.platform import Platform
 
 # 测试方便的装饰器，跳过对外部服务的实际调用
 def mock_external_services(func):

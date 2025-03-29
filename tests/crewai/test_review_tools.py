@@ -12,7 +12,7 @@ from functools import wraps
 from crewai.tools import BaseTool
 # 导入审核团队工具
 from core.agents.review_crew.review_tools import ReviewTools
-from core.models.platform import Platform
+from core.models.platform.platform import Platform
 
 # 测试方便的装饰器，跳过对外部服务的实际调用
 def mock_external_services(func):
