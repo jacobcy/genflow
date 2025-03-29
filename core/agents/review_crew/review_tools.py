@@ -13,7 +13,7 @@ from core.tools.review_tools.reviewer import (
     OpenAIDetector,
     SensitiveWordChecker
 )
-from core.models.platform import Platform
+from core.models.platform.platform import Platform
 
 # 配置日志
 logger = logging.getLogger(__name__)

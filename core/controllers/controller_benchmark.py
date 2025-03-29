@@ -15,8 +15,8 @@ from core.controllers.controller_adapter import (
     ContentControllerFactory,
     BaseContentControllerInterface
 )
-from core.models.platform import Platform, get_default_platform
-from core.models.topic import Topic
+from core.models.platform.platform import Platform, get_default_platform
+from core.models.topic.topic import Topic
 
 # 配置日志
 logger = logging.getLogger(__name__)

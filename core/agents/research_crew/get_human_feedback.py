@@ -1,5 +1,5 @@
 from core.models.feedback import ResearchFeedback
-from core.models.research import BasicResearch
+from core.models.research.research import BasicResearch
 
 import logging
 
@@ -20,15 +20,11 @@ def get_human_feedback(self, result: BasicResearch) -> ResearchFeedback:
     # 在实际应用中，这里应该调用某种用户界面来收集反馈
     # 这里我们返回一个样例反馈
     feedback = ResearchFeedback(
-        background_research_score=4,
-        background_research_comments="背景研究全面且深入，但缺少一些最新的发展",
-        expert_insights_score=5,
-        expert_insights_comments="专家观点多元且具有代表性，分析深刻",
-        data_analysis_score=4,
-        data_analysis_comments="数据分析严谨，但可以增加更多图表支持",
-        overall_score=4.5,
-        overall_comments="整体研究质量高，结构清晰，观点平衡",
-        suggested_improvements=["增加最新行业发展趋势", "加强数据可视化", "扩展解决方案分析"]
+        feedback_text="整体研究质量高，结构清晰，观点平衡，但可以增加一些最新发展趋势",
+        accuracy_rating=8.5,
+        completeness_rating=8.0,
+        suggested_improvements=["增加最新行业发展趋势", "加强数据可视化", "扩展解决方案分析"],
+        feedback_source="human"
     )
 
     # 如果有上次工作流结果，则更新反馈

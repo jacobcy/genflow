@@ -39,7 +39,7 @@ result = await self.crew.research_topic(
 
 3. **结果处理**：
    - 研究团队内部使用 `ResearchWorkflowResult` 存储原始结果
-   - 通过 `_workflow_result_to_basic_research` 转换为 `BasicResearch`
+   - 通过 `workflow_result_to_basic_research` 转换为 `BasicResearch`
    - 适配器接收 `BasicResearch` 并根据需要转换为 `TopicResearch`
 
 ## 二、与CrewAI官方顺序控制器对比

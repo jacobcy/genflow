@@ -9,8 +9,8 @@ from loguru import logger
 
 from core.controllers.base_adapter import BaseTeamAdapter
 from core.models.content_manager import ContentManager
-from core.models.topic import Topic
-from core.models.article import Article
+from core.models.topic.topic import Topic
+from core.models.article.article import Article
 from core.agents.writing_crew import WritingCrew
 
 class WritingTeamAdapter(BaseTeamAdapter):

@@ -8,8 +8,8 @@ from loguru import logger
 
 from core.controllers.base_adapter import BaseTeamAdapter
 from core.models.content_manager import ContentManager
-from core.models.topic import Topic
-from core.models.research import BasicResearch, TopicResearch
+from core.models.topic.topic import Topic
+from core.models.research.research import BasicResearch, TopicResearch
 from core.agents.research_crew import ResearchCrew
 from core.agents.research_crew.research_protocol import ResearchRequest, ResearchResponse, FactVerificationRequest, FactVerificationResponse
 
@@ -49,8 +49,11 @@ class ResearchTeamAdapter(BaseTeamAdapter):
 
     async def research_topic(
         self,
-        topic: Union[str, Topic, Dict, Any],
-        depth: str = "medium",
+        topic_id: str,
+        topic_title: str,
+        topic: Union[Topic, Dict[str, Any], Any],
+        content_type_obj: Optional[Any] = None,
+        research_instruct: Optional[str] = None,
         options: Optional[Dict[str, Any]] = None
     ) -> BasicResearch:
         """研究话题
@@ -58,58 +61,79 @@ class ResearchTeamAdapter(BaseTeamAdapter):
         适配外部接口调用，转换为内部研究请求，并将结果转换为外部所需格式。
 
         Args:
+            topic_id: 话题ID
+            topic_title: 话题标题
             topic: 话题对象、字符串或包含话题信息的字典
-            depth: 研究深度(shallow/medium/deep)
-            options: 其他选项
+            content_type_obj: 内容类型对象，直接传递给研究团队，优先级高
+            research_instruct: 研究指导文本，描述如何研究该话题
+            options: 其他研究选项
 
         Returns:
             BasicResearch: 研究结果，如有topic_id则返回TopicResearch
         """
         try:
             # 1. 提取基本话题信息
-            topic_title, topic_id, content_type = self._extract_topic_info(topic)
+            topic_title, topic_id, content_type_name = self._extract_topic_info(topic)
 
             # 记录研究状态
             if topic_id:
                 self._research_status[topic_id] = "in_progress"
 
-            # 使用默认内容类型（如果未指定）
-            if not content_type:
-                content_type = "article"
+            # 2. 确定内容类型对象
+            if content_type_obj is None:
+                # 如果没有直接传递content_type_obj，尝试获取
+                try:
+                    # 首先尝试通过content_type_name获取
+                    if content_type_name:
+                        content_type_obj = ContentManager.get_content_type(content_type_name)
+                        if content_type_obj:
+                            logger.info(f"通过content_type_name获取内容类型对象: {content_type_obj.name}")
 
-            # 2. 准备元数据
+                    # 如果还是没有，使用默认内容类型
+                    if content_type_obj is None:
+                        content_type_obj = ContentManager.get_default_content_type()
+                        logger.info(f"使用默认内容类型对象: {content_type_obj.name}")
+                except Exception as e:
+                    logger.error(f"获取内容类型对象失败: {e}")
+                    # 这里不再设置默认值，让协议层处理默认内容类型
+
+            # 3. 准备元数据
             metadata = {}
 
             # 如果有内容类型对象，添加到元数据
+            if content_type_obj:
+                metadata["content_type_obj"] = content_type_obj.dict() if hasattr(content_type_obj, 'dict') else vars(content_type_obj)
+
+            # 如果有研究指导，添加到元数据
+            if research_instruct:
+                metadata["research_instruct"] = research_instruct
+
+            # 4. 准备平台信息
             try:
-                content_type_obj = ContentManager.get_content_type(content_type)
-                if content_type_obj:
-                    metadata["content_type_info"] = content_type_obj.get_type_summary()
-            except Exception:
-                pass
+                if topic and hasattr(topic, 'platform') and getattr(topic, 'platform', None):
+                    platform_info = self._get_platform_info(topic)
+                    if platform_info and options:
+                        options.update(platform_info)
+                    elif platform_info:
+                        options = platform_info
+            except Exception as e:
+                logger.warning(f"处理平台信息失败: {e}")
 
-            # 3. 准备选项
-            research_options = options or {}
-
-            # 添加平台信息（如果有）
-            if hasattr(topic, 'platform') and topic.platform:
-                research_options["platform_id"] = topic.platform.id if hasattr(topic.platform, 'id') else str(topic.platform)
-
-            # 4. 创建研究请求对象
+            # 5. 创建研究请求对象
             request = ResearchRequest(
                 topic_title=topic_title,
-                content_type=content_type,
-                depth=depth,
-                options=research_options,
+                content_type_obj=content_type_obj,  # 直接传递内容类型对象
+                research_instruct=research_instruct,  # 直接传递研究指导
+                options=options or {},
                 metadata=metadata,
                 topic_id=topic_id
             )
 
-            # 5. 调用研究团队执行研究
+            # 6. 调用研究团队执行研究
             logger.info(f"开始调用研究团队执行话题研究: {topic_title}")
             response = await self.crew.research_topic(request)
 
-            # 6. 转换结果
+            # 7. 转换结果
             if topic_id:
                 self._research_status[topic_id] = "completed"
                 # 如果有topic_id，转换为TopicResearch
@@ -132,7 +156,7 @@ class ResearchTeamAdapter(BaseTeamAdapter):
         Returns:
             BasicResearch: 基础研究结果
         """
-        from core.models.research import ExpertInsight, KeyFinding, Source
+        from core.models.research.research import ExpertInsight, KeyFinding, Source
 
         # 转换专家见解
         expert_insights = []
@@ -209,42 +233,35 @@ class ResearchTeamAdapter(BaseTeamAdapter):
 
         if isinstance(topic, str):
             topic_title = topic
-        else:
-            # 从Topic对象或字典中提取信息
-            topic_id = getattr(topic, 'id', None) if not isinstance(topic, dict) else topic.get('id')
-            topic_title = getattr(topic, 'title', str(topic)) if not isinstance(topic, dict) else topic.get('title', str(topic))
+        elif isinstance(topic, dict):
+            # 从字典中提取信息
+            topic_id = topic.get('id')
+            topic_title = topic.get('title', str(topic))
 
-            # 尝试获取content_type
+            # 从字典中获取content_type
+            if 'content_type' in topic:
+                content_type = topic['content_type']
+        else:
+            # 从Topic对象中提取信息
+            topic_id = getattr(topic, 'id', None)
+            topic_title = getattr(topic, 'title', str(topic))
+
+            # 从对象获取content_type
             if hasattr(topic, 'content_type') and topic.content_type:
                 content_type = topic.content_type
-            elif isinstance(topic, dict) and 'content_type' in topic:
-                content_type = topic['content_type']
-            elif hasattr(topic, 'categories') and topic.categories:
+
+            # 尝试从分类推断内容类型
+            if hasattr(topic, 'categories') and topic.categories and not content_type:
                 # 尝试从第一个分类推断内容类型
                 primary_category = topic.categories[0] if topic.categories else None
                 if primary_category:
+                    # 使用ContentManager从category获取content_type
                     content_type_obj = ContentManager.get_content_type_by_category(primary_category)
                     if content_type_obj:
+                        # 获取content_type ID
                         content_type = content_type_obj.id
 
         return topic_title, topic_id, content_type
-
-    def _determine_depth_from_content_type(self, content_type_obj) -> str:
-        """根据内容类型确定研究深度
-
-        Args:
-            content_type_obj: 内容类型对象
-
-        Returns:
-            str: 研究深度(shallow/medium/deep)
-        """
-        research_level = getattr(content_type_obj, 'research_level', 3)
-        if research_level <= 1:
-            return "shallow"
-        elif research_level >= 4:
-            return "deep"
-        else:
-            return "medium"
 
     def _get_platform_info(self, topic) -> dict:
         """获取平台信息
@@ -256,7 +273,7 @@ class ResearchTeamAdapter(BaseTeamAdapter):
             dict: 平台信息
         """
         platform_info = {}
-        if hasattr(topic, 'platform') and topic.platform:
+        if hasattr(topic, 'platform') and getattr(topic, 'platform', None):
             platform = ContentManager.get_platform(topic.platform)
             if platform:
                 platform_info = {
@@ -264,59 +281,6 @@ class ResearchTeamAdapter(BaseTeamAdapter):
                     "platform_info": platform.to_dict()
                 }
         return platform_info
-
-    def _prepare_research_options(self, options, content_type_obj, platform_info) -> dict:
-        """准备研究选项
-
-        Args:
-            options: 用户提供的选项
-            content_type_obj: 内容类型对象
-            platform_info: 平台信息
-
-        Returns:
-            dict: 完整的研究选项
-        """
-        merged_options = options or {}
-
-        # 添加内容类型信息
-        if content_type_obj:
-            merged_options["content_type"] = content_type_obj.id
-            merged_options["content_type_info"] = content_type_obj.get_type_summary()
-
-        # 添加平台信息
-        if platform_info:
-            merged_options.update(platform_info)
-
-        return merged_options
-
-    def _create_research_config(self, content_type: str, content_type_obj=None) -> Dict[str, Any]:
-        """根据内容类型创建研究配置
-
-        Args:
-            content_type: 内容类型ID
-            content_type_obj: 内容类型对象(可选)
-
-        Returns:
-            Dict[str, Any]: 研究配置字典
-        """
-        # 从ResearchCrew获取基础配置
-        from core.agents.research_crew.research_crew import get_research_config
-        research_config = get_research_config(content_type)
-
-        # 添加内容类型信息
-        if content_type_obj:
-            research_config["content_type_info"] = content_type_obj.get_type_summary()
-        else:
-            # 尝试从ContentManager获取内容类型对象
-            try:
-                ct_obj = ContentManager.get_content_type(content_type)
-                if ct_obj:
-                    research_config["content_type_info"] = ct_obj.get_type_summary()
-            except Exception:
-                # 如果获取失败，使用内容类型ID作为信息
-                research_config["content_type_info"] = content_type
-
-        return research_config
 
     async def verify_facts(
         self,

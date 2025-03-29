@@ -6,7 +6,7 @@
 from core.agents.research_crew.research_tools import ResearchTools
 from core.agents.research_crew.research_agents import ResearchAgents
 from core.agents.research_crew.research_crew import ResearchCrew, ResearchWorkflowResult
-from core.models.research import BasicResearch, TopicResearch
+from core.models.research.research import BasicResearch, TopicResearch
 from core.agents.research_crew.research_adapter import ResearchTeamAdapter
 from core.agents.research_crew.research_protocol import (
     ResearchRequest,

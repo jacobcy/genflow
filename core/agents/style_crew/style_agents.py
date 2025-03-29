@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any
 from crewai import Agent
 from core.tools.style_tools.adapter import StyleAdapter
 from core.models.content_manager import ContentManager
-from core.models.article_style import ArticleStyle
+from core.models.style.article_style import ArticleStyle
 
 logger = logging.getLogger(__name__)
 

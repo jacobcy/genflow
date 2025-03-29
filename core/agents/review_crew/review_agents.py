@@ -5,7 +5,7 @@
 import logging
 from typing import List, Dict, Optional
 from crewai import Agent
-from core.models.platform import Platform
+from core.models.platform.platform import Platform
 from .review_tools import ReviewTools
 
 # 配置日志

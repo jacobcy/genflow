@@ -11,16 +11,15 @@ from crewai import Crew, Task, Agent
 from core.config import Config
 from core.agents.research_crew.research_agents import ResearchAgents
 from core.agents.research_crew.research_tasks import ResearchTasks
-from core.agents.research_crew.research_protocol import ResearchRequest, ResearchResponse
+from core.agents.research_crew.research_protocol import ResearchRequest, ResearchResponse, FactVerificationRequest, FactVerificationResponse
 # 导入研究工具
 from core.agents.research_crew.research_util import (
-    RESEARCH_DEPTH_LIGHT, RESEARCH_DEPTH_MEDIUM, RESEARCH_DEPTH_DEEP,
-    DEFAULT_RESEARCH_CONFIG, RESEARCH_CONFIG,
-    get_research_config,
     extract_experts_from_insights, extract_key_findings, extract_sources,
-    format_expert, create_research_config_from_request, map_research_depth
+    extract_verification_results, format_expert, create_research_config_from_request,
+    workflow_result_to_basic_research
 )
 from core.agents.research_crew.research_result import ResearchWorkflowResult
+from core.models.content_manager import ContentManager
 
 # 配置日志
 logger = logging.getLogger("research_crew")
@@ -64,21 +63,14 @@ class ResearchCrew:
         self.task_manager = ResearchTasks(config=self.config)
 
         # 创建任务列表
-        self.tasks = self.task_manager.create_all_tasks()
+        self.tasks = self.task_manager.get_all_tasks()
         logger.info(f"研究团队初始化完成，包含 {len(self.tasks)} 个任务")
 
         # 记录最近执行的工作流结果
         self.last_workflow_result = None
 
-        # 使用统一的配置
-        self.content_type_config = RESEARCH_CONFIG
-
-        # 默认内容类型配置
-        self.default_research_config = DEFAULT_RESEARCH_CONFIG.copy()
-
         # 当前研究配置
-        self.current_research_config = self.default_research_config.copy()
-
+        self.current_research_config = {}
 
     async def research_topic(
         self,
@@ -86,149 +78,113 @@ class ResearchCrew:
     ) -> ResearchResponse:
         """执行话题研究流程
 
-        处理所有研究业务逻辑，包括研究配置生成、智能体协调和结果处理。
-        这是研究团队的主要工作流程，按以下步骤执行：
-        1. 处理研究配置和参数
+        处理所有研究业务逻辑，根据传入的研究请求进行配置解析和智能体协调。
+        这是研究团队的主要工作流程：
+        1. 解析研究配置 - 从content_type_obj或research_instruct获取
         2. 背景研究：收集话题的基础信息和背景知识
-        3. 专家发现：寻找并分析相关领域专家的观点和见解
-        4. 数据分析：分析与话题相关的数据和趋势
-        5. 研究报告生成：整合前三步的结果，生成完整的研究报告
+        3. 专家发现：基于配置决定是否寻找专家观点
+        4. 数据分析：基于配置决定是否执行数据分析
+        5. 研究报告生成：整合所有结果生成研究报告
 
         Args:
-            request: 研究请求对象，包含话题标题、内容类型等信息
+            request: 研究请求对象，包含话题标题、内容类型对象和研究指导等信息
 
         Returns:
             ResearchResponse: 研究响应对象，包含所有研究结果
         """
-        # 从请求中提取参数
+        # 1. 从请求中提取基本信息
         topic_title = request.topic_title
-        content_type = request.content_type
-        depth = request.depth
-        options = request.options
-        metadata = request.metadata
-
         logger.info(f"开始研究话题: {topic_title}")
 
-        # 1. 生成研究配置
-        research_config = self._create_research_config_from_request(request)
+        # 2. 解析研究配置 - 按优先级处理
+        # 2.1 获取内容类型对象
+        content_type_obj = self._get_content_type_from_request(request)
 
-        # 2. 设置研究配置
-        self.current_research_config = research_config.copy()
+        # 2.2 确定研究配置
+        research_config = self._determine_research_config(request, content_type_obj)
 
+        # 2.3 记录当前研究配置
+        self.current_research_config = research_config
         logger.info(f"研究配置: {self.current_research_config}")
 
-        # 创建工作流结果跟踪对象
+        # 3. 创建工作流结果跟踪对象
         workflow_result = ResearchWorkflowResult(topic=topic_title)
         self.last_workflow_result = workflow_result
 
-        # 根据研究配置决定是否需要专家和数据分析
-        needs_expert = self.current_research_config.get("needs_expert", True)
-        needs_data_analysis = self.current_research_config.get("needs_data_analysis", True)
+        # 4. 根据研究配置决定执行哪些研究步骤
+        research_depth = research_config.get("depth", "medium")
+        needs_expert = research_config.get("needs_expert", True)
+        needs_data_analysis = research_config.get("needs_data_analysis", False)
+
+        logger.info(f"研究深度: {research_depth}, 需要专家: {needs_expert}, 需要数据分析: {needs_data_analysis}")
 
         try:
-            # 第1步：背景研究 (始终执行)
-            background_task = self.tacks["background_research"](topic_title)
-
-            # 使用单智能体执行任务
-            logger.info("执行背景研究任务...")
-            background_crew = Crew(
-                agents=[self.agents["background_researcher"]],
-                tasks=[background_task],
-                verbose=True
-            )
-            background_result = background_crew.kickoff()
+            # 4.1 背景研究 (始终执行)
+            background_result = await self._execute_background_research(topic_title)
             workflow_result.background_research = background_result[0]
 
-            # 第2步：专家观点研究（可选）
+            # 4.2 专家观点研究 (根据配置决定)
             expert_result = None
             if needs_expert:
-                expert_task = self.tasks["expert_finder"](
-                    topic_title, background_result[0]
-                )
-
-                # 使用单智能体执行任务
-                logger.info("执行专家观点研究任务...")
-                expert_crew = Crew(
-                    agents=[self.agents["expert_finder"]],
-                    tasks=[expert_task],
-                    verbose=True
-                )
-                expert_result = expert_crew.kickoff()
+                expert_result = await self._execute_expert_research(topic_title, background_result[0])
                 workflow_result.expert_insights = expert_result[0]
             else:
                 logger.info(f"根据研究配置，跳过专家观点研究")
 
-            # 第3步：数据分析（可选）
+            # 4.3 数据分析 (根据配置决定)
             data_analysis_result = None
             if needs_data_analysis:
-                data_task = self.tasks["data_analysis"](
-                    topic_title, background_result[0]
-                )
-
-                # 使用单智能体执行任务
-                logger.info("执行数据分析任务...")
-                data_crew = Crew(
-                    agents=[self.agents["data_analyst"]],
-                    tasks=[data_task],
-                    verbose=True
-                )
-                data_analysis_result = data_crew.kickoff()
+                data_analysis_result = await self._execute_data_analysis(topic_title, background_result[0])
                 workflow_result.data_analysis = data_analysis_result[0]
             else:
                 logger.info(f"根据研究配置，跳过数据分析")
 
-            # 第4步：生成最终研究报告（始终执行）
-            report_task = self.tasks["research_report"](
+            # 4.4 生成最终研究报告 (始终执行)
+            report_result = await self._generate_research_report(
                 topic_title,
                 background_result[0],
                 expert_result[0] if expert_result else None,
                 data_analysis_result[0] if data_analysis_result else None
             )
-
-            # 使用单智能体执行任务
-            logger.info("生成最终研究报告...")
-            report_crew = Crew(
-                agents=[self.agents["research_writer"]],
-                tasks=[report_task],
-                verbose=True
-            )
-            report_result = report_crew.kickoff()
             workflow_result.research_report = report_result[0]
 
-            # 提取专家列表
-            experts = self._extract_experts_from_insights(
+            # 5. 提取和处理研究结果
+            experts = extract_experts_from_insights(
                 str(workflow_result.expert_insights) if workflow_result.expert_insights else ""
             )
             workflow_result.experts = experts
-
-            # 处理研究报告
             workflow_result.research_results = str(workflow_result.research_report)
 
-            # 保存研究配置到元数据
+            # 6. 处理元数据
+            # 6.1 添加研究配置到元数据
             workflow_result.metadata["research_config"] = self.current_research_config
 
-            # 合并请求中的元数据
-            if metadata:
-                for key, value in metadata.items():
+            # 6.2 合并请求中的元数据
+            if request.metadata:
+                for key, value in request.metadata.items():
                     workflow_result.metadata[key] = value
 
-            # 添加选项到元数据
-            if options:
-                for key, value in options.items():
+            # 6.3 添加选项到元数据
+            if request.options:
+                for key, value in request.options.items():
                     workflow_result.metadata[key] = value
 
-            # 创建响应对象
+            # 7. 创建响应对象
+            content_type_name = "article"  # 默认内容类型名称
+            if content_type_obj:
+                content_type_name = getattr(content_type_obj, 'name', "article")
+
             response = ResearchResponse(
                 title=topic_title,
-                content_type=content_type,
+                content_type=content_type_name,
                 background=str(workflow_result.background_research) if workflow_result.background_research else None,
                 expert_insights=str(workflow_result.expert_insights) if workflow_result.expert_insights else None,
                 data_analysis=str(workflow_result.data_analysis) if workflow_result.data_analysis else None,
                 report=workflow_result.research_results,
                 metadata=workflow_result.metadata,
-                experts=[self._format_expert(e) for e in experts],
-                key_findings=self._extract_key_findings(workflow_result.research_results),
-                sources=self._extract_sources(workflow_result.research_results)
+                experts=[format_expert(e) for e in experts],
+                key_findings=extract_key_findings(workflow_result.research_results),
+                sources=extract_sources(workflow_result.research_results)
             )
 
             logger.info(f"话题'{topic_title}'研究完成")
@@ -239,6 +195,273 @@ class ResearchCrew:
             # 继续抛出异常以便上层处理
             raise e
 
+    def _get_content_type_from_request(self, request: ResearchRequest) -> Optional[Any]:
+        """从请求中获取内容类型对象
+
+        按照以下优先级获取:
+        1. 请求中直接提供的content_type_obj
+        2. 如果没有content_type_obj，尝试从metadata中获取
+
+        Args:
+            request: 研究请求对象
+
+        Returns:
+            Optional[Any]: 内容类型对象，如果无法获取则返回None
+        """
+        # 1. 首先检查请求中是否直接提供了content_type_obj
+        if request.content_type_obj:
+            logger.info(f"使用请求中直接提供的内容类型对象")
+            return request.content_type_obj
+
+        # 2. 尝试从metadata中获取content_type_obj
+        if request.metadata and "content_type_obj" in request.metadata:
+            logger.info(f"从metadata中获取内容类型对象")
+            return request.metadata["content_type_obj"]
+
+        # 3. 无法获取内容类型对象
+        logger.warning("请求中未提供内容类型对象")
+        return None
+
+    def _determine_research_config(self, request: ResearchRequest, content_type_obj: Optional[Any]) -> Dict[str, Any]:
+        """确定研究配置
+
+        按照以下优先级处理:
+        1. 如果有content_type_obj，从中提取配置参数
+        2. 如果有research_instruct，根据指导文本调整配置
+        3. 否则使用默认配置
+
+        Args:
+            request: 研究请求对象
+            content_type_obj: 内容类型对象
+
+        Returns:
+            Dict[str, Any]: 研究配置字典
+        """
+        # 初始化默认配置
+        config = {
+            "depth": "medium",
+            "needs_expert": True,
+            "needs_data_analysis": False,
+            "max_sources": 10
+        }
+
+        # 1. 如果有内容类型对象，从中提取配置
+        if content_type_obj:
+            logger.info(f"从内容类型对象提取研究配置")
+
+            # 获取内容类型名称
+            if hasattr(content_type_obj, 'name'):
+                config["content_type"] = content_type_obj.name
+
+            # 获取研究深度
+            if hasattr(content_type_obj, 'depth'):
+                config["depth"] = content_type_obj.depth
+                logger.info(f"研究深度: {config['depth']}")
+
+            # 获取是否需要专家见解
+            if hasattr(content_type_obj, 'needs_expert'):
+                config["needs_expert"] = content_type_obj.needs_expert
+                logger.info(f"需要专家: {config['needs_expert']}")
+
+            # 获取是否需要数据分析
+            if hasattr(content_type_obj, 'needs_data_analysis'):
+                config["needs_data_analysis"] = content_type_obj.needs_data_analysis
+                logger.info(f"需要数据分析: {config['needs_data_analysis']}")
+
+            # 获取最大信息来源数量
+            if hasattr(content_type_obj, 'max_sources'):
+                config["max_sources"] = content_type_obj.max_sources
+
+            # 获取内容类型摘要并添加到配置中
+            if hasattr(content_type_obj, 'get_type_summary'):
+                type_summary = content_type_obj.get_type_summary()
+                if type_summary:
+                    config["content_type_info"] = type_summary
+
+        # 2. 如果有研究指导，根据指导调整配置
+        if request.research_instruct:
+            logger.info(f"根据研究指导调整配置")
+            # 这里可以解析research_instruct文本，提取配置参数
+            # 示例：如果指导中提到"深入研究"，则调整深度为"deep"
+            if "深入研究" in request.research_instruct or "深度研究" in request.research_instruct:
+                config["depth"] = "deep"
+                logger.info(f"根据研究指导，调整研究深度为: {config['depth']}")
+
+            # 添加研究指导到配置中
+            config["research_instruct"] = request.research_instruct
+
+        # 3. 合并请求选项到配置
+        if request.options:
+            for key, value in request.options.items():
+                config[key] = value
+
+        return config
+
+    async def _execute_background_research(self, topic_title: str) -> Any:
+        """执行背景研究任务
+
+        Args:
+            topic_title: 话题标题
+
+        Returns:
+            Any: 背景研究结果
+        """
+        logger.info("执行背景研究任务...")
+        background_task = self.tasks["background_research"](topic_title)
+        background_crew = Crew(
+            agents=[self.agents["background_researcher"]],
+            tasks=[background_task],
+            verbose=True
+        )
+        return background_crew.kickoff()
+
+    async def _execute_expert_research(self, topic_title: str, background_research: Any) -> Any:
+        """执行专家观点研究任务
+
+        Args:
+            topic_title: 话题标题
+            background_research: 背景研究结果
+
+        Returns:
+            Any: 专家观点研究结果
+        """
+        logger.info("执行专家观点研究任务...")
+        expert_task = self.tasks["expert_finder"](topic_title, background_research)
+        expert_crew = Crew(
+            agents=[self.agents["expert_finder"]],
+            tasks=[expert_task],
+            verbose=True
+        )
+        return expert_crew.kickoff()
+
+    async def _execute_data_analysis(self, topic_title: str, background_research: Any) -> Any:
+        """执行数据分析任务
+
+        Args:
+            topic_title: 话题标题
+            background_research: 背景研究结果
+
+        Returns:
+            Any: 数据分析结果
+        """
+        logger.info("执行数据分析任务...")
+        data_task = self.tasks["data_analysis"](topic_title, background_research)
+        data_crew = Crew(
+            agents=[self.agents["data_analyst"]],
+            tasks=[data_task],
+            verbose=True
+        )
+        return data_crew.kickoff()
+
+    async def _generate_research_report(
+        self,
+        topic_title: str,
+        background_research: Any,
+        expert_insights: Optional[Any] = None,
+        data_analysis: Optional[Any] = None
+    ) -> Any:
+        """生成最终研究报告
+
+        Args:
+            topic_title: 话题标题
+            background_research: 背景研究结果
+            expert_insights: 专家观点结果，可选
+            data_analysis: 数据分析结果，可选
+
+        Returns:
+            Any: 研究报告结果
+        """
+        logger.info("生成最终研究报告...")
+        report_task = self.tasks["research_report"](
+            topic_title,
+            background_research,
+            expert_insights,
+            data_analysis
+        )
+        report_crew = Crew(
+            agents=[self.agents["research_writer"]],
+            tasks=[report_task],
+            verbose=True
+        )
+        return report_crew.kickoff()
+
+    async def verify_facts(
+        self,
+        request: FactVerificationRequest
+    ) -> FactVerificationResponse:
+        """执行事实验证流程
+
+        验证一系列陈述的准确性和可靠性。
+        此方法接收FactVerificationRequest对象，并返回FactVerificationResponse对象。
+
+        Args:
+            request: 事实验证请求对象，包含待验证陈述、验证彻底程度等
+
+        Returns:
+            FactVerificationResponse: 验证结果，包含每个陈述的验证结果
+        """
+        try:
+            statements = request.statements
+            thoroughness = request.thoroughness
+            options = request.options
+
+            logger.info(f"开始验证 {len(statements)} 个事实陈述，彻底程度: {thoroughness}")
+
+            # 创建事实验证任务
+            verification_task = self.tasks.get("fact_verification", None)
+            if not verification_task:
+                logger.error("事实验证任务未找到")
+                raise ValueError("事实验证任务未定义")
+
+            # 准备验证任务参数
+            verification_task_instance = verification_task(
+                statements=statements,
+                thoroughness=thoroughness,
+                options=options
+            )
+
+            # 使用事实验证智能体执行任务
+            verification_crew = Crew(
+                agents=[self.agents.get("fact_checker", self.agents["background_researcher"])],
+                tasks=[verification_task_instance],
+                verbose=True
+            )
+
+            # 执行验证
+            verification_result = verification_crew.kickoff()
+            result_text = verification_result[0] if verification_result else ""
+
+            # 解析验证结果文本为结构化数据
+            verification_results = extract_verification_results(result_text)
+
+            # 准备元数据
+            metadata = {
+                "verification_time": datetime.now().isoformat(),
+                "thoroughness": thoroughness
+            }
+
+            # 如果有其他选项，添加到元数据
+            if options:
+                metadata.update(options)
+
+            # 创建响应对象
+            response = FactVerificationResponse(
+                results=verification_results,
+                metadata=metadata
+            )
+
+            logger.info(f"事实验证完成，共验证 {len(verification_results)} 个陈述")
+            return response
+
+        except Exception as e:
+            logger.error(f"执行事实验证过程中出错: {e}")
+            # 创建一个包含错误信息的响应
+            error_response = FactVerificationResponse(
+                results=[],
+                metadata={"error": str(e), "error_time": datetime.now().isoformat()}
+            )
+            # 继续抛出异常以便上层处理
+            raise e
 
     def _process_research_results(self, topic_title, workflow_result, background_research, expert_insights,
                              data_analysis, final_report):
@@ -280,7 +503,7 @@ class ResearchCrew:
         if expert_insights and hasattr(expert_insights, 'raw_output'):
             try:
                 expert_insights_text = expert_insights.raw_output
-                result.experts = self._extract_experts_from_insights(expert_insights_text)
+                result.experts = extract_experts_from_insights(expert_insights_text)
             except Exception as e:
                 logger.error(f"提取专家见解时出错: {str(e)}")
 

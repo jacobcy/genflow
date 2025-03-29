@@ -1,6 +1,6 @@
 import asyncio
-from core.models.platform import Platform
-from core.models.article_style import ContentRules, StyleRules, StyleGuide
+from core.models.platform.platform import Platform
+from core.models.style.article_style import ContentRules, StyleRules, StyleGuide
 from core.controllers.content_controller import ContentController
 
 

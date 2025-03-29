@@ -10,7 +10,7 @@ import asyncio
 import logging
 import traceback
 from crewai import Task, Crew, Process
-from core.models.topic import Topic
+from core.models.topic.topic import Topic
 from core.config import Config
 from .topic_agents import TopicAgents
 

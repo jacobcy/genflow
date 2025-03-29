@@ -5,7 +5,7 @@
 """
 
 import logging
-from typing import Dict, Any, Optional, Mapping
+from typing import Dict, Any, Optional, Mapping, Callable
 from crewai import Task, Agent
 from crewai.tasks.task_output import TaskOutput
 from core.config import Config
@@ -156,13 +156,16 @@ class ResearchTasks:
             "high": "5-7位"
         }
 
+        # 获取背景研究内容
+        background_content = getattr(background_research, "raw_output", str(background_research))
+
         # 构建任务描述
         description = f"""
 你正在寻找话题'{topic}'的专家观点。请确保收集多元观点，不要只关注单一立场的专家。这是{content_type_display}类型的内容研究，请保持适当的专业深度。
 
 这是话题的背景研究报告，请参考以便更准确地找到相关专家:
 
-{background_research.raw_output}
+{background_content}
 
 为话题"{topic}"寻找并分析领域专家的观点和见解。
 
@@ -231,13 +234,16 @@ class ResearchTasks:
             "high": "进行全面深入的数据收集和分析，包括详细的统计分析和多维度比较"
         }
 
+        # 获取背景研究内容
+        background_content = getattr(background_research, "raw_output", str(background_research))
+
         # 构建任务描述
         description = f"""
 你正在分析话题'{topic}'的相关数据。要保持客观，避免过度解读数据。这是{content_type_display}类型的内容研究，请保持适当的专业深度。
 
 这是话题的背景研究报告，请参考以确保你的数据分析与背景一致:
 
-{background_research.raw_output}
+{background_content}
 
 对话题"{topic}"进行数据分析，{data_requirements[depth_level]}。
 
@@ -308,21 +314,26 @@ class ResearchTasks:
         content_type_info = self.current_research_config.get("content_type_info", "一般")
         content_type_display = content_type_info if isinstance(content_type_info, str) else "一般"
 
+        # 获取各个研究结果的内容
+        background_content = getattr(background_research, "raw_output", str(background_research))
+        expert_content = getattr(expert_insights, "raw_output", str(expert_insights)) if expert_insights else None
+        data_content = getattr(data_analysis, "raw_output", str(data_analysis)) if data_analysis else None
+
         # 整合所有研究结果
         description_parts = [
             f"你正在为话题'{topic}'撰写最终研究报告。这是{content_type_display}类型的内容研究，请保持适当的专业深度。",
-            "\n\n这是话题的背景研究报告:\n\n" + background_research.raw_output
+            "\n\n这是话题的背景研究报告:\n\n" + background_content
         ]
 
         # 添加专家观点结果（如果有）
-        if expert_insights:
-            description_parts.append("\n\n这是相关专家的观点分析:\n\n" + expert_insights.raw_output)
+        if expert_insights and expert_content:
+            description_parts.append("\n\n这是相关专家的观点分析:\n\n" + expert_content)
         else:
             description_parts.append("\n\n没有专家观点分析数据。")
 
         # 添加数据分析结果（如果有）
-        if data_analysis:
-            description_parts.append("\n\n这是相关数据分析:\n\n" + data_analysis.raw_output)
+        if data_analysis and data_content:
+            description_parts.append("\n\n这是相关数据分析:\n\n" + data_content)
         else:
             description_parts.append("\n\n没有数据分析结果。")
 
@@ -377,33 +388,15 @@ class ResearchTasks:
             agent=self.agents["research_writer"]
         )
 
-    def create_all_tasks(self, topic: str, background_research: Optional[TaskOutput] = None) -> Dict[str, Task]:
-        """创建所有研究任务
-
-        为完整研究流程创建所有必要的任务。注意：如果不提供background_research，则只能创建背景研究任务。
-
-        Args:
-            topic: 研究话题
-            background_research: 背景研究结果，用于创建后续任务
+    def get_all_tasks(self) -> Dict[str, Callable]:
+        """获取所有研究任务方法
 
         Returns:
-            Dict[str, Task]: 任务名称到任务对象的映射
+            Dict[str, Callable]: 任务名称到任务创建方法的映射
         """
-        tasks = {
-            "background_research": self.create_background_research_task(topic)
+        return {
+            "background_research": self.create_background_research_task,
+            "expert_finder": self.create_expert_finder_task,
+            "data_analysis": self.create_data_analysis_task,
+            "research_report": self.create_research_report_task
         }
-
-        # 如果有背景研究结果，创建后续任务
-        if background_research:
-            tasks.update({
-                "expert_finder": self.create_expert_finder_task(topic, background_research),
-                "data_analysis": self.create_data_analysis_task(topic, background_research)
-            })
-
-            # 研究报告任务需要背景研究，但expert_insights和data_analysis是可选的
-            tasks["research_report"] = self.create_research_report_task(
-                topic,
-                background_research
-            )
-
-        return tasks

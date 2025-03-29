@@ -8,9 +8,9 @@ from datetime import datetime
 import logging
 import uuid
 
-from core.models.topic import Topic
-from core.models.article import Article
-from core.models.platform import Platform, get_default_platform
+from core.models.topic.topic import Topic
+from core.models.article.article import Article
+from core.models.platform.platform import Platform, get_default_platform
 from core.models.progress import ProductionProgress, ProductionStage, StageStatus
 
 from core.controllers.team_adapter import (

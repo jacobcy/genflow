@@ -22,7 +22,7 @@ from typing import Dict, List, Any, Optional, Callable
 from tqdm import tqdm
 
 from core.agents.research_crew import ResearchCrew, ResearchWorkflowResult
-from core.models.research import BasicResearch
+from core.models.research.research import BasicResearch
 from core.config import Config
 
 # 配置日志

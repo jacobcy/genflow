@@ -9,9 +9,9 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, List, Any, Union, Callable, Type
 
-from core.models.topic import Topic
-from core.models.article import Article
-from core.models.platform import Platform, get_default_platform
+from core.models.topic.topic import Topic
+from core.models.article.article import Article
+from core.models.platform.platform import Platform, get_default_platform
 from core.controllers.content_controller import ContentController
 from core.controllers.crewai_hierarchical_controller import CrewAIManagerController
 from core.controllers.crewai_sequential_controller import CrewAISequentialController

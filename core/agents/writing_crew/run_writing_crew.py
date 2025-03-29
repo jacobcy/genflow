@@ -23,8 +23,8 @@ project_root = os.path.abspath(os.path.join(current_dir, "../../../"))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from core.models.article import Article, Section
-from core.models.platform import Platform
+from core.models.article.article import Article, Section
+from core.models.platform.platform import Platform
 from core.agents.writing_crew.writing_crew import WritingCrew, WritingResult
 from core.agents.writing_crew.get_human_feedback import get_human_feedback
 

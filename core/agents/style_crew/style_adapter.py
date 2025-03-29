@@ -8,7 +8,7 @@ from loguru import logger
 
 from core.controllers.base_adapter import BaseTeamAdapter
 from core.models.content_manager import ContentManager
-from core.models.basic_article import BasicArticle, Article
+from core.models.article.basic_article import BasicArticle, Article
 from core.agents.style_crew import StyleCrew
 
 class StyleTeamAdapter(BaseTeamAdapter):
@@ -86,7 +86,7 @@ class StyleTeamAdapter(BaseTeamAdapter):
 
             # 如果以上都没有，使用默认风格
             if not style_obj:
-                from core.models.article_style import get_default_style
+                from core.models.style.article_style import get_default_style
                 style_obj = get_default_style()
                 logger.info("使用默认风格")
 

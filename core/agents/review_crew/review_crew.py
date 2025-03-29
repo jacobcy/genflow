@@ -14,8 +14,8 @@ from pathlib import Path
 from crewai import Task, Crew, Process
 from crewai.agent import Agent
 
-from core.models.article import Article
-from core.models.platform import Platform
+from core.models.article.article import Article
+from core.models.platform.platform import Platform
 from .review_agents import ReviewAgents
 
 # 配置日志

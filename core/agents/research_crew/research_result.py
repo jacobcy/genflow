@@ -2,7 +2,13 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 import json
+import logging
 from crewai.tasks.task_output import TaskOutput
+from core.models.research.research import BasicResearch
+from core.models.feedback import ResearchFeedback
+
+# 配置日志
+logger = logging.getLogger("research_result")
 
 @dataclass
 class ResearchWorkflowResult:
@@ -48,10 +54,10 @@ class ResearchWorkflowResult:
             "created_at": self.created_at.isoformat(),
             "topic": self.topic,
             "topic_id": self.topic_id,
-            "background_research": self.background_research.raw_output if self.background_research else None,
-            "expert_insights": self.expert_insights.raw_output if self.expert_insights else None,
-            "data_analysis": self.data_analysis.raw_output if self.data_analysis else None,
-            "research_report": self.research_report.raw_output if self.research_report else None,
+            "background_research": getattr(self.background_research, "raw_output", str(self.background_research)) if self.background_research else None,
+            "expert_insights": getattr(self.expert_insights, "raw_output", str(self.expert_insights)) if self.expert_insights else None,
+            "data_analysis": getattr(self.data_analysis, "raw_output", str(self.data_analysis)) if self.data_analysis else None,
+            "research_report": getattr(self.research_report, "raw_output", str(self.research_report)) if self.research_report else None,
             "result": self.result.to_dict() if self.result else None,
             "feedback": self.feedback.to_dict() if self.feedback else None,
             "experts": self.experts,

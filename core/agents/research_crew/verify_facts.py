@@ -1,7 +1,7 @@
 from core.agents.research_crew.research_protocol import FactVerificationRequest, FactVerificationResponse
 from core.agents.research_crew.research_result import ResearchWorkflowResult
 from core.models.feedback import ResearchFeedback
-from core.models.research import BasicResearch
+from core.models.research.research import BasicResearch
 
 import logging
 

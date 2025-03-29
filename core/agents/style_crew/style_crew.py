@@ -11,7 +11,7 @@ import uuid
 import json
 
 from crewai import Crew, Agent, Task, Process
-from core.models.basic_article import BasicArticle
+from core.models.article.basic_article import BasicArticle
 from core.tools.style_tools.adapter import StyleAdapter
 from .style_agents import PlatformAnalystAgent, StyleExpertAgent, ContentAdapterAgent, QualityCheckerAgent
 

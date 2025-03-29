@@ -15,9 +15,9 @@ from pydantic import BaseModel, Field
 from crewai import Agent, Task, Crew, Process
 from crewai.flow.flow import Flow, listen, start
 
-from core.models.topic import Topic
-from core.models.article import Article
-from core.models.platform import Platform, get_default_platform
+from core.models.topic.topic import Topic
+from core.models.article.article import Article
+from core.models.platform.platform import Platform, get_default_platform
 from core.models.progress import ProductionProgress, ProductionStage
 
 logger = logging.getLogger(__name__)

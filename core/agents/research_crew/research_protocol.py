@@ -22,17 +22,19 @@ class ResearchRequest(BaseModel):
 
     纯数据传输对象，用于在适配层和实现层之间传递研究请求参数。
     不包含业务逻辑和复杂配置，只定义基本参数结构。
+
+    研究配置通过content_type_obj对象或research_instruct获取。
     """
     # 基础信息
     topic_title: str = Field(..., description="研究话题标题")
 
-    # 基本参数
-    content_type: str = Field(default="article", description="内容类型")
-    depth: str = Field(default="medium", description="研究深度(shallow/medium/deep)")
+    # 基本参数 - 两种配置方式二选一，按优先级排序
+    content_type_obj: Optional[Any] = Field(default=None, description="内容类型对象，直接包含深度和研究需求配置")
+    research_instruct: Optional[str] = Field(default=None, description="研究指导文本，描述如何研究该话题")
 
     # 可选参数和元数据
     options: Dict[str, Any] = Field(default_factory=dict, description="其他选项参数")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="元数据")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="元数据，包含研究配置和附加信息")
 
     # 适配器层内部使用的参数，不传递给研究团队层
     topic_id: Optional[str] = Field(default=None, description="话题ID，仅适配器层使用")

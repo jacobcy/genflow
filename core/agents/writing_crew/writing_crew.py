@@ -16,12 +16,12 @@ from json_repair import repair_json  # 添加json修复库
 from crewai import Task, Crew, Process
 from crewai.agent import Agent
 
-from core.models.article import Article, Section
-from core.models.platform import Platform
-from core.models.topic import Topic
+from core.models.article.article import Article, Section
+from core.models.platform.platform import Platform
+from core.models.topic.topic import Topic
 from core.models.content_manager import ContentManager
-from core.models.basic_outline import BasicOutline, OutlineSection
-from core.models.article_outline import ArticleOutline
+from core.models.outline.basic_outline import BasicOutline, OutlineSection
+from core.models.outline.article_outline import ArticleOutline
 from .writing_agents import WritingAgents
 from core.models.util import ArticleParser
 
