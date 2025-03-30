@@ -4,7 +4,7 @@
 仅负责基础数据结构的管理，不涉及具体业务逻辑。
 """
 
-from typing import Dict, List, Optional, Any, ClassVar
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 from loguru import logger
 from uuid import uuid4
@@ -13,30 +13,38 @@ from ..infra.base_manager import BaseManager
 from .basic_research import BasicResearch
 
 
-class ResearchManager(BaseManager):
+class ResearchManager(BaseManager[BasicResearch]):
     """研究报告管理器
 
     提供研究报告对象的基础管理功能，包括内存存储、获取、删除等。
     仅处理基础的数据存储需求，不包含业务逻辑。
     """
 
-    _researches: ClassVar[Dict[str, BasicResearch]] = {}
-    _initialized: ClassVar[bool] = False
+    _initialized: bool = False
+    _model_class = BasicResearch
+    _id_field = "research_id"  # 注意BasicResearch没有id字段，使用metadata中的research_id
+    _timestamp_field = "research_timestamp"
+    _metadata_field = "metadata"
+
+    @classmethod
+    def initialize(cls, use_db: bool = True) -> None:
+        """初始化研究报告管理器
+
+        Args:
+            use_db: 是否使用数据库，默认为True
+        """
+        if cls._initialized:
+            return
+
+        cls._use_db = use_db
+        cls._initialized = True
+        logger.info("研究报告管理器初始化完成")
 
     @classmethod
     def ensure_initialized(cls) -> None:
         """确保管理器已初始化"""
         if not cls._initialized:
             cls.initialize()
-
-    @classmethod
-    def initialize(cls) -> None:
-        """初始化研究报告管理器"""
-        if cls._initialized:
-            return
-
-        cls._initialized = True
-        logger.info("研究报告管理器初始化完成")
 
     @classmethod
     def get_research(cls, research_id: str) -> Optional[BasicResearch]:
@@ -48,8 +56,8 @@ class ResearchManager(BaseManager):
         Returns:
             Optional[BasicResearch]: 研究报告对象，不存在则返回None
         """
-        cls.ensure_initialized()
-        return cls._researches.get(research_id)
+        # 使用基类的get_entity方法
+        return cls.get_entity(research_id)
 
     @classmethod
     def save_research(cls, research: BasicResearch) -> bool:
@@ -61,33 +69,8 @@ class ResearchManager(BaseManager):
         Returns:
             bool: 是否成功保存
         """
-        cls.ensure_initialized()
-
-        # 更新时间戳
-        if hasattr(research, "research_timestamp"):
-            research.research_timestamp = datetime.now()
-
-        # 获取或生成研究报告ID
-        research_id = None
-
-        # 优先从对象本身获取ID
-        if hasattr(research, "id"):
-            research_id = getattr(research, "id")
-        # 其次从metadata中获取ID
-        elif hasattr(research, "metadata") and isinstance(research.metadata, dict):
-            research_id = research.metadata.get("research_id")
-
-        # 如果没有，生成新ID
-        if not research_id:
-            research_id = str(uuid4())
-            # 保存到metadata
-            if hasattr(research, "metadata") and isinstance(research.metadata, dict):
-                research.metadata["research_id"] = research_id
-
-        # 保存到缓存
-        cls._researches[research_id] = research
-        logger.info(f"研究报告保存成功: {research_id} ({research.title})")
-        return True
+        # 使用基类的save_entity方法
+        return cls.save_entity(research)
 
     @classmethod
     def delete_research(cls, research_id: str) -> bool:
@@ -99,13 +82,8 @@ class ResearchManager(BaseManager):
         Returns:
             bool: 是否成功删除
         """
-        cls.ensure_initialized()
-        if research_id in cls._researches:
-            del cls._researches[research_id]
-            logger.info(f"研究报告删除成功: {research_id}")
-            return True
-        logger.warning(f"研究报告不存在，无法删除: {research_id}")
-        return False
+        # 使用基类的delete_entity方法
+        return cls.delete_entity(research_id)
 
     @classmethod
     def list_researches(cls) -> List[str]:
@@ -114,5 +92,5 @@ class ResearchManager(BaseManager):
         Returns:
             List[str]: 研究报告ID列表
         """
-        cls.ensure_initialized()
-        return list(cls._researches.keys())
+        # 使用基类的list_entities方法
+        return cls.list_entities()

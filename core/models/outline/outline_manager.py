@@ -4,39 +4,46 @@
 仅负责基础数据结构的管理，不涉及具体业务逻辑。
 """
 
-from typing import Dict, List, Optional, Any, ClassVar
+from typing import Dict, List, Optional, Type, TypeVar, Generic, Any
 from datetime import datetime
 from loguru import logger
 from uuid import uuid4
 
-from ..infra.base_manager import BaseManager
+from core.models.infra.base_manager import BaseManager
 from core.models.outline.basic_outline import BasicOutline, OutlineNode
 
-
-class OutlineManager(BaseManager):
+class OutlineManager(BaseManager[BasicOutline]):
     """大纲管理器
 
     提供大纲对象的基础管理功能，包括内存存储、获取、删除等。
     仅处理基础的数据存储需求，不包含业务逻辑。
     """
 
-    _outlines: ClassVar[Dict[str, BasicOutline]] = {}
-    _initialized: ClassVar[bool] = False
+    _initialized: bool = False
+    _model_class = BasicOutline
+    _id_field = "outline_id"  # 大纲ID存储在metadata中
+    _timestamp_field = "updated_at"
+    _metadata_field = "metadata"
+
+    @classmethod
+    def initialize(cls, use_db: bool = True) -> None:
+        """初始化大纲管理器
+
+        Args:
+            use_db: 是否使用数据库，默认为True
+        """
+        if cls._initialized:
+            return
+
+        cls._use_db = use_db
+        cls._initialized = True
+        logger.info("大纲管理器初始化完成")
 
     @classmethod
     def ensure_initialized(cls) -> None:
         """确保管理器已初始化"""
         if not cls._initialized:
             cls.initialize()
-
-    @classmethod
-    def initialize(cls) -> None:
-        """初始化大纲管理器"""
-        if cls._initialized:
-            return
-
-        cls._initialized = True
-        logger.info("大纲管理器初始化完成")
 
     @classmethod
     def get_outline(cls, outline_id: str) -> Optional[BasicOutline]:
@@ -48,8 +55,8 @@ class OutlineManager(BaseManager):
         Returns:
             Optional[BasicOutline]: 大纲对象，不存在则返回None
         """
-        cls.ensure_initialized()
-        return cls._outlines.get(outline_id)
+        # 使用基类的get_entity方法
+        return cls.get_entity(outline_id)
 
     @classmethod
     def save_outline(cls, outline: BasicOutline) -> bool:
@@ -61,28 +68,8 @@ class OutlineManager(BaseManager):
         Returns:
             bool: 是否成功保存
         """
-        cls.ensure_initialized()
-
-        # 更新时间戳
-        outline.updated_at = datetime.now()
-
-        # 获取或生成大纲ID
-        outline_id = None
-
-        # 优先从metadata中获取ID
-        if hasattr(outline, "metadata") and isinstance(outline.metadata, dict):
-            outline_id = outline.metadata.get("outline_id")
-
-        # 如果没有，生成新ID
-        if not outline_id:
-            outline_id = str(uuid4())
-            # 保存到metadata
-            outline.metadata["outline_id"] = outline_id
-
-        # 保存到缓存
-        cls._outlines[outline_id] = outline
-        logger.info(f"大纲保存成功: {outline_id} ({outline.title})")
-        return True
+        # 使用基类的save_entity方法
+        return cls.save_entity(outline)
 
     @classmethod
     def delete_outline(cls, outline_id: str) -> bool:
@@ -94,13 +81,8 @@ class OutlineManager(BaseManager):
         Returns:
             bool: 是否成功删除
         """
-        cls.ensure_initialized()
-        if outline_id in cls._outlines:
-            del cls._outlines[outline_id]
-            logger.info(f"大纲删除成功: {outline_id}")
-            return True
-        logger.warning(f"大纲不存在，无法删除: {outline_id}")
-        return False
+        # 使用基类的delete_entity方法
+        return cls.delete_entity(outline_id)
 
     @classmethod
     def list_outlines(cls) -> List[str]:
@@ -109,5 +91,5 @@ class OutlineManager(BaseManager):
         Returns:
             List[str]: 大纲ID列表
         """
-        cls.ensure_initialized()
-        return list(cls._outlines.keys())
+        # 使用基类的list_entities方法
+        return cls.list_entities()

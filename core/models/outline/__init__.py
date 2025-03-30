@@ -11,7 +11,7 @@ from .article_outline import ArticleOutline
 from .outline_db import Outline, OutlineNode as OutlineNodeDB
 
 # 服务与工具
-from .outline_service import OutlineService
+from .outline_factory import OutlineFactory
 from .outline_manager import OutlineManager
 from .outline_converter import OutlineConverter
 
@@ -22,7 +22,7 @@ __all__ = [
     'ArticleOutline',
     'Outline',
     'OutlineNodeDB',
-    'OutlineService',
+    'OutlineFactory',
     'OutlineManager',
     'OutlineConverter'
 ]

@@ -6,7 +6,109 @@ from enum import Enum, auto
 import uuid
 from typing import List, Dict, Optional, Any
 
-# 模拟枚举类型，避免导入依赖
+# 模拟导入的研究工厂类
+class ResearchFactory:
+    """研究工厂模拟类"""
+
+    @classmethod
+    def from_simple_research(cls, title, content, key_points, references, content_type, topic_id=None):
+        """从简单版本的研究结果创建标准研究对象"""
+        # 转换引用为Source对象
+        sources = []
+        for ref in references:
+            source = Source(
+                name=ref.get("title", "Unknown Source"),
+                url=ref.get("url"),
+                author=ref.get("author"),
+                publish_date=ref.get("date"),
+                content_snippet=ref.get("snippet"),
+                reliability_score=ref.get("reliability", 0.5)
+            )
+            sources.append(source)
+
+        # 转换关键点为KeyFinding对象
+        key_findings = []
+        for kp in key_points:
+            importance = kp.get("importance", 5)
+            # 将1-10的重要性转换为0-1的浮点数
+            normalized_importance = importance / 10.0 if importance else 0.5
+
+            kf = KeyFinding(
+                content=kp.get("content", ""),
+                importance=normalized_importance,
+                sources=[]
+            )
+            key_findings.append(kf)
+
+        # 创建基础研究
+        basic_research = BasicResearch(
+            title=title,
+            content_type=content_type,
+            summary=content[:500] + "..." if len(content) > 500 else content,
+            report=content,
+            key_findings=key_findings,
+            sources=sources,
+            metadata={
+                "created_from": "simple_research",
+                "created_at": datetime.now().isoformat(),
+                "key_points": key_points  # 保留原始关键点数据
+            }
+        )
+
+        # 如果提供了topic_id，则创建TopicResearch
+        if topic_id:
+            return TopicResearch.from_basic_research(basic_research, topic_id)
+        return basic_research
+
+    @classmethod
+    def create_key_finding(cls, content, importance=0.5, sources=None):
+        """创建关键发现对象"""
+        return KeyFinding(
+            content=content,
+            importance=importance,
+            sources=sources or []
+        )
+
+    @classmethod
+    def create_source(cls, name, url="", author="", reliability_score=0.5, date=None):
+        """创建来源对象"""
+        return Source(
+            name=name,
+            url=url,
+            author=author,
+            reliability_score=reliability_score,
+            publish_date=date or datetime.now().strftime("%Y-%m-%d")
+        )
+
+    @classmethod
+    def create_expert_insight(cls, expert_name, content, field="", credentials=""):
+        """创建专家见解对象"""
+        return ExpertInsight(
+            expert_name=expert_name,
+            content=content,
+            field=field,
+            credentials=credentials
+        )
+
+    @classmethod
+    def to_markdown(cls, research):
+        """将研究报告转换为Markdown格式"""
+        # 简单模拟，实际实现会更复杂
+        return f"# {research.title}\n\n{research.background or ''}\n\n## Key Findings\n\n..."
+
+    @classmethod
+    def get_research_completeness(cls, research):
+        """获取研究报告完整度评估"""
+        # 简单模拟，实际实现会更复杂
+        return {
+            "overall": 75,
+            "basic_info": 100,
+            "key_findings": 80,
+            "sources": 70,
+            "expert_insights": 50
+        }
+
+# 模拟Enum类型
 class ArticleSectionType(str, Enum):
     """文章部分/章节类型"""
     INTRODUCTION = "introduction"  # 引言
@@ -95,50 +197,6 @@ class BasicResearch(BaseModel):
             "report": self.report,
             "metadata": self.metadata
         }
-
-    @classmethod
-    def from_simple_research(cls, title, content, key_points, references, content_type):
-        """从简单版本的研究结果创建标准BasicResearch"""
-        # 转换引用为Source对象
-        sources = []
-        for ref in references:
-            source = Source(
-                name=ref.get("title", "Unknown Source"),
-                url=ref.get("url"),
-                author=ref.get("author"),
-                publish_date=ref.get("date"),
-                content_snippet=ref.get("snippet"),
-                reliability_score=ref.get("reliability", 0.5)
-            )
-            sources.append(source)
-
-        # 转换关键点为KeyFinding对象
-        key_findings = []
-        for kp in key_points:
-            importance = kp.get("importance", 5)
-            # 将1-10的重要性转换为0-1的浮点数
-            normalized_importance = importance / 10.0 if importance else 0.5
-
-            kf = KeyFinding(
-                content=kp.get("content", ""),
-                importance=normalized_importance,
-                sources=[]
-            )
-            key_findings.append(kf)
-
-        return cls(
-            title=title,
-            content_type=content_type,
-            summary=content[:500] + "..." if len(content) > 500 else content,
-            report=content,
-            key_findings=key_findings,
-            sources=sources,
-            metadata={
-                "created_from": "simple_research",
-                "created_at": datetime.now().isoformat(),
-                "key_points": key_points  # 保留原始关键点数据
-            }
-        )
 
 class TopicResearch(BasicResearch):
     """话题研究结果模型"""
@@ -278,10 +336,53 @@ def test_article_section_type_enum():
     assert research.content_type == "analysis"
 
 
+def test_research_factory_utilities():
+    """测试研究工厂的工具函数"""
+    # 测试 create_key_finding
+    finding = ResearchFactory.create_key_finding("这是一个关键发现", 0.7)
+    assert finding.content == "这是一个关键发现"
+    assert finding.importance == 0.7
+    assert isinstance(finding.sources, list)
+
+    # 测试 create_source
+    source = ResearchFactory.create_source("测试来源", "https://test.com", "测试作者", 0.8)
+    assert source.name == "测试来源"
+    assert source.url == "https://test.com"
+    assert source.author == "测试作者"
+    assert source.reliability_score == 0.8
+
+    # 测试 create_expert_insight
+    insight = ResearchFactory.create_expert_insight("专家名", "专家见解内容", "AI领域", "博士")
+    assert insight.expert_name == "专家名"
+    assert insight.content == "专家见解内容"
+    assert insight.field == "AI领域"
+    assert insight.credentials == "博士"
+
+    # 测试 from_simple_research
+    research = ResearchFactory.from_simple_research(
+        title="简化研究",
+        content="研究内容...",
+        key_points=[{"content": "要点1", "importance": 7}],
+        references=[{"title": "参考1", "url": "https://ref.com"}],
+        content_type="tech",
+        topic_id="topic_001"
+    )
+
+    assert research.title == "简化研究"
+    assert research.content_type == "tech"
+    assert isinstance(research, TopicResearch)  # 确保是TopicResearch类型
+    assert research.topic_id == "topic_001"
+    assert len(research.key_findings) == 1
+    assert research.key_findings[0].content == "要点1"
+    assert len(research.sources) == 1
+    assert research.sources[0].name == "参考1"
+
+
 if __name__ == "__main__":
     # 运行所有测试
     test_basic_research_creation()
     test_research_with_insights_and_findings()
     test_topic_research_from_basic()
     test_article_section_type_enum()
+    test_research_factory_utilities()
     print("所有测试通过!")

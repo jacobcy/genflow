@@ -1,155 +1,47 @@
-"""模型管理服务
+"""持久内容管理器
 
-简化的模型访问层，提供对系统各种模型的统一访问接口。
-职责是协调不同类型的模型管理器，不包含业务逻辑。
+负责管理带ID的持久化内容对象，如topic、article等
 """
 
-from typing import Dict, List, Optional, Any, Type
+from typing import Dict, List, Optional, Any
 from loguru import logger
+from datetime import datetime
 
-# 导入基础组件
-from .style.style_manager import StyleManager
-from .article.article_manager import ArticleManager
-from .topic.topic_manager import TopicManager
-from .research.research_manager import ResearchManager
+from .infra.base_manager import BaseManager
 
 
-class ContentManager:
-    """内容管理服务
+class ContentManager(BaseManager):
+    """持久内容管理器
 
-    提供对系统各类模型的统一访问接口，包括:
-    - 简单内容类（不含ID的临时对象）：basic_research, basic_outline, basic_article
-    - 持久内容类（含ID）：topic, research, article_outline, article
-    - 配置类：content_type, platform, style, category
-    - 过程类：progress, feedback
-
-    对外提供统一的接口，内部按照职责将这四类内容分开管理。
+    负责管理带ID的持久化内容对象，如topic、article等
+    作为统一入口，委托具体操作给各专门的Manager类
     """
 
-    # 初始化状态跟踪
-    _simple_content_initialized = False
-    _persistent_content_initialized = False
-    _config_initialized = False
-    _operation_initialized = False
-    _use_db = True
+    _initialized = False
 
     @classmethod
     def initialize(cls, use_db: bool = True) -> None:
-        """初始化内容管理服务
+        """初始化持久内容管理器
 
         Args:
             use_db: 是否使用数据库，默认为True
         """
-        cls._use_db = use_db
-
-        # 初始化四个主要组件
-        cls._initialize_simple_content()
-        cls._initialize_persistent_content()
-        cls._initialize_config()
-        cls._initialize_operation()
-
-        logger.info("内容管理服务初始化完成")
-
-    #----------------------------------#
-    # 初始化方法                       #
-    #----------------------------------#
-
-    @classmethod
-    def _initialize_simple_content(cls) -> None:
-        """初始化简单内容管理组件"""
-        if cls._simple_content_initialized:
+        if cls._initialized:
             return
 
-        # 初始化简单内容相关模块
-        ResearchManager.initialize()
+        # 初始化话题管理、文章管理等
+        from .topic.topic_manager import TopicManager
+        from .article.article_manager import ArticleManager
+        from .research.research_manager import ResearchManager
+        from .outline.outline_manager import OutlineManager
 
-        cls._simple_content_initialized = True
-        logger.debug("简单内容管理组件初始化完成")
-
-    @classmethod
-    def _initialize_persistent_content(cls) -> None:
-        """初始化持久内容管理组件"""
-        if cls._persistent_content_initialized:
-            return
-
-        # 初始化话题、文章等持久内容模块
         TopicManager.initialize()
-        ArticleManager.initialize(cls._use_db)
+        ArticleManager.initialize(use_db)
+        ResearchManager.initialize()
+        OutlineManager.initialize()
 
-        cls._persistent_content_initialized = True
-        logger.debug("持久内容管理组件初始化完成")
-
-    @classmethod
-    def _initialize_config(cls) -> None:
-        """初始化配置管理组件"""
-        if cls._config_initialized:
-            return
-
-        # 初始化风格、平台等配置模块
-        StyleManager.initialize(cls._use_db)
-
-        cls._config_initialized = True
-        logger.debug("配置管理组件初始化完成")
-
-    @classmethod
-    def _initialize_operation(cls) -> None:
-        """初始化操作管理组件"""
-        if cls._operation_initialized:
-            return
-
-        # 初始化进度、反馈等操作模块
-        # 这里将来可以添加进度和反馈相关管理器的初始化
-
-        cls._operation_initialized = True
-        logger.debug("操作管理组件初始化完成")
-
-    #----------------------------------#
-    # 简单内容相关方法                 #
-    #----------------------------------#
-
-    @classmethod
-    def create_basic_research(cls, **kwargs) -> Any:
-        """创建基础研究对象
-
-        Args:
-            **kwargs: 研究对象属性
-
-        Returns:
-            Any: 创建的研究对象
-        """
-        cls._initialize_simple_content()
-        from .research.basic_research import BasicResearch
-        return BasicResearch(**kwargs)
-
-    @classmethod
-    def save_basic_research(cls, research: Any) -> bool:
-        """保存基础研究对象
-
-        Args:
-            research: 研究对象
-
-        Returns:
-            bool: 是否成功保存
-        """
-        cls._initialize_simple_content()
-        return ResearchManager.save_research(research)
-
-    @classmethod
-    def get_basic_research(cls, research_id: str) -> Optional[Any]:
-        """获取基础研究对象
-
-        Args:
-            research_id: 研究ID
-
-        Returns:
-            Optional[Any]: 研究对象或None
-        """
-        cls._initialize_simple_content()
-        return ResearchManager.get_research(research_id)
-
-    #----------------------------------#
-    # 持久内容相关方法                 #
-    #----------------------------------#
+        cls._initialized = True
+        logger.info("持久内容管理器初始化完成")
 
     @classmethod
     def get_topic(cls, topic_id: str) -> Optional[Any]:
@@ -161,7 +53,8 @@ class ContentManager:
         Returns:
             Optional[Any]: 话题对象或None
         """
-        cls._initialize_persistent_content()
+        cls.ensure_initialized()
+        from .topic.topic_manager import TopicManager
         return TopicManager.get_topic(topic_id)
 
     @classmethod
@@ -174,7 +67,8 @@ class ContentManager:
         Returns:
             bool: 是否成功保存
         """
-        cls._initialize_persistent_content()
+        cls.ensure_initialized()
+        from .topic.topic_manager import TopicManager
         return TopicManager.save_topic(topic)
 
     @classmethod
@@ -190,7 +84,8 @@ class ContentManager:
         Returns:
             Optional[Any]: 创建的话题对象，失败返回None
         """
-        cls._initialize_persistent_content()
+        cls.ensure_initialized()
+        from .topic.topic_manager import TopicManager
         return TopicManager.create_topic(title, keywords, content_type)
 
     @classmethod
@@ -203,8 +98,171 @@ class ContentManager:
         Returns:
             bool: 是否成功删除
         """
-        cls._initialize_persistent_content()
+        cls.ensure_initialized()
+        from .topic.topic_manager import TopicManager
         return TopicManager.delete_topic(topic_id)
+
+    @classmethod
+    def get_research(cls, research_id: str) -> Optional[Any]:
+        """获取指定ID的研究
+
+        Args:
+            research_id: 研究ID
+
+        Returns:
+            Optional[Any]: 研究对象或None
+        """
+        cls.ensure_initialized()
+        from .research.research_factory import ResearchFactory
+        return ResearchFactory.get_research(research_id)
+
+    @classmethod
+    def save_research(cls, research: Any) -> bool:
+        """保存研究
+
+        Args:
+            research: 研究对象
+
+        Returns:
+            bool: 是否成功保存
+        """
+        cls.ensure_initialized()
+        from .research.research_factory import ResearchFactory
+        return ResearchFactory.save_research(research) is not None
+
+    @classmethod
+    def create_research(cls, topic_id: str, title: str,
+                       content_type: Optional[str] = None, **kwargs) -> Optional[Any]:
+        """创建新研究
+
+        Args:
+            topic_id: 关联的话题ID
+            title: 研究标题
+            content_type: 内容类型
+            **kwargs: 其他研究属性
+
+        Returns:
+            Optional[Any]: 创建的研究对象，失败返回None
+        """
+        cls.ensure_initialized()
+        from .research.research_factory import ResearchFactory
+
+        try:
+            research = ResearchFactory.create_research(
+                title=title,
+                content_type=content_type or "general",
+                topic_id=topic_id,
+                **kwargs
+            )
+            research_id = ResearchFactory.save_research(research)
+            if research_id:
+                return research
+            return None
+        except Exception as e:
+            logger.error(f"创建研究失败: {str(e)}")
+            return None
+
+    @classmethod
+    def delete_research(cls, research_id: str) -> bool:
+        """删除研究
+
+        Args:
+            research_id: 研究ID
+
+        Returns:
+            bool: 是否成功删除
+        """
+        cls.ensure_initialized()
+        from .research.research_factory import ResearchFactory
+        return ResearchFactory.delete_research(research_id)
+
+    @classmethod
+    def validate_research(cls, research: Any) -> bool:
+        """验证研究报告有效性
+
+        Args:
+            research: 研究报告对象
+
+        Returns:
+            bool: 是否有效
+        """
+        cls.ensure_initialized()
+        from .research.research_factory import ResearchFactory
+        return ResearchFactory.validate_research(research)
+
+    @classmethod
+    def research_to_markdown(cls, research_id: str) -> str:
+        """将研究报告转换为Markdown格式
+
+        Args:
+            research_id: 研究报告ID
+
+        Returns:
+            str: Markdown格式的文本，失败返回空字符串
+        """
+        cls.ensure_initialized()
+        from .research.research_factory import ResearchFactory
+
+        research = ResearchFactory.get_research(research_id)
+        if research:
+            return ResearchFactory.to_markdown(research)
+        return ""
+
+    @classmethod
+    def get_research_completeness(cls, research_id: str) -> Dict[str, Any]:
+        """获取研究报告完整度评估
+
+        Args:
+            research_id: 研究报告ID
+
+        Returns:
+            Dict[str, Any]: 完整度评估结果，失败返回空字典
+        """
+        cls.ensure_initialized()
+        from .research.research_factory import ResearchFactory
+
+        research = ResearchFactory.get_research(research_id)
+        if research:
+            return ResearchFactory.get_research_completeness(research)
+        return {"overall": 0}
+
+    @classmethod
+    def create_simple_research(cls, topic_id: str, title: str, content: str,
+                              key_points: Optional[List[Dict]] = None,
+                              references: Optional[List[Dict]] = None,
+                              content_type: str = "research") -> Optional[Any]:
+        """从简化的研究数据创建研究报告
+
+        Args:
+            topic_id: 关联的话题ID
+            title: 研究标题
+            content: 研究内容
+            key_points: 关键点列表
+            references: 参考资料列表
+            content_type: 内容类型
+
+        Returns:
+            Optional[Any]: 创建的研究对象，失败返回None
+        """
+        cls.ensure_initialized()
+        from .research.research_factory import ResearchFactory
+
+        try:
+            research = ResearchFactory.from_simple_research(
+                title=title,
+                content=content,
+                key_points=key_points,
+                references=references,
+                content_type=content_type,
+                topic_id=topic_id
+            )
+            research_id = ResearchFactory.save_research(research)
+            if research_id:
+                return research
+            return None
+        except Exception as e:
+            logger.error(f"创建简化研究失败: {str(e)}")
+            return None
 
     @classmethod
     def get_article(cls, article_id: str) -> Optional[Any]:
@@ -216,8 +274,9 @@ class ContentManager:
         Returns:
             Optional[Any]: 文章对象或None
         """
-        cls._initialize_persistent_content()
-        return ArticleManager.get_article(article_id)
+        cls.ensure_initialized()
+        from .article.article_factory import ArticleFactory
+        return ArticleFactory.get_article(article_id)
 
     @classmethod
     def save_article(cls, article: Any) -> bool:
@@ -229,21 +288,23 @@ class ContentManager:
         Returns:
             bool: 是否成功保存
         """
-        cls._initialize_persistent_content()
-        return ArticleManager.save_article(article)
+        cls.ensure_initialized()
+        from .article.article_factory import ArticleFactory
+        return ArticleFactory.save_article(article)
 
     @classmethod
     def get_articles_by_status(cls, status: str) -> List[Any]:
-        """获取指定状态的文章
+        """获取指定状态的文章列表
 
         Args:
             status: 文章状态
 
         Returns:
-            List[Any]: 文章列表
+            List[Any]: 文章对象列表
         """
-        cls._initialize_persistent_content()
-        return ArticleManager.get_articles_by_status(status)
+        cls.ensure_initialized()
+        from .article.article_factory import ArticleFactory
+        return ArticleFactory.get_articles_by_status(status)
 
     @classmethod
     def update_article_status(cls, article_id: str, status: str) -> bool:
@@ -256,93 +317,163 @@ class ContentManager:
         Returns:
             bool: 是否成功更新
         """
-        cls._initialize_persistent_content()
-        return ArticleManager.update_article_status(article_id, status)
-
-    #----------------------------------#
-    # 配置相关方法                     #
-    #----------------------------------#
+        cls.ensure_initialized()
+        from .article.article_factory import ArticleFactory
+        return ArticleFactory.update_status_by_id(article_id, status)
 
     @classmethod
-    def get_article_style(cls, style_name: str) -> Optional[Any]:
-        """获取指定名称的文章风格
+    def get_outline(cls, outline_id: str) -> Optional[Any]:
+        """获取指定ID的大纲
 
         Args:
-            style_name: 风格名称
+            outline_id: 大纲ID
 
         Returns:
-            Optional[Any]: 风格对象或None
+            Optional[Any]: 大纲对象或None
         """
-        cls._initialize_config()
-        return StyleManager.get_article_style(style_name)
+        cls.ensure_initialized()
+        from .outline.outline_factory import OutlineFactory
+        return OutlineFactory.get_outline(outline_id)
 
     @classmethod
-    def get_default_style(cls) -> Any:
-        """获取默认风格
-
-        Returns:
-            Any: 默认风格对象
-        """
-        cls._initialize_config()
-        return StyleManager.get_default_style()
-
-    @classmethod
-    def get_all_styles(cls) -> Dict[str, Any]:
-        """获取所有风格
-
-        Returns:
-            Dict[str, Any]: 风格字典，键为风格名称
-        """
-        cls._initialize_config()
-        return StyleManager.get_all_styles()
-
-    @classmethod
-    def create_style_from_description(cls, description: str, options: Optional[Dict[str, Any]] = None) -> Any:
-        """从描述创建风格
+    def save_outline(cls, outline: Any) -> bool:
+        """保存大纲
 
         Args:
-            description: 风格描述文本
-            options: 可选配置参数
-
-        Returns:
-            Any: 创建的风格对象
-        """
-        cls._initialize_config()
-        return StyleManager.create_style_from_description(description, options)
-
-    @classmethod
-    def find_style_by_type(cls, style_type: str) -> Optional[Any]:
-        """根据类型查找风格
-
-        Args:
-            style_type: 风格类型
-
-        Returns:
-            Optional[Any]: 匹配的风格对象或None
-        """
-        cls._initialize_config()
-        return StyleManager.find_style_by_type(style_type)
-
-    @classmethod
-    def save_style(cls, style: Any) -> bool:
-        """保存风格
-
-        Args:
-            style: 风格对象
+            outline: 大纲对象
 
         Returns:
             bool: 是否成功保存
         """
-        cls._initialize_config()
-        return StyleManager.save_style(style)
+        cls.ensure_initialized()
+        from .outline.outline_factory import OutlineFactory
+        return OutlineFactory.save_outline(outline) is not None
 
-    #----------------------------------#
-    # 操作和过程相关方法               #
-    #----------------------------------#
+    @classmethod
+    def create_outline(cls, title: str, content_type: str = "article",
+                     sections: Optional[List[Dict]] = None, **kwargs) -> Optional[Any]:
+        """创建新大纲
 
-    # 这里可以添加操作和过程相关方法
-    # 例如创建进度、更新反馈等
+        Args:
+            title: 大纲标题
+            content_type: 内容类型，默认为文章
+            sections: 初始章节列表，可选
+            **kwargs: 其他大纲属性
 
+        Returns:
+            Optional[Any]: 创建的大纲对象，失败返回None
+        """
+        cls.ensure_initialized()
+        from .outline.outline_factory import OutlineFactory
 
-# 向后兼容性别名
-ModelService = ContentManager
+        try:
+            outline = OutlineFactory.create_outline(title, content_type, sections, **kwargs)
+            outline_id = OutlineFactory.save_outline(outline)
+            if outline_id:
+                return outline
+            return None
+        except Exception as e:
+            logger.error(f"创建大纲失败: {str(e)}")
+            return None
+
+    @classmethod
+    def delete_outline(cls, outline_id: str) -> bool:
+        """删除大纲
+
+        Args:
+            outline_id: 大纲ID
+
+        Returns:
+            bool: 是否成功删除
+        """
+        cls.ensure_initialized()
+        from .outline.outline_factory import OutlineFactory
+        return OutlineFactory.delete_outline(outline_id)
+
+    @classmethod
+    def outline_to_article(cls, outline_id: str) -> Optional[Any]:
+        """将大纲转换为文章对象
+
+        Args:
+            outline_id: 大纲ID
+
+        Returns:
+            Optional[Any]: 文章对象，失败返回None
+        """
+        cls.ensure_initialized()
+        from .outline.outline_factory import OutlineFactory
+
+        outline = OutlineFactory.get_outline(outline_id)
+        if outline:
+            return OutlineFactory.to_article(outline)
+        return None
+
+    @classmethod
+    def outline_to_text(cls, outline_id: str) -> str:
+        """将大纲转换为文本
+
+        Args:
+            outline_id: 大纲ID
+
+        Returns:
+            str: 文本内容，失败返回空字符串
+        """
+        cls.ensure_initialized()
+        from .outline.outline_factory import OutlineFactory
+
+        outline = OutlineFactory.get_outline(outline_id)
+        if outline:
+            return OutlineFactory.to_text(outline)
+        return ""
+
+    @classmethod
+    def delete_article(cls, article_id: str) -> bool:
+        """删除文章
+
+        Args:
+            article_id: 文章ID
+
+        Returns:
+            bool: 是否成功删除
+        """
+        cls.ensure_initialized()
+        from .article.article_factory import ArticleFactory
+        return ArticleFactory.delete_article(article_id)
+
+    @classmethod
+    def create_article(cls, topic_id: str, title: str, **kwargs) -> Optional[Any]:
+        """创建新文章
+
+        Args:
+            topic_id: 话题ID
+            title: 文章标题
+            **kwargs: 其他文章属性
+
+        Returns:
+            Optional[Any]: 创建的文章对象，失败返回None
+        """
+        cls.ensure_initialized()
+        from .article.article_factory import ArticleFactory
+        from .article.article import Article
+        from uuid import uuid4
+
+        try:
+            # 创建基本文章
+            article_id = kwargs.get("id", f"article_{uuid4().hex[:8]}")
+            article = Article(
+                id=article_id,
+                topic_id=topic_id,
+                title=title,
+                **kwargs
+            )
+
+            # 计算文章指标
+            ArticleFactory.calculate_article_metrics(article)
+
+            # 保存文章
+            if ArticleFactory.save_article(article):
+                return article
+            return None
+        except Exception as e:
+            logger.error(f"创建文章失败: {str(e)}")
+            return None

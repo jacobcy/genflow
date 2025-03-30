@@ -6,13 +6,13 @@ import sys
 import os
 from datetime import datetime
 from uuid import uuid4
+from typing import Dict, List, Any, Optional
 
 # 使用相对导入以避免依赖问题
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 # 导入Pydantic相关模块
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional, Any
 
 # 定义Section类 - 独立于实际代码的测试类
 class Section(BaseModel):
@@ -117,6 +117,62 @@ class BasicArticle(BaseModel):
             updated_at=article.updated_at
         )
 
+# 创建模拟的ArticleService
+class MockArticleService:
+    """模拟ArticleService，供测试使用"""
+
+    @staticmethod
+    def update_article_status(article: Any, new_status: str) -> None:
+        """更新文章状态
+
+        Args:
+            article: 文章对象
+            new_status: 新状态
+        """
+        article.status = new_status
+        article.updated_at = datetime.now()
+
+        # 记录状态变更到元数据
+        if not hasattr(article, "metadata"):
+            article.metadata = {}
+
+        if "status_history" not in article.metadata:
+            article.metadata["status_history"] = []
+
+        article.metadata["status_history"].append({
+            "status": new_status,
+            "timestamp": datetime.now().isoformat()
+        })
+
+    @staticmethod
+    def calculate_article_metrics(article: Any) -> Dict[str, Any]:
+        """计算文章指标
+
+        Args:
+            article: 文章对象
+
+        Returns:
+            Dict[str, Any]: 文章指标
+        """
+        # 计算总字数
+        total_words = len(article.title) + len(article.summary)
+        for section in article.sections:
+            total_words += len(section.title) + len(section.content)
+
+        # 估算阅读时间
+        read_time = max(1, round(total_words / 400))
+
+        # 更新指标
+        article.word_count = total_words
+        article.read_time = read_time
+
+        return {
+            "word_count": total_words,
+            "read_time": read_time,
+            "section_count": len(article.sections),
+            "image_count": len(article.images) if hasattr(article, "images") else 0
+        }
+
 # 测试函数
 def test_section_creation():
     """测试创建Section对象"""
@@ -175,13 +231,14 @@ def test_article_update_status():
         summary="这是一篇测试文章"
     )
 
-    # 更新状态前检查
+    # 检查初始状态
+    assert article.status == "initialized"
     assert "status_history" not in article.metadata
 
     # 更新状态
-    article.update_status("writing")
+    MockArticleService.update_article_status(article, "writing")
 
-    # 验证状态已更新
+    # 验证状态更新
     assert article.status == "writing"
     assert "status_history" in article.metadata
     assert len(article.metadata["status_history"]) == 1
@@ -190,33 +247,30 @@ def test_article_update_status():
 
 def test_article_calculate_metrics():
     """测试计算文章指标"""
-    # 创建一些章节
-    sections = [
-        Section(title="章节1", content="这是第一个章节的内容", order=1),
-        Section(title="章节2", content="这是第二个章节的内容", order=2)
-    ]
-
-    # 创建文章
     article = Article(
         id="test_article_3",
         topic_id="test_topic",
         title="测试文章指标",
         summary="这是关于指标计算的测试",
-        sections=sections
+        sections=[
+            Section(title="章节1", content="这是第一个章节的内容", order=1),
+            Section(title="章节2", content="这是第二个章节的内容", order=2)
+        ]
     )
 
-    # 计算指标前检查
+    # 计算前检查
     assert article.word_count == 0
     assert article.read_time == 0
 
     # 计算指标
-    metrics = article.calculate_metrics()
+    metrics = MockArticleService.calculate_article_metrics(article)
 
-    # 验证指标已计算
-    assert article.word_count > 0
-    assert article.read_time > 0
-    assert metrics["section_count"] == 2
-    assert metrics["word_count"] == article.word_count
+    # 验证结果
+    assert metrics["word_count"] > 0
+    assert metrics["read_time"] > 0
+    assert metrics["section_count"] == len(article.sections)
+    assert article.word_count == metrics["word_count"]
+    assert article.read_time == metrics["read_time"]
 
 
 def test_convert_between_article_types():

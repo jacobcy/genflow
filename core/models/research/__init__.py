@@ -13,7 +13,7 @@ from .basic_research import (
 
 from .research import TopicResearch
 
-from .research_service import ResearchService
+from .research_factory import ResearchFactory
 
 # 导出主要类，方便使用
 __all__ = [
@@ -23,5 +23,5 @@ __all__ = [
     'Source',
     'ExpertInsight',
     'ArticleSection',
-    'ResearchService'
+    'ResearchFactory'
 ]

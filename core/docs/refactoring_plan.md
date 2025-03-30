@@ -27,12 +27,17 @@
 
 ## 重构目标
 
-优化现有 ContentManager 的内部结构，确保所有现有入口点保持不变，同时提高代码的组织性和可维护性：
+将单一的 ContentManager 拆分为四个专门的管理器，每个管理器负责特定类型的内容管理，使结构更清晰、职责更分明：
 
-1. 将 ContentManager 内部逻辑按照业务职责拆分为四个主要部分
-2. 保持所有现有方法命名不变
-3. 删除过时代码，避免冗余实现
-4. 提高代码复用度，减少重复代码
+1. **SimpleContentManager**：专门管理不带ID的临时对象 (basic_research等)
+2. **Content**：专门管理带ID的持久化对象 (topic、article等)
+3. **ConfigManager**：专门管理各类配置 (style、content_type等)
+4. **OperationManager**：专门管理操作和过程 (progress、feedback等)
+
+同时保持以下原则：
+- 尽量保持现有方法命名不变
+- 删除过时代码，避免冗余实现
+- 提高代码复用度，减少重复代码
 
 ## 技术实现基础
 
@@ -45,207 +50,383 @@
 
 ## 详细实施步骤
 
-### 步骤 1: 优化 ContentManager 结构 (3天)
+### 步骤 1: 创建四个专门的管理器 (4天)
 
-1. **重构 ContentManager 内部结构**：
-   - 将方法按照四个主要职责分组：简单内容、持久内容、配置和操作
-   - 保持所有公共方法名称不变，仅调整内部实现
-   - 删除废弃的方法和重复代码
-
+1. **创建 SimpleContentManager**：
    ```python
-   # 修改 core/models/content_manager.py
-   class ContentManager:
-       # 类级别属性集中管理
-       _simple_content_initialized = False
-       _persistent_content_initialized = False
-       _config_initialized = False
-       _operation_initialized = False
-       _use_db = True
+   # 新建 core/models/simple_content_manager.py
+   from typing import Dict, List, Optional, Any
+   from loguru import logger
+
+   from .infra.base_manager import BaseManager
+   from .research.basic_research import BasicResearch
+
+   class SimpleContentManager(BaseManager):
+       """简单内容管理器
+
+       负责管理不带ID的临时内容对象，如basic_research等
+       """
+
+       _initialized = False
 
        @classmethod
        def initialize(cls, use_db: bool = True) -> None:
-           """初始化所有组件"""
-           cls._use_db = use_db
-
-           # 初始化四个主要组件
-           cls._initialize_simple_content()
-           cls._initialize_persistent_content()
-           cls._initialize_config()
-           cls._initialize_operation()
-
-       # 简单内容相关方法分组
-       @classmethod
-       def _initialize_simple_content(cls) -> None:
-           """初始化简单内容组件"""
-           if cls._simple_content_initialized:
+           if cls._initialized:
                return
-           # 初始化简单内容相关模块
-           cls._simple_content_initialized = True
 
-       # 持久内容相关方法分组
+           # 初始化研究管理等
+           from .research.research_manager import ResearchManager
+           ResearchManager.initialize()
+
+           cls._initialized = True
+           logger.info("简单内容管理器初始化完成")
+
        @classmethod
-       def _initialize_persistent_content(cls) -> None:
-           """初始化持久内容组件"""
-           if cls._persistent_content_initialized:
-               return
-           # 初始化话题、文章等持久内容模块
-           from .topic.topic_manager import TopicManager
-           TopicManager.initialize(cls._use_db)
-           cls._persistent_content_initialized = True
-
-       # 其他分组方法...
+       def create_basic_research(cls, **kwargs) -> BasicResearch:
+           """创建基础研究对象"""
+           cls.ensure_initialized()
+           return BasicResearch(**kwargs)
    ```
 
-2. **优化内部调用方式**：
-   - 使用私有辅助方法封装相关功能
-   - 确保类级方法间的相互调用符合最佳实践
+2. **创建 ContentManager**：
+   ```python
+   # 新建 core/models/content_manager.py
+   from typing import Dict, List, Optional, Any
+   from loguru import logger
 
-### 步骤 2: 改进话题和研究管理 (4天)
+   from .infra.base_manager import BaseManager
+
+   class ContentManager(BaseManager):
+       """持久内容管理器
+
+       负责管理带ID的持久化内容对象，如topic、article等
+       """
+
+       _initialized = False
+
+       @classmethod
+       def initialize(cls, use_db: bool = True) -> None:
+           if cls._initialized:
+               return
+
+           # 初始化话题管理、文章管理等
+           from .topic.topic_manager import TopicManager
+           from .article.article_manager import ArticleManager
+
+           TopicManager.initialize()
+           ArticleManager.initialize(use_db)
+
+           cls._initialized = True
+           logger.info("持久内容管理器初始化完成")
+
+       @classmethod
+       def get_topic(cls, topic_id: str) -> Optional[Any]:
+           """获取指定ID的话题"""
+           cls.ensure_initialized()
+           from .topic.topic_manager import TopicManager
+           return TopicManager.get_topic(topic_id)
+   ```
+
+3. **创建 ConfigManager**：
+   ```python
+   # 新建 core/models/config_manager.py
+   from typing import Dict, List, Optional, Any
+   from loguru import logger
+
+   from .infra.base_manager import BaseManager
+
+   class ConfigManager(BaseManager):
+       """配置管理器
+
+       负责管理各类配置对象，如style、content_type等
+       """
+
+       _initialized = False
+
+       @classmethod
+       def initialize(cls, use_db: bool = True) -> None:
+           if cls._initialized:
+               return
+
+           # 初始化风格管理等
+           from .style.style_manager import StyleManager
+           StyleManager.initialize(use_db)
+
+           cls._initialized = True
+           logger.info("配置管理器初始化完成")
+
+       @classmethod
+       def get_article_style(cls, style_name: str) -> Optional[Any]:
+           """获取指定名称的文章风格"""
+           cls.ensure_initialized()
+           from .style.style_manager import StyleManager
+           return StyleManager.get_article_style(style_name)
+   ```
+
+4. **创建 OperationManager**：
+   ```python
+   # 新建 core/models/operation_manager.py
+   from typing import Dict, List, Optional, Any
+   from loguru import logger
+
+   from .infra.base_manager import BaseManager
+
+   class OperationManager(BaseManager):
+       """操作管理器
+
+       负责管理操作和过程对象，如progress、feedback等
+       """
+
+       _initialized = False
+
+       @classmethod
+       def initialize(cls, use_db: bool = True) -> None:
+           if cls._initialized:
+               return
+
+           # 初始化进度管理等
+           # TODO: 添加进度和反馈管理器初始化
+
+           cls._initialized = True
+           logger.info("操作管理器初始化完成")
+
+       @classmethod
+       def create_progress(cls, entity_id: str, operation_type: str) -> Any:
+           """创建进度对象"""
+           cls.ensure_initialized()
+           # 实现进度创建逻辑
+           return None
+   ```
+
+### 步骤 2: 优化 BaseManager 基类 (2天)
+
+为支持统一的管理器实现，完善 BaseManager 抽象基类：
+
+```python
+# 修改 core/models/infra/base_manager.py
+from typing import TypeVar, Generic, Optional, ClassVar
+from abc import ABC
+from loguru import logger
+
+T = TypeVar('T')
+
+class BaseManager(Generic[T], ABC):
+    """基础管理器
+
+    所有管理器的抽象基类，定义统一接口和行为
+    """
+
+    _initialized: ClassVar[bool] = False
+    _use_db: ClassVar[bool] = True
+
+    @classmethod
+    def ensure_initialized(cls) -> None:
+        """确保管理器已初始化"""
+        if not cls._initialized:
+            cls.initialize()
+
+    @classmethod
+    def initialize(cls, use_db: bool = True) -> None:
+        """初始化管理器"""
+        cls._use_db = use_db
+        cls._initialized = True
+        logger.debug(f"{cls.__name__} 已初始化")
+```
+
+### 步骤 3: 改进话题和研究管理 (4天)
 
 1. **优化 TopicManager**：
-   - 确保继承自 BaseManager
-   - 统一使用标准化接口
-   - 直接修改现有实现，不创建新文件
-
    ```python
    # 修改 core/models/topic/topic_manager.py
-   from core.models.infra.base_manager import BaseManager
+   from typing import Optional
+   from loguru import logger
 
-   class TopicManager(BaseManager):
+   from ..infra.base_manager import BaseManager
+   from .topic import Topic
+
+   class TopicManager(BaseManager[Topic]):
        """话题管理器"""
-       # 保持现有方法名称不变
-       # 优化内部实现逻辑
+
+       @classmethod
+       def get_topic(cls, topic_id: str) -> Optional[Topic]:
+           """获取指定ID的话题"""
+           cls.ensure_initialized()
+           # 实现话题获取逻辑
+           return None
    ```
 
 2. **优化 ResearchManager**：
-   - 改进现有研究管理器，确保与话题管理器风格一致
-   - 统一错误处理和日志记录方式
+   ```python
+   # 修改 core/models/research/research_manager.py
+   from typing import Optional
+   from loguru import logger
 
-### 步骤 3: 改进文章和大纲管理 (4天)
+   from ..infra.base_manager import BaseManager
+   from .basic_research import BasicResearch
+
+   class ResearchManager(BaseManager[BasicResearch]):
+       """研究管理器"""
+
+       @classmethod
+       def get_research(cls, research_id: str) -> Optional[BasicResearch]:
+           """获取指定ID的研究"""
+           cls.ensure_initialized()
+           # 实现研究获取逻辑
+           return None
+   ```
+
+### 步骤 4: 改进文章和大纲管理 (4天)
 
 1. **优化 ArticleManager**：
-   - 确保与其他管理器风格一致
-   - 改进内部实现，保持接口稳定
-
    ```python
    # 修改 core/models/article/article_manager.py
-   from core.models.infra.base_manager import BaseManager
+   from typing import Optional, List
+   from loguru import logger
 
-   class ArticleManager(BaseManager):
+   from ..infra.base_manager import BaseManager
+   from .article import Article
+
+   class ArticleManager(BaseManager[Article]):
        """文章管理器"""
-       # 保持现有方法名称不变
-       # 优化内部实现逻辑
+
+       @classmethod
+       def get_article(cls, article_id: str) -> Optional[Article]:
+           """获取指定ID的文章"""
+           cls.ensure_initialized()
+           # 实现文章获取逻辑
+           return None
    ```
 
 2. **优化 OutlineManager**：
-   - 与其他管理器保持一致的风格
-   - 改进内部实现，保持接口稳定
-
-### 步骤 4: 完善配置管理 (3天)
-
-1. **优化 StyleManager、CategoryManager 等**：
-   - 直接修改现有实现，确保与其他管理器风格一致
-   - 统一化配置类型管理
-   - 保持现有方法名称不变
-
    ```python
-   # 修改 core/models/style/style_manager.py
-   from core.models.infra.base_manager import BaseManager
+   # 修改 core/models/outline/outline_manager.py
+   from typing import Optional
+   from loguru import logger
 
-   class StyleManager(BaseManager):
-       """风格管理器"""
-       # 保持现有方法名称不变
-       # 优化内部实现逻辑
+   from ..infra.base_manager import BaseManager
+
+   class OutlineManager(BaseManager):
+       """大纲管理器"""
+
+       @classmethod
+       def get_outline(cls, outline_id: str) -> Optional[Any]:
+           """获取指定ID的大纲"""
+           cls.ensure_initialized()
+           # 实现大纲获取逻辑
+           return None
    ```
 
-### 步骤 5: 改进过程管理 (3天)
+### 步骤 5: 完善配置管理 (3天)
 
-1. **优化 ProgressManager**：
-   - 直接修改现有实现
-   - 统一错误处理和返回值
+优化 StyleManager、CategoryManager 等：
 
-2. **优化 FeedbackManager**：
-   - 改进现有反馈管理实现
-   - 确保与其他管理器风格一致
+```python
+# 修改 core/models/style/style_manager.py
+from typing import Dict, Optional
+from loguru import logger
 
-### 步骤 6: 优化 ContentManager 对外接口 (3天)
+from ..infra.base_manager import BaseManager
 
-1. **重新组织 ContentManager 方法**：
-   - 按职责分类方法，但保持方法名不变
-   - 删除过时代码，保留必要的兼容性方法
-   - 优化内部实现，确保性能和稳定性
+class StyleManager(BaseManager):
+    """风格管理器"""
 
+    @classmethod
+    def get_article_style(cls, style_name: str) -> Optional[Any]:
+        """获取指定名称的文章风格"""
+        cls.ensure_initialized()
+        # 实现风格获取逻辑
+        return None
+```
+
+### 步骤 6: 单元测试和集成 (3天)
+
+1. **单元测试各管理器**：
    ```python
-   # 继续修改 core/models/content_manager.py
-   class ContentManager:
-       # 第一部分：简单内容方法
-       @classmethod
-       def create_basic_research(cls, **kwargs):
-           # 实现不变，但优化内部结构
+   # 新建 core/models/tests/test_managers.py
+   import unittest
 
-       # 第二部分：持久内容方法
-       @classmethod
-       def get_topic(cls, topic_id):
-           # 实现不变，但优化内部结构
+   class ManagersTest(unittest.TestCase):
+       """管理器测试类"""
 
-       # 第三部分：配置方法
-       @classmethod
-       def get_style(cls, style_id):
-           # 实现不变，但优化内部结构
+       def test_simple_content_manager(self):
+           """测试简单内容管理器"""
+           from core.models.simple_content_manager import SimpleContentManager
 
-       # 第四部分：过程方法
-       @classmethod
-       def create_progress(cls, entity_id, operation_type):
-           # 实现不变，但优化内部结构
+           # 初始化管理器
+           SimpleContentManager.initialize(use_db=False)
+
+           # 测试创建研究对象
+           research = SimpleContentManager.create_basic_research(title="测试研究")
+           self.assertIsNotNone(research)
+           self.assertEqual(research.title, "测试研究")
    ```
-
-### 步骤 7: 单元测试和集成 (2天)
-
-1. **单元测试**：
-   - 为四个主要功能组测试主要接口
-   - 确保所有现有功能正常工作
-   - 测试边界条件和错误处理
 
 2. **集成测试**：
-   - 测试 ContentManager 与各个子系统的集成
-   - 确保整体功能正常
+   ```python
+   # 新建 core/models/tests/test_integration.py
+   import unittest
+
+   class IntegrationTest(unittest.TestCase):
+       """集成测试类"""
+
+       def setUp(self):
+           """测试准备"""
+           from core.models.manager_registry import ManagerRegistry
+           ManagerRegistry.initialize(use_db=False)
+
+       def test_manager_registry(self):
+           """测试管理器注册中心"""
+           from core.models.manager_registry import ManagerRegistry
+
+           # 测试获取各管理器
+           simple_mgr = ManagerRegistry.get_simple_content_manager()
+           persistent_mgr = ManagerRegistry.get_content_manager()
+           config_mgr = ManagerRegistry.get_config_manager()
+           operation_mgr = ManagerRegistry.get_operation_manager()
+
+           self.assertIsNotNone(simple_mgr)
+           self.assertIsNotNone(persistent_mgr)
+           self.assertIsNotNone(config_mgr)
+           self.assertIsNotNone(operation_mgr)
+   ```
 
 ## 改动文件清单
 
 | 文件路径 | 修改类型 | 修改内容 |
 |---------|---------|---------|
-| core/models/content_manager.py | 修改 | 优化内部结构，按职责分类方法 |
-| core/models/topic/topic_manager.py | 修改 | 优化实现，确保继承自 BaseManager |
-| core/models/article/article_manager.py | 修改 | 优化实现，确保继承自 BaseManager |
-| core/models/research/research_manager.py | 修改 | 优化实现，确保继承自 BaseManager |
-| core/models/outline/outline_manager.py | 修改 | 优化实现，确保继承自 BaseManager |
-| core/models/style/style_manager.py | 修改 | 优化实现，确保继承自 BaseManager |
-| core/models/category/category_manager.py | 修改 | 优化实现，确保继承自 BaseManager |
-| core/models/platform/platform_manager.py | 修改 | 优化实现，确保继承自 BaseManager |
-| core/models/content_type/content_type_manager.py | 修改 | 优化实现，确保继承自 BaseManager |
-| core/models/progress.py | 修改 | 优化实现，确保与整体架构一致 |
-| core/models/feedback.py | 修改 | 优化实现，确保与整体架构一致 |
+| core/models/simple_content_manager.py | 新建 | 创建简单内容管理器 |
+| core/models/content_manager.py | 新建 | 创建持久内容管理器 |
+| core/models/config_manager.py | 新建 | 创建配置管理器 |
+| core/models/operation_manager.py | 新建 | 创建操作管理器 |
+| core/models/manager_registry.py | 新建 | 创建管理器注册中心 |
+| core/models/content_manager.py | 修改 | 创建向后兼容层 |
+| core/models/infra/base_manager.py | 修改 | 完善基础管理器 |
+| core/models/topic/topic_manager.py | 修改 | 优化话题管理器 |
+| core/models/article/article_manager.py | 修改 | 优化文章管理器 |
+| core/models/research/research_manager.py | 修改 | 优化研究管理器 |
+| core/models/outline/outline_manager.py | 修改 | 优化大纲管理器 |
+| core/models/style/style_manager.py | 修改 | 优化风格管理器 |
+| core/models/tests/test_managers.py | 新建 | 单元测试各管理器 |
 
 ## 执行计划
 
 | 阶段 | 任务 | 工作量 | 时间 |
 |-----|-----|-------|-----|
-| 1 | 优化 ContentManager 结构 | 中等 | 3天 |
-| 2 | 改进话题和研究管理 | 大 | 4天 |
-| 3 | 改进文章和大纲管理 | 大 | 4天 |
-| 4 | 完善配置管理 | 中等 | 3天 |
-| 5 | 改进过程管理 | 中等 | 3天 |
-| 6 | 优化 ContentManager 对外接口 | 中等 | 3天 |
-| 7 | 单元测试和集成 | 中等 | 2天 |
+| 1 | 创建四个专门的管理器 | 大 | 4天 |
+| 2 | 优化 BaseManager 基类 | 小 | 2天 |
+| 3 | 改进话题和研究管理 | 中等 | 4天 |
+| 4 | 改进文章和大纲管理 | 中等 | 4天 |
+| 5 | 完善配置管理 | 中等 | 3天 |
+| 6 | 单元测试和集成 | 中等 | 3天 |
 
-**总计时间**: 约22天
+**总计时间**: 约25天
 
 ## 关键原则
 
-1. **最低修改原则**:
-   - 保留现有方法名和签名
-   - 不创建新文件，直接修改现有文件
-   - 删除过时代码，避免冗余
+1. **明确职责分离**:
+   - 每个管理器负责特定类型的内容
+   - 通过注册中心提供统一访问
+   - 向后兼容层确保现有代码平滑迁移
 
 2. **数据处理策略**:
    - 持久内容类(带ID)：使用 DBAdapter 持久化
@@ -264,15 +445,16 @@
 |-----|-----|---------|
 | 重构引入bug | 中等 | 严格的单元测试，逐步修改 |
 | 性能下降 | 低 | 优化数据加载方式，使用缓存 |
-| 代码复杂度增加 | 低 | 清晰的结构分层和代码注释 |
+| 代码复杂度增加 | 中等 | 清晰的结构分层和代码注释 |
 
 ## 架构优化结果
 
-重构后，ContentManager 将内部按照职责明确划分为四个主要部分，但对外提供统一接口：
+重构后，我们将拥有四个专门的管理器和一个统一的注册中心：
 
-1. **简单内容管理**：处理不带ID的临时对象
-2. **持久内容管理**：处理带ID的持久化对象
-3. **配置管理**：处理各种配置信息
-4. **过程管理**：处理进度和反馈
+1. **SimpleContentManager**：处理不带ID的临时对象
+2. **ContentManager**：处理带ID的持久化对象
+3. **ConfigManager**：处理各种配置信息
+4. **OperationManager**：处理进度和反馈
+5. **ManagerRegistry**：提供获取各管理器的统一入口
 
-这种结构优化不需要创建新的管理器类文件，而是通过改进现有文件的内部实现来实现，最大限度地减少对现有代码的干扰。
+同时，通过向后兼容层（ContentManager）确保现有代码能够平滑迁移到新架构。这种结构使得代码职责更加明确，更易于维护和扩展。

@@ -1,89 +1,38 @@
 """文章管理模块
 
 提供文章的创建、加载和管理功能。
-简化的文章管理器实现，专注于核心功能。
+作为持久化层，负责文章的存储和检索。
 """
 
 from typing import Dict, List, Optional, Any
 import os
 import json
 from datetime import datetime
-from uuid import uuid4
 from loguru import logger
 
-
-class Article:
-    """文章模型
-
-    表示一篇完整的文章，包含基本信息、内容和元数据。
-    """
-
-    def __init__(self,
-                 id: Optional[str] = None,
-                 title: str = "",
-                 content: str = "",
-                 author: str = "",
-                 created_at: Optional[datetime] = None,
-                 updated_at: Optional[datetime] = None,
-                 status: str = "draft",
-                 **kwargs):
-        """初始化文章
-
-        Args:
-            id: 文章ID，如果为None则自动生成
-            title: 文章标题
-            content: 文章内容
-            author: 作者
-            created_at: 创建时间，如果为None则使用当前时间
-            updated_at: 更新时间，如果为None则使用当前时间
-            status: 文章状态，默认为草稿
-        """
-        self.id = id or str(uuid4())
-        self.title = title
-        self.content = content
-        self.author = author
-        self.created_at = created_at or datetime.now()
-        self.updated_at = updated_at or datetime.now()
-        self.status = status
-
-        # 保存其它属性
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典
-
-        Returns:
-            Dict[str, Any]: 文章属性字典
-        """
-        result = {}
-        for key, value in self.__dict__.items():
-            if not key.startswith('_'):
-                if isinstance(value, datetime):
-                    result[key] = value.isoformat()
-                else:
-                    result[key] = value
-        return result
-
-    def update_status(self, status: str) -> None:
-        """更新文章状态
-
-        Args:
-            status: 新状态
-        """
-        self.status = status
-        self.updated_at = datetime.now()
+from .article import Article
+from ..infra.base_manager import BaseManager
 
 
-class ArticleManager:
+class ArticleManager(BaseManager[Article]):
     """文章管理器
 
-    管理文章的加载、存储和检索。
+    管理文章的持久化操作，包括加载、存储和检索。
+    继承自BaseManager，提供通用的CRUD操作。
     """
 
     _articles: Dict[str, Article] = {}
     _article_dir: str = ""
     _initialized: bool = False
+
+    # 模型类定义
+    _model_class = Article
+    _id_field = "id"
+    _timestamp_field = "updated_at"
+    _metadata_field = "metadata"
+
+    # 将_articles映射到BaseManager的_entities
+    _entities = _articles
 
     @classmethod
     def initialize(cls, use_db: bool = False) -> None:
@@ -94,6 +43,9 @@ class ArticleManager:
         """
         if cls._initialized:
             return
+
+        # 调用父类初始化
+        super().initialize(use_db)
 
         # 设置文章目录
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -134,6 +86,7 @@ class ArticleManager:
                         except:
                             article_data['updated_at'] = datetime.now()
 
+                    # 使用Article类创建实例
                     article = Article(**article_data)
                     cls._articles[article.id] = article
 
@@ -154,10 +107,7 @@ class ArticleManager:
         Returns:
             Optional[Article]: 文章对象或None
         """
-        if not cls._initialized:
-            cls.initialize()
-
-        return cls._articles.get(article_id)
+        return cls.get_entity(article_id)
 
     @classmethod
     def get_articles_by_status(cls, status: str) -> List[Article]:
@@ -169,9 +119,7 @@ class ArticleManager:
         Returns:
             List[Article]: 文章列表
         """
-        if not cls._initialized:
-            cls.initialize()
-
+        cls.ensure_initialized()
         return [article for article in cls._articles.values() if article.status == status]
 
     @classmethod
@@ -184,55 +132,22 @@ class ArticleManager:
         Returns:
             bool: 是否成功保存
         """
-        if not cls._initialized:
-            cls.initialize()
+        # 调用基类的save_entity方法
+        if not cls.save_entity(article):
+            return False
 
         try:
-            # 更新时间
-            article.updated_at = datetime.now()
-
-            # 保存到内存
-            cls._articles[article.id] = article
-
             # 保存到文件
             file_path = os.path.join(cls._article_dir, f"{article.id}.json")
 
+            # 将对象转换为字典并写入文件
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(article.to_dict(), f, ensure_ascii=False, indent=2)
 
             logger.info(f"已保存文章: {article.title} (ID: {article.id})")
             return True
         except Exception as e:
-            logger.error(f"保存文章失败: {str(e)}")
-            return False
-
-    @classmethod
-    def update_article_status(cls, article_id: str, status: str) -> bool:
-        """更新文章状态
-
-        Args:
-            article_id: 文章ID
-            status: 新状态
-
-        Returns:
-            bool: 是否成功更新
-        """
-        if not cls._initialized:
-            cls.initialize()
-
-        article = cls.get_article(article_id)
-        if not article:
-            logger.error(f"更新文章状态失败: 文章 {article_id} 不存在")
-            return False
-
-        try:
-            # 更新状态
-            article.update_status(status)
-
-            # 保存文章
-            return cls.save_article(article)
-        except Exception as e:
-            logger.error(f"更新文章状态失败: {str(e)}")
+            logger.error(f"保存文章到文件失败: {str(e)}")
             return False
 
     @classmethod
@@ -245,24 +160,27 @@ class ArticleManager:
         Returns:
             bool: 是否成功删除
         """
-        if not cls._initialized:
-            cls.initialize()
-
-        if article_id not in cls._articles:
-            logger.warning(f"删除文章失败: 文章 {article_id} 不存在")
+        # 使用基类删除实体
+        if not cls.delete_entity(article_id):
             return False
 
         try:
-            # 从内存中删除
-            del cls._articles[article_id]
-
             # 从文件中删除
             file_path = os.path.join(cls._article_dir, f"{article_id}.json")
             if os.path.exists(file_path):
                 os.remove(file_path)
 
-            logger.info(f"已删除文章: {article_id}")
+            logger.info(f"已删除文章文件: {article_id}")
             return True
         except Exception as e:
-            logger.error(f"删除文章失败: {str(e)}")
+            logger.error(f"删除文章文件失败: {str(e)}")
             return False
+
+    @classmethod
+    def list_articles(cls) -> List[str]:
+        """获取所有文章ID列表
+
+        Returns:
+            List[str]: 文章ID列表
+        """
+        return cls.list_entities()

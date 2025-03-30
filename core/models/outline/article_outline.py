@@ -30,6 +30,26 @@ class ArticleOutline(BasicOutline):
     tags: List[str] = Field(default_factory=list, description="文章标签")
     sections: List[Dict[str, Any]] = Field(default_factory=list, description="文章章节")
 
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典格式
+
+        Returns:
+            Dict[str, Any]: 文章大纲的字典表示
+        """
+        return self.model_dump()
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ArticleOutline":
+        """从字典创建实例
+
+        Args:
+            data: 文章大纲数据字典
+
+        Returns:
+            ArticleOutline: 文章大纲实例
+        """
+        return cls.model_validate(data)
+
     model_config = ConfigDict(
         json_schema_extra = {
             "example": {

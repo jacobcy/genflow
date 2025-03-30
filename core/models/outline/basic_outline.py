@@ -42,6 +42,26 @@ class BasicOutline(BaseModel):
     # 元数据
     metadata: Dict[str, Any] = Field(default_factory=dict, description="大纲元数据")
 
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典格式
+
+        Returns:
+            Dict[str, Any]: 大纲数据的字典表示
+        """
+        return self.model_dump()
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "BasicOutline":
+        """从字典创建实例
+
+        Args:
+            data: 大纲数据字典
+
+        Returns:
+            BasicOutline: 大纲实例
+        """
+        return cls.model_validate(data)
+
     model_config = ConfigDict(
         json_encoders = {
             datetime: lambda v: v.isoformat()

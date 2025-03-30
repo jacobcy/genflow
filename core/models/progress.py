@@ -6,10 +6,10 @@ from .infra.enums import ProductionStage, StageStatus
 
 # 导入ArticleService，使用try-except块避免循环导入
 try:
-    from .article.article_service import ArticleService
+    from .article.article_factory import ArticleFactory
 except ImportError:
     # 如果在导入时发生循环导入，将在方法中动态导入
-    ArticleService = None
+    ArticleFactory = None
 
 class ArticleProductionProgress:
     """文章生产进度跟踪
@@ -65,9 +65,9 @@ class ArticleProductionProgress:
 
         # 同步文章状态并保存到数据库
         if self.article:
-            if ArticleService:
+            if ArticleFactory:
                 new_status = ProductionStage.to_article_status(stage)
-                ArticleService.update_article_status(self.article, new_status)
+                ArticleFactory.update_article_status(self.article, new_status)
 
     def update_progress(
         self,
@@ -109,9 +109,9 @@ class ArticleProductionProgress:
             self.stages[next_stage]["status"] = StageStatus.PENDING
             # 同步文章状态到下一阶段并保存到数据库
             if self.article:
-                if ArticleService:
+                if ArticleFactory:
                     new_status = ProductionStage.to_article_status(next_stage)
-                    ArticleService.update_article_status(self.article, new_status)
+                    ArticleFactory.update_article_status(self.article, new_status)
 
     def complete(self):
         """完成生产"""
@@ -121,8 +121,8 @@ class ArticleProductionProgress:
 
         # 同步文章状态并保存到数据库
         if self.article:
-            if ArticleService:
-                ArticleService.update_article_status(self.article, "completed")
+            if ArticleFactory:
+                ArticleFactory.update_article_status(self.article, "completed")
 
     def fail(self):
         """生产失败"""
@@ -132,8 +132,8 @@ class ArticleProductionProgress:
 
         # 同步文章状态并保存到数据库
         if self.article:
-            if ArticleService:
-                ArticleService.update_article_status(self.article, "failed")
+            if ArticleFactory:
+                ArticleFactory.update_article_status(self.article, "failed")
 
     def pause(self):
         """暂停生产"""
@@ -153,8 +153,8 @@ class ArticleProductionProgress:
 
         # 同步文章状态并保存到数据库
         if self.article:
-            if ArticleService:
-                ArticleService.update_article_status(self.article, "paused")
+            if ArticleFactory:
+                ArticleFactory.update_article_status(self.article, "paused")
 
     def resume(self):
         """恢复生产"""
@@ -165,9 +165,9 @@ class ArticleProductionProgress:
             self.stages[resume_stage]["status"] = StageStatus.IN_PROGRESS
 
             # 同步文章状态并保存到数据库
-            if self.article and ArticleService:
+            if self.article and ArticleFactory:
                 new_status = ProductionStage.to_article_status(resume_stage)
-                ArticleService.update_article_status(self.article, new_status)
+                ArticleFactory.update_article_status(self.article, new_status)
 
             # 清除暂停记录
             delattr(self, 'paused_from_stage')
@@ -179,9 +179,9 @@ class ArticleProductionProgress:
                 self.current_stage = stage
                 self.stages[stage]["status"] = StageStatus.IN_PROGRESS
                 # 同步文章状态并保存到数据库
-                if self.article and ArticleService:
+                if self.article and ArticleFactory:
                     new_status = ProductionStage.to_article_status(stage)
-                    ArticleService.update_article_status(self.article, new_status)
+                    ArticleFactory.update_article_status(self.article, new_status)
                 break
 
     def add_error(self, stage: ProductionStage, error: str):

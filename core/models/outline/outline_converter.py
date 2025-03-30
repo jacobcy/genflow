@@ -18,6 +18,7 @@ class OutlineConverter:
 
     提供将大纲模型转换为不同形式的输出的功能，
     如将大纲转换为文本、文章对象等。
+    该类不包含业务逻辑，仅负责格式转换。
     """
 
     @staticmethod

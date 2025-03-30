@@ -23,7 +23,7 @@ from core.models.content_manager import ContentManager
 from core.models.outline.basic_outline import BasicOutline, OutlineSection
 from core.models.outline.article_outline import ArticleOutline
 from .writing_agents import WritingAgents
-from core.models.util import ArticleParser
+from core.models.article.article_factory import ArticleFactory
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -552,10 +552,10 @@ class WritingCrew:
             # 将最终稿件转换为JSON字符串
             final_draft_json = json.dumps(result.final_draft)
 
-            # 使用ArticleParser解析和更新文章
-            updated_article = ArticleParser.parse_ai_response(final_draft_json, article)
+            # 使用ArticleService解析和更新文章
+            updated_article = ArticleFactory.parse_ai_response(final_draft_json, article)
 
-            if updated_article and ArticleParser.validate_article(updated_article):
+            if updated_article and ArticleFactory.validate_article(updated_article):
                 # 更新原始文章对象
                 article.title = updated_article.title
                 article.summary = updated_article.summary
@@ -626,7 +626,23 @@ class WritingCrew:
         article = writing_result.article
         article.title = final_draft["title"]
         article.summary = final_draft["summary"]
-        article.sections = ArticleParser._parse_sections(final_draft["content"])
+        article.sections = []
+        # 使用ArticleService解析完整JSON
+        updated_article = ArticleFactory.parse_ai_response(json.dumps(final_draft), article)
+        if updated_article:
+            article = updated_article
+        else:
+            # 简单解析作为备选
+            logger.warning("使用备选方法解析文章内容")
+            # 如果解析失败，手动设置标题和摘要，将内容作为单个章节
+            article.sections = [
+                Section(
+                    id=f"section_1",
+                    title="正文",
+                    content=final_draft["content"],
+                    order=1
+                )
+            ]
         article.tags = final_draft["tags"]
         article.status = "reviewed"
 
