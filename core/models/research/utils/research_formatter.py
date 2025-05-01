@@ -3,7 +3,7 @@
 提供将研究报告转换为各种格式的工具函数。
 """
 
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Union
 from ..basic_research import BasicResearch
 from ..research import TopicResearch
 
@@ -111,17 +111,19 @@ def format_research_as_markdown(research: Union[BasicResearch, TopicResearch, Di
     return markdown
 
 
-def format_research_as_json(research: Union[BasicResearch, TopicResearch]) -> Dict[str, Any]:
+def format_research_as_json(research: Union[BasicResearch, TopicResearch, Dict[str, Any]]) -> Dict[str, Any]:
     """将研究报告格式化为JSON格式
 
-    将研究报告对象转换为字典，便于序列化为JSON。
+    将研究报告对象或字典转换为字典，便于序列化为JSON。
 
     Args:
-        research: 研究报告对象
+        research: 研究报告对象或字典
 
     Returns:
         Dict[str, Any]: 字典格式的研究报告
     """
     if isinstance(research, (BasicResearch, TopicResearch)):
         return research.to_dict()
-    return research
+    elif isinstance(research, dict):
+        return research
+    return {}

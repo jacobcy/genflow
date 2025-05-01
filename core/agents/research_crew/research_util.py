@@ -7,7 +7,7 @@ from typing import Dict, List, Any, Optional, Union
 import re
 from core.models.research.research import BasicResearch
 from core.agents.research_crew.research_result import ResearchWorkflowResult
-from core.models.content_manager import ContentManager
+from core.models.facade.content_manager import ContentManager
 
 # 定义研究深度常量
 RESEARCH_DEPTH_LIGHT = "light"

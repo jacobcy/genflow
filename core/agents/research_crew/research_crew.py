@@ -19,7 +19,7 @@ from core.agents.research_crew.research_util import (
     workflow_result_to_basic_research
 )
 from core.agents.research_crew.research_result import ResearchWorkflowResult
-from core.models.content_manager import ContentManager
+from core.models.facade.content_manager import ContentManager
 
 # 配置日志
 logger = logging.getLogger("research_crew")

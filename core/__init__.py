@@ -13,29 +13,37 @@ import logging
 from loguru import logger
 
 # 初始化日志设置
-if not logger._core.handlers:
-    logger.add("logs/core.log", rotation="1 day", retention="7 days", level="INFO")
+# Consider moving log setup to a dedicated config/setup function if it gets complex
+log_dir = "logs"
+log_file = os.path.join(log_dir, "core.log")
 
-# 确保logs目录存在
-os.makedirs("logs", exist_ok=True)
-
-# 初始化数据库
+# Ensure logs directory exists
 try:
-    # 使用数据库适配器初始化数据库
-    from core.models.infra.db_adapter import DBAdapter
+    os.makedirs(log_dir, exist_ok=True)
+except OSError as e:
+    # Use standard logging if Loguru setup fails due to directory issues
+    logging.basicConfig(level=logging.WARNING)
+    logging.warning(f"Could not create log directory {log_dir}: {e}. Loguru setup skipped.")
 
-    # 初始化数据库并同步配置文件
-    if DBAdapter.initialize():
-        logger.info("数据库初始化完成")
+# Check if handlers are already configured to avoid duplicates
+# Use _name as suggested by the AttributeError
+if not any(handler._name == "core_log_handler" for handler in logger._core.handlers.values()):
+    try:
+        logger.add(
+            log_file,
+            rotation="1 day",
+            retention="7 days",
+            level="INFO",
+            format="{time} {level} {message}" # Example format
+        )
+        logger.info("Loguru logger initialized for core module.")
+    except Exception as e:
+        logging.basicConfig(level=logging.ERROR)
+        logging.error(f"Failed to initialize Loguru logger: {e}")
 
-        # 同步配置文件到数据库（非同步模式，不删除数据库中已存在的配置）
-        if DBAdapter.sync_config_to_db(sync_mode=False):
-            logger.info("配置文件同步到数据库完成（仅添加或更新）")
-        else:
-            logger.warning("配置文件同步到数据库失败")
-    else:
-        logger.warning("数据库初始化失败")
-except ImportError as e:
-    logger.warning(f"数据库模块导入失败: {str(e)}")
-except Exception as e:
-    logger.error(f"数据库初始化失败: {str(e)}")
+logger.debug("core package loaded.")
+
+# You might want to export key components of the core module here if needed
+# Example:
+# from .some_core_component import CoreComponent
+# __all__ = ["CoreComponent"]

@@ -19,7 +19,7 @@ from crewai.agent import Agent
 from core.models.article.article import Article, Section
 from core.models.platform.platform import Platform
 from core.models.topic.topic import Topic
-from core.models.content_manager import ContentManager
+from core.models.facade.content_manager import ContentManager
 from core.models.outline.basic_outline import BasicOutline, OutlineSection
 from core.models.outline.article_outline import ArticleOutline
 from .writing_agents import WritingAgents

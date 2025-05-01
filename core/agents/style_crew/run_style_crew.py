@@ -19,7 +19,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 from core.agents.style_crew import StyleCrew
 from core.models.article.article import Article
 from core.models.platform.platform import Platform, get_default_platform
-from core.models.content_manager import ContentManager
+from core.models.facade.content_manager import ContentManager
 from core.models.style.article_style import ArticleStyle
 
 logging.basicConfig(

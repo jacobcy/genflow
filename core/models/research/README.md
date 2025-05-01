@@ -8,7 +8,8 @@
 
 - **数据模型层**：`basic_research.py` 和 `research.py` 定义了研究报告的数据结构
 - **业务逻辑层**：`research_factory.py` 包含研究报告的业务操作和转换逻辑
-- **持久化层**：`research_manager.py` 负责研究报告的存储和检索
+- **持久化层**：`research_manager.py` 负责研究报告的持久化存储和检索
+- **临时存储层**：`research_storage.py` 和 `research_adapter.py` 提供研究的临时存储功能
 - **工具层**：`utils` 包提供辅助功能，如格式化和验证
 
 ## 核心组件
@@ -155,7 +156,59 @@ success = ResearchManager.delete_research("research_001")
 research_ids = ResearchManager.list_researches()
 ```
 
-### 5. 辅助工具
+### 5. ResearchStorage 类
+
+提供研究的临时存储功能，基于内存存储，适用于临时研究、草稿研究等不需要持久化的场景。
+
+```python
+from core.models.research import ResearchStorage, BasicResearch
+
+# 初始化存储
+ResearchStorage.initialize()
+
+# 获取临时研究
+research = ResearchStorage.get_research("research_id")
+
+# 保存临时研究
+research_id = ResearchStorage.save_research(research)
+
+# 更新临时研究
+ResearchStorage.update_research(research_id, research)
+
+# 删除临时研究
+ResearchStorage.delete_research(research_id)
+
+# 列出所有临时研究ID
+research_ids = ResearchStorage.list_researches()
+```
+
+### 6. ResearchAdapter 类
+
+封装对研究临时存储的操作，提供异常处理和日志记录。
+
+```python
+from core.models.research import ResearchAdapter, BasicResearch
+
+# 初始化适配器
+ResearchAdapter.initialize()
+
+# 获取临时研究
+research = ResearchAdapter.get_research("research_id")
+
+# 保存临时研究
+research_id = ResearchAdapter.save_research(research)
+
+# 更新临时研究
+ResearchAdapter.update_research(research_id, research)
+
+# 删除临时研究
+ResearchAdapter.delete_research(research_id)
+
+# 列出所有临时研究ID
+research_ids = ResearchAdapter.list_researches()
+```
+
+### 7. 辅助工具
 
 研究模块提供了一系列辅助工具，位于`utils`包中：
 
@@ -354,10 +407,53 @@ research = ResearchFactory.from_simple_research(
 research_id = ResearchFactory.save_research(research)
 ```
 
+### 使用临时研究存储
+
+当需要存储临时研究、草稿研究等不需要持久化的研究时，可以使用 ResearchStorage：
+
+```python
+from core.models.facade.simple_content_manager import SimpleContentManager
+from core.models.research import BasicResearch, KeyFinding, Source
+
+# 初始化
+SimpleContentManager.initialize()
+
+# 创建临时研究
+research = SimpleContentManager.create_basic_research(
+    title="临时研究示例",
+    content_type="article",
+    key_findings=[
+        KeyFinding(
+            content="这是一个关键发现",
+            importance=0.8
+        )
+    ]
+)
+
+# 保存临时研究
+research_id = SimpleContentManager.save_basic_research(research)
+
+# 获取临时研究
+retrieved_research = SimpleContentManager.get_basic_research(research_id)
+
+# 更新临时研究
+SimpleContentManager.update_basic_research(research_id, updated_research)
+
+# 删除临时研究
+SimpleContentManager.delete_basic_research(research_id)
+```
+
 ## 注意事项
 
-1. 使用前需确保 `ContentManager.initialize()` 或 `ResearchManager.initialize()` 已调用
-2. 外部系统应通过 `ContentManager` 调用研究报告功能，而不直接调用内部组件
+1. 使用前需确保相应的初始化方法已调用：
+   - 使用 ContentManager 时，调用 `ContentManager.initialize()`
+   - 使用 ResearchManager 时，调用 `ResearchManager.initialize()`
+   - 使用 ResearchStorage 时，调用 `ResearchStorage.initialize()`
+   - 使用 SimpleContentManager 时，调用 `SimpleContentManager.initialize()`
+2. 外部系统应通过 `ContentManager` 或 `SimpleContentManager` 调用研究功能，而不直接调用内部组件
 3. 保存研究报告前应先调用 `validate_research` 确保数据完整性
 4. `BasicResearch` 是基础数据结构，与数据库交互时应使用 `TopicResearch`
 5. 注意处理ID的一致性，优先使用 `metadata.research_id` 或 `TopicResearch.id`
+6. 临时研究存储和持久化研究存储的区别：
+   - **临时研究存储**：使用 `ResearchStorage` 类，基于内存存储，适用于临时研究、草稿研究等不需要长期保存的场景。
+   - **持久化研究存储**：使用 `ResearchManager` 类，基于数据库存储，适用于需要长期保存的正式研究。

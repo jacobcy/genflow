@@ -1,214 +1,156 @@
 """数据库初始化脚本
 
-提供初始化数据库和导入默认数据的功能。
+提供初始化数据库和导入默认配置数据的功能。
 """
 
 import os
+import sys # Import sys for argument parsing
+import argparse # Import argparse
 from typing import List, Dict, Any, Optional
 import json
 from pathlib import Path
 from loguru import logger
 
-from core.models.db.session import init_db, get_db
-from core.models.db import ArticleStyle, Platform, Topic, Article
-from core.models.content_type.content_type_db import ContentTypeName, ensure_default_content_types
-from core.models.db.model_manager import (
-    create_default_article_style, create_default_platform
-)
+# Use relative import for session and migrate_configs
+from .session import init_db as create_tables, get_db
+from .migrate_configs import migrate_all
 
-# 配置目录路径
-CONFIG_DIR = os.environ.get(
-    "GENFLOW_CONFIG_DIR",
-    os.path.join(Path(__file__).parent.parent.parent.parent, "config")
-)
+# Import DB models directly (assuming they are in the correct path)
+# If __init__.py doesn't export them, this needs adjustment
+# For now, assume they might be accessible via module path
+# Let's try importing within functions to mitigate potential issues
 
-def init_database():
-    """初始化数据库并导入默认数据"""
+def _ensure_default_style(db_session):
+    """确保默认文章风格存在"""
+    from . import ArticleStyle # Import inside function
+    count = db_session.query(ArticleStyle).count()
+    if count == 0:
+        logger.info("导入默认文章风格...")
+        # Logic from removed model_manager.create_default_article_style
+        default_style_dict = {
+            "id": "default",
+            "name": "默认风格",
+            "description": "通用默认风格",
+            "tone": "neutral",
+            "formality": 3,
+            "language": "zh",
+            "target_audience": "general",
+            "constraints": [],
+            "examples": [],
+            "compatible_content_types": [] # Assuming relation handled by migrate_configs
+        }
+        default_style = ArticleStyle(**default_style_dict)
+        db_session.add(default_style)
+        logger.info("默认文章风格已添加")
+        return True
+    return False
+
+def _ensure_default_platform(db_session):
+    """确保默认平台存在"""
+    from . import Platform # Import inside function
+    count = db_session.query(Platform).count()
+    if count == 0:
+        logger.info("导入默认平台配置...")
+        # Logic from removed model_manager.create_default_platform
+        default_platform_dict = {
+            "id": "default",
+            "name": "默认平台",
+            "description": "通用默认平台配置",
+            "url_structure": "",
+            "content_restrictions": {},
+            "api_details": {},
+            "audience_profile": {},
+            "posting_guidelines": []
+        }
+        default_platform = Platform(**default_platform_dict)
+        db_session.add(default_platform)
+        logger.info("默认平台配置已添加")
+        return True
+    return False
+
+def init_database_structure_and_defaults():
+    """初始化数据库结构并导入默认数据（如内容类型名、默认风格/平台）"""
     try:
-        # 创建数据库表
-        init_db()
+        # 1. 创建数据库表
+        logger.info("正在创建数据库表...")
+        create_tables() # Renamed import from session
+        logger.info("数据库表创建完成")
 
-        # 导入默认数据
+        # 2. 导入默认数据
         with get_db() as db:
+            logger.info("开始导入默认数据...")
             # 导入默认内容类型名称
+            from core.models.content_type.content_type_db import ensure_default_content_types # Keep this specific import
             logger.info("导入默认内容类型名称...")
-            ensure_default_content_types(db)
+            content_type_added = ensure_default_content_types(db)
 
-            # 检查是否已有文章风格
-            count = db.query(ArticleStyle).count()
-            if count == 0:
-                logger.info("导入默认文章风格...")
-                default_style_dict = create_default_article_style()
-                default_style = ArticleStyle(**default_style_dict)
-                db.add(default_style)
+            # 确保默认文章风格存在
+            style_added = _ensure_default_style(db)
 
-            # 检查是否已有平台配置
-            count = db.query(Platform).count()
-            if count == 0:
-                logger.info("导入默认平台配置...")
-                default_platform_dict = create_default_platform()
-                default_platform = Platform(**default_platform_dict)
-                db.add(default_platform)
+            # 确保默认平台配置存在
+            platform_added = _ensure_default_platform(db)
 
-            # 提交更改
-            db.commit()
+            # 提交默认数据更改
+            if content_type_added or style_added or platform_added:
+                db.commit()
+                logger.info("默认数据导入完成")
+            else:
+                logger.info("默认数据已存在，无需导入")
 
-        logger.info("数据库初始化完成")
         return True
     except Exception as e:
-        logger.error(f"数据库初始化失败: {str(e)}")
+        logger.error(f"数据库结构和默认数据初始化失败: {str(e)}", exc_info=True)
         return False
 
-def get_config_file_path(config_type: str, filename: str) -> Path:
-    """获取配置文件路径
+# Remove get_config_file_path and load_json_config (moved to json_loader)
+# Remove import_*_from_file functions (handled by migrate_configs)
+# Remove import_all_from_files function
+
+def initialize_all(sync_mode: bool = False) -> bool:
+    """完整初始化流程：创建结构、导入默认值、迁移配置
 
     Args:
-        config_type: 配置类型目录（如styles, platforms）
-        filename: 文件名
-
-    Returns:
-        Path: 配置文件路径
-    """
-    return Path(CONFIG_DIR) / config_type / filename
-
-def load_json_config(config_path: Path) -> Optional[Dict[str, Any]]:
-    """加载JSON配置文件
-
-    Args:
-        config_path: 配置文件路径
-
-    Returns:
-        Optional[Dict[str, Any]]: 配置数据，失败返回None
-    """
-    try:
-        if not config_path.exists():
-            logger.warning(f"配置文件不存在: {config_path}")
-            return None
-
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"加载配置文件失败: {config_path}, 错误: {str(e)}")
-        return None
-
-def import_article_styles_from_file():
-    """从文件导入文章风格数据"""
-    # 获取配置文件路径
-    config_path = get_config_file_path("styles", "article_styles.json")
-    config_data = load_json_config(config_path)
-
-    if not config_data:
-        return False
-
-    styles = config_data.get("article_styles", [])
-    if not styles:
-        logger.warning("文章风格配置文件中没有数据")
-        return False
-
-    try:
-        # 导入文章风格
-        with get_db() as db:
-            success_count = 0
-            for style_data in styles:
-                # 处理内容类型兼容性
-                content_type_names = style_data.pop("content_types", [])
-
-                # 检查是否已存在
-                existing = db.query(ArticleStyle).filter(ArticleStyle.id == style_data.get("id")).first()
-
-                if existing:
-                    # 更新现有记录
-                    for key, value in style_data.items():
-                        if key != "id" and hasattr(existing, key):
-                            setattr(existing, key, value)
-                    style = existing
-                    logger.info(f"更新文章风格: {style.id}")
-                else:
-                    # 创建新记录
-                    style = ArticleStyle(**style_data)
-                    db.add(style)
-                    logger.info(f"创建文章风格: {style.id}")
-
-                success_count += 1
-
-            # 提交更改
-            db.commit()
-
-        logger.info(f"已从配置文件导入 {success_count} 个文章风格")
-        return True
-    except Exception as e:
-        logger.error(f"导入文章风格失败: {str(e)}")
-        return False
-
-def import_platforms_from_file():
-    """从文件导入平台数据"""
-    # 获取配置文件路径
-    config_path = get_config_file_path("platforms", "platforms.json")
-    config_data = load_json_config(config_path)
-
-    if not config_data:
-        return False
-
-    platforms = config_data.get("platforms", [])
-    if not platforms:
-        logger.warning("平台配置文件中没有数据")
-        return False
-
-    try:
-        # 导入平台配置
-        with get_db() as db:
-            success_count = 0
-            for platform_data in platforms:
-                # 检查是否已存在
-                existing = db.query(Platform).filter(Platform.id == platform_data.get("id")).first()
-
-                if existing:
-                    # 更新现有记录
-                    for key, value in platform_data.items():
-                        if key != "id" and hasattr(existing, key):
-                            setattr(existing, key, value)
-                    logger.info(f"更新平台配置: {existing.id}")
-                else:
-                    # 创建新记录
-                    new_platform = Platform(**platform_data)
-                    db.add(new_platform)
-                    logger.info(f"创建平台配置: {new_platform.id}")
-
-                success_count += 1
-
-            # 提交更改
-            db.commit()
-
-        logger.info(f"已从配置文件导入 {success_count} 个平台配置")
-        return True
-    except Exception as e:
-        logger.error(f"导入平台配置失败: {str(e)}")
-        return False
-
-def import_all_from_files() -> bool:
-    """从文件导入所有配置数据
-
-    Returns:
-        bool: 导入是否全部成功
-    """
-    styles_result = import_article_styles_from_file()
-    platforms_result = import_platforms_from_file()
-
-    return styles_result and platforms_result
-
-def initialize_all() -> bool:
-    """初始化所有数据
+        sync_mode: 是否在配置迁移时使用完整同步模式。
 
     Returns:
         bool: 初始化是否成功
     """
-    db_result = init_database()
-    import_result = import_all_from_files()
+    logger.info(f"开始完整数据库初始化流程 (sync_mode={sync_mode})...")
+    # 步骤 1 & 2: 创建表结构并确保默认数据存在
+    db_result = init_database_structure_and_defaults()
+    if not db_result:
+        logger.error("数据库结构和默认数据初始化失败，中止初始化流程")
+        return False
 
-    return db_result and import_result
+    # 步骤 3: 迁移配置文件
+    logger.info("开始迁移配置文件到数据库...")
+    # Note: migrate_all might need adjustment if models aren't exported from db.__init__
+    migrate_result = migrate_all(sync_mode=sync_mode)
+    if not migrate_result:
+        logger.error("配置文件迁移失败")
+        # Decide if this is a fatal error for initialization
+        # return False
 
-# 本地测试
+    final_success = db_result and migrate_result
+    if final_success:
+        logger.info("数据库完整初始化流程成功完成")
+    else:
+        logger.warning("数据库完整初始化流程完成，但存在部分失败 (请检查日志)")
+
+    return final_success
+
+# 更新 main block 以支持命令行参数
 if __name__ == "__main__":
-    success = initialize_all()
+    parser = argparse.ArgumentParser(description="Initialize GenFlow Database")
+    parser.add_argument(
+        "--sync-mode",
+        action="store_true",
+        help="Enable full sync mode for config migration (deletes extra DB entries)"
+    )
+    args = parser.parse_args()
+
+    logger.info(f"从命令行运行初始化 (sync_mode={args.sync_mode})...")
+    success = initialize_all(sync_mode=args.sync_mode)
     exit_code = 0 if success else 1
-    exit(exit_code)
+    logger.info(f"初始化脚本执行完毕，退出码: {exit_code}")
+    sys.exit(exit_code)

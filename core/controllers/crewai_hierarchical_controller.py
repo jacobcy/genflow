@@ -57,7 +57,7 @@ class ManagerProductionState(BaseModel):
         self.current_stage = "running"
         # 同步文章状态
         if self.article:
-            from core.models.content_manager import ContentManager
+            from core.models.facade.content_manager import ContentManager
             ContentManager.update_article_status(self.article, "running")
 
     def mark_complete(self):
@@ -67,7 +67,7 @@ class ManagerProductionState(BaseModel):
         self.current_stage = "completed"
         # 同步文章状态
         if self.article:
-            from core.models.content_manager import ContentManager
+            from core.models.facade.content_manager import ContentManager
             ContentManager.update_article_status(self.article, "completed")
 
     def mark_failed(self, error_msg: str):
@@ -77,7 +77,7 @@ class ManagerProductionState(BaseModel):
         self.error = error_msg
         # 同步文章状态
         if self.article:
-            from core.models.content_manager import ContentManager
+            from core.models.facade.content_manager import ContentManager
             ContentManager.update_article_status(self.article, "failed")
 
     def mark_cancelled(self):
@@ -86,7 +86,7 @@ class ManagerProductionState(BaseModel):
         self.current_stage = "cancelled"
         # 同步文章状态
         if self.article:
-            from core.models.content_manager import ContentManager
+            from core.models.facade.content_manager import ContentManager
             ContentManager.update_article_status(self.article, "cancelled")
 
     def add_task_result(self, task_name: str, result: Any):
@@ -257,7 +257,7 @@ class CrewAIManagerController(Flow[ManagerProductionState]):
             # 保存到文章对象（如果有）
             if self.state.article and self.state.final_output:
                 self.state.article.content = self.state.final_output
-                from core.models.content_manager import ContentManager
+                from core.models.facade.content_manager import ContentManager
                 ContentManager.save_article(self.state.article)
 
             return "内容生产成功完成"
@@ -295,7 +295,7 @@ class CrewAIManagerController(Flow[ManagerProductionState]):
         # 如果有文章对象，确保保存最终结果
         if self.state.article and self.state.final_output:
             try:
-                from core.models.content_manager import ContentManager
+                from core.models.facade.content_manager import ContentManager
                 self.state.article.content = self.state.final_output
                 self.state.article.status = "completed"
                 self.state.article.completed_at = self.state.completed_at

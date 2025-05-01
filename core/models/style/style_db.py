@@ -7,7 +7,8 @@ import time
 
 from core.models.db.session import Base
 from core.models.db.utils import JSONEncodedDict
-from core.models.db.model_manager import content_type_style
+# from .association_tables import content_type_style # Comment out if association_tables.py missing or unused
+# from core.models.content_type.content_type_db import ContentTypeName # Comment out if relationship unused
 
 class ArticleStyle(Base):
     """文章风格模型"""
@@ -29,12 +30,11 @@ class ArticleStyle(Base):
     prompt_template = Column(Text, nullable=True)
     example = Column(Text, nullable=True)
 
-    # 与内容类型名称的多对多关系
-    compatible_content_types = relationship(
-        "content_type_style",
-        primaryjoin="ArticleStyle.name == content_type_style.c.style_name",
-        viewonly=True
-    )
+    # 与内容类型名称的多对多关系 - Temporarily commented out
+    # compatible_content_types = relationship(
+    #     "ContentTypeName",
+    #     secondary=content_type_style,
+    # )
 
     # 时间戳
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -61,6 +61,15 @@ class ArticleStyle(Base):
             if isinstance(self.updated_at, datetime):
                 updated_at_value = self.updated_at.isoformat()
 
+        # Get compatible content type names from the related objects
+        compatible_names = []
+        # if self.compatible_content_types: # Check if relationship is loaded/populated - Commented out
+        #      try:
+        #          compatible_names = [ct_obj.name for ct_obj in self.compatible_content_types]
+        #      except Exception as e:
+        #          # Log error if accessing relationship fails unexpectedly
+        #          pass # Handle appropriately
+
         return {
             "name": self.name,
             "description": self.description,
@@ -71,29 +80,7 @@ class ArticleStyle(Base):
             "writing_format": self.writing_format,
             "prompt_template": self.prompt_template,
             "example": self.example,
-            "content_types": [rel.content_type_name for rel in self.compatible_content_types],
+            # "content_types": compatible_names, # Use names from related ContentTypeName objects - Commented out
             "created_at": created_at_value,
             "updated_at": updated_at_value
         }
-
-    def is_compatible_with_content_type(self, content_type_name: str) -> bool:
-        """检查是否与指定内容类型兼容
-
-        Args:
-            content_type_name: 内容类型名称
-
-        Returns:
-            bool: 是否兼容
-        """
-        for rel in self.compatible_content_types:
-            if rel.content_type_name == content_type_name:
-                return True
-        return False
-
-    def get_compatible_content_types(self) -> List[str]:
-        """获取兼容的内容类型名称列表
-
-        Returns:
-            List[str]: 内容类型名称列表
-        """
-        return [rel.content_type_name for rel in self.compatible_content_types]

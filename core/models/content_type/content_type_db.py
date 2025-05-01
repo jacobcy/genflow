@@ -3,7 +3,7 @@
 
 from sqlalchemy import Column, String, Text, Boolean, DateTime
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from core.models.db.session import Base
 from core.models.content_type.constants import (
@@ -17,7 +17,7 @@ class ContentTypeName(Base):
     __table_args__ = {'extend_existing': True}  # 允许重新定义已存在的表
 
     name = Column(String(100), primary_key=True, index=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
         return f"<ContentTypeName {self.name}>"
@@ -32,7 +32,12 @@ class ContentTypeName(Base):
         created_at_value = None
         if hasattr(self, 'created_at') and self.created_at is not None:
             if isinstance(self.created_at, datetime):
-                created_at_value = self.created_at.isoformat()
+                # Ensure the datetime object is timezone-aware before formatting
+                # If it's naive, assume UTC (though default should make it aware)
+                dt = self.created_at
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                created_at_value = dt.isoformat()
 
         return {
             "name": self.name,

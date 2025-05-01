@@ -79,7 +79,7 @@ def check_consistency():
 
     try:
         # 初始化ContentManager，使用数据库模式
-        from core.models.content_manager import ContentManager
+        from core.models.facade.content_manager import ContentManager
         ContentManager.initialize(use_db=True)
 
         # 获取数据库和文件中的配置
@@ -160,7 +160,7 @@ def list_content_types():
 
     try:
         # 初始化ContentManager，使用数据库模式
-        from core.models.content_manager import ContentManager
+        from core.models.facade.content_manager import ContentManager
         ContentManager.initialize(use_db=True)
 
         # 获取所有内容类型
@@ -182,7 +182,7 @@ def list_article_styles():
 
     try:
         # 初始化ContentManager，使用数据库模式
-        from core.models.content_manager import ContentManager
+        from core.models.facade.content_manager import ContentManager
         ContentManager.initialize(use_db=True)
 
         # 获取所有文章风格
@@ -204,7 +204,7 @@ def list_platforms():
 
     try:
         # 初始化ContentManager，使用数据库模式
-        from core.models.content_manager import ContentManager
+        from core.models.facade.content_manager import ContentManager
         ContentManager.initialize(use_db=True)
 
         # 获取所有平台配置

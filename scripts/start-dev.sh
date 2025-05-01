@@ -217,7 +217,7 @@ elif [ $DB_CHECK_RESULT -eq 0 ]; then
     # 确保在正确的目录中
     cd "$PROJECT_ROOT"
     # 运行数据库初始化脚本
-    python "$PROJECT_ROOT/scripts/init_db.py"
+    python "$PROJECT_ROOT/scripts/initialize_database.py"
 fi
 
 # 检查前端环境

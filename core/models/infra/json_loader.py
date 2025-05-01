@@ -10,6 +10,54 @@ from pathlib import Path
 from loguru import logger
 from pydantic import BaseModel
 
+# Default config directory (relative to project root usually)
+# Determine project root dynamically or use environment variable
+# Assuming project root is 4 levels up from this file's directory for now
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+CONFIG_DIR = Path(os.environ.get(
+    "GENFLOW_CONFIG_DIR",
+    PROJECT_ROOT / "config"
+))
+
+def get_config_file_path(config_type: str, filename: str) -> Path:
+    """获取标准配置文件的绝对路径
+
+    Args:
+        config_type: 配置类型目录名 (e.g., "styles", "platforms")
+        filename: 配置文件名 (e.g., "article_styles.json")
+
+    Returns:
+        Path: 配置文件的绝对路径对象
+    """
+    return CONFIG_DIR / config_type / filename
+
+def load_json_config(config_path: Path) -> Optional[Dict[str, Any]]:
+    """从指定路径加载JSON配置文件
+
+    Args:
+        config_path: 配置文件的绝对路径
+
+    Returns:
+        Optional[Dict[str, Any]]: 加载的配置字典，如果文件不存在或解析失败则返回 None
+    """
+    if not isinstance(config_path, Path):
+        config_path = Path(config_path)
+
+    if not config_path.is_file():
+        logger.warning(f"配置文件不存在: {config_path}")
+        return None
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        logger.debug(f"成功加载配置文件: {config_path}")
+        return data
+    except json.JSONDecodeError as e:
+        logger.error(f"解析JSON配置文件失败: {config_path}, 错误: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"加载配置文件时发生未知错误: {config_path}, 错误: {e}")
+        return None
+
 T = TypeVar('T')
 
 class JsonModelLoader:

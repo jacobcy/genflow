@@ -4,7 +4,7 @@
 """
 
 from typing import Dict, List, Optional, Any, Type, Generic, TypeVar, ClassVar, cast
-from abc import ABC
+from abc import ABC, abstractmethod
 from loguru import logger
 from datetime import datetime
 from uuid import uuid4
@@ -75,25 +75,26 @@ class BaseManager(Generic[T], ABC):
         logger.info(f"{cls.__name__} 数据库使用状态设置为: {use_db}")
 
     @classmethod
-    def get_entity(cls, entity_id: str) -> Optional[Any]:
+    @abstractmethod
+    def get_entity(cls, entity_id: str) -> Optional[T]:
         """获取指定ID的实体
 
-        通用的实体获取方法，子类可以覆盖以实现特定的获取逻辑
+        子类必须实现此方法以提供具体的获取逻辑（数据库、文件等）
 
         Args:
             entity_id: 实体ID
 
         Returns:
-            Optional[Any]: 实体对象，不存在则返回None
+            Optional[T]: 实体对象，不存在则返回None
         """
-        cls.ensure_initialized()
-        return cls._entities.get(entity_id)
+        raise NotImplementedError
 
     @classmethod
-    def save_entity(cls, entity: Any) -> bool:
+    @abstractmethod
+    def save_entity(cls, entity: T) -> bool:
         """保存实体
 
-        通用的实体保存方法，子类可以覆盖以实现特定的保存逻辑
+        子类必须实现此方法以提供具体的保存逻辑（数据库、文件等）
 
         Args:
             entity: 实体对象
@@ -101,41 +102,14 @@ class BaseManager(Generic[T], ABC):
         Returns:
             bool: 是否成功保存
         """
-        cls.ensure_initialized()
-
-        # 更新时间戳
-        if hasattr(entity, cls._timestamp_field):
-            setattr(entity, cls._timestamp_field, datetime.now())
-
-        # 获取或生成实体ID
-        entity_id = None
-
-        # 优先从实体本身获取ID
-        if hasattr(entity, cls._id_field):
-            entity_id = getattr(entity, cls._id_field)
-        # 其次从metadata中获取ID
-        elif hasattr(entity, cls._metadata_field) and isinstance(getattr(entity, cls._metadata_field), dict):
-            entity_id = getattr(entity, cls._metadata_field).get(f"{cls._id_field}")
-
-        # 如果没有，生成新ID
-        if not entity_id:
-            entity_id = str(uuid4())
-            # 保存ID
-            if hasattr(entity, cls._id_field):
-                setattr(entity, cls._id_field, entity_id)
-            elif hasattr(entity, cls._metadata_field) and isinstance(getattr(entity, cls._metadata_field), dict):
-                getattr(entity, cls._metadata_field)[f"{cls._id_field}"] = entity_id
-
-        # 保存到缓存
-        cls._entities[entity_id] = entity
-        logger.info(f"{cls.__name__}实体保存成功: {entity_id}")
-        return True
+        raise NotImplementedError
 
     @classmethod
+    @abstractmethod
     def delete_entity(cls, entity_id: str) -> bool:
         """删除实体
 
-        通用的实体删除方法，子类可以覆盖以实现特定的删除逻辑
+        子类必须实现此方法以提供具体的删除逻辑（数据库、文件等）
 
         Args:
             entity_id: 实体ID
@@ -143,22 +117,16 @@ class BaseManager(Generic[T], ABC):
         Returns:
             bool: 是否成功删除
         """
-        cls.ensure_initialized()
-        if entity_id in cls._entities:
-            del cls._entities[entity_id]
-            logger.info(f"{cls.__name__}实体删除成功: {entity_id}")
-            return True
-        logger.warning(f"{cls.__name__}实体不存在，无法删除: {entity_id}")
-        return False
+        raise NotImplementedError
 
     @classmethod
-    def list_entities(cls) -> List[str]:
-        """获取所有实体ID列表
+    @abstractmethod
+    def list_entities(cls) -> List[T]:
+        """获取所有实体列表或ID列表
 
-        通用的实体列表获取方法，子类可以覆盖以实现特定的列表获取逻辑
+        子类必须实现此方法以提供具体的列表获取逻辑（数据库、文件等）
 
         Returns:
-            List[str]: 实体ID列表
+            List[T]: 实体对象列表
         """
-        cls.ensure_initialized()
-        return list(cls._entities.keys())
+        raise NotImplementedError

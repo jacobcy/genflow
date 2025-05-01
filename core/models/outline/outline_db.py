@@ -27,8 +27,8 @@ class OutlineNode(Base):
     content = Column(Text, nullable=True, default="")
     order = Column(Integer, nullable=False, default=0)
 
-    # 元数据
-    metadata = Column(Text, nullable=True, default="{}")
+    # 元数据 - 不能使用metadata作为字段名，因为它是SQLAlchemy的保留字
+    meta_data = Column(Text, nullable=True, default="{}")
 
     outline = relationship("Outline", back_populates="nodes")
 
@@ -39,7 +39,7 @@ class OutlineNode(Base):
             Dict: 节点数据字典
         """
         try:
-            metadata_str = str(self.metadata) if self.metadata is not None else "{}"
+            metadata_str = str(self.meta_data) if self.meta_data is not None else "{}"
             metadata = json.loads(metadata_str)
         except:
             metadata = {}
@@ -74,7 +74,7 @@ class OutlineNode(Base):
             title=data.get("title", ""),
             level=data.get("level", 1),
             content=data.get("content", ""),
-            metadata=metadata
+            meta_data=metadata
         )
 
 
@@ -93,8 +93,8 @@ class Outline(Base):
     topic_id = Column(String(50), nullable=True, index=True)
     article_id = Column(String(50), nullable=True, index=True)
 
-    # 元数据
-    metadata = Column(Text, nullable=True, default="{}")
+    # 元数据 - 不能使用metadata作为字段名，因为它是SQLAlchemy的保留字
+    meta_data = Column(Text, nullable=True, default="{}")
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
 
@@ -108,7 +108,7 @@ class Outline(Base):
             Dict: 大纲数据字典
         """
         try:
-            metadata_str = str(self.metadata) if self.metadata is not None else "{}"
+            metadata_str = str(self.meta_data) if self.meta_data is not None else "{}"
             metadata = json.loads(metadata_str)
         except:
             metadata = {}
@@ -121,8 +121,8 @@ class Outline(Base):
         for node in self.nodes:
             node_metadata = {}
             try:
-                if node.metadata is not None:
-                    node_metadata = json.loads(str(node.metadata))
+                if node.meta_data is not None:
+                    node_metadata = json.loads(str(node.meta_data))
             except:
                 pass
 
@@ -202,7 +202,7 @@ class Outline(Base):
             source=data.get("source", "manual"),
             topic_id=data.get("topic_id"),
             article_id=data.get("article_id"),
-            metadata=metadata,
+            meta_data=metadata,
             created_at=created_at,
             updated_at=updated_at
         )
@@ -229,7 +229,7 @@ class Outline(Base):
                 level=node_data.get("level", 1),
                 content=node_data.get("content", ""),
                 order=i,
-                metadata=json.dumps(node_data.get("metadata", {}))
+                meta_data=json.dumps(node_data.get("metadata", {}))
             )
             result.append(node)
 

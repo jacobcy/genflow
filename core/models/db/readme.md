@@ -1,387 +1,207 @@
-# GenFlow 数据库使用指南
+# GenFlow 数据库模块使用指南
 
-本文档介绍如何使用和维护 GenFlow 的数据库功能。
+本文档介绍 GenFlow 数据库支持模块 (`core.models.db`) 的功能、使用方法和维护说明。
 
-## 数据库概述
+## 1. 数据库概述
 
-GenFlow 使用 SQLite 数据库来存储配置和数据，主要包括以下内容：
+GenFlow 使用 SQLite 数据库（默认位于 `core/data/genflow.db`）存储核心数据模型，主要包括：
 
-- 内容类型配置 (content_types)
-- 文章风格配置 (article_styles)
-- 平台配置 (platforms)
-- 内容类型与文章风格之间的关联关系
+*   内容类型名称 (ContentTypeName)
+*   文章风格 (ArticleStyle)
+*   平台 (Platform)
+*   话题 (Topic)
+*   文章元数据 (Article Metadata)
+*   大纲 (Outline)
+*   以及它们之间的关联关系。
 
-数据库位于 `core/data/genflow.db`，使用 SQLite 格式，方便本地开发和使用。
+该模块负责数据库连接、会话管理、表结构创建以及配置数据同步。
 
-## 数据库支持文件结构
+## 2. 数据库支持文件结构
 
-GenFlow 的数据库支持模块由以下核心文件组成，每个文件都有其特定的职责和必要性：
+`core.models.db` 模块包含以下核心文件：
 
-| 文件名 | 职责 | 必要性 |
-|-------|------|-------|
-| `__init__.py` | 模块入口，导出数据模型类 | 高 |
-| `session.py` | 数据库连接和会话管理 | 高 |
-| `initialize.py` | 数据库结构初始化和默认数据导入 | 高 |
-| `repository.py` | 实现数据仓库模式，提供CRUD操作 | 高 |
-| `model_manager.py` | 定义数据模型关系 | 中 |
-| `migrate_configs.py` | 配置文件迁移工具 | 中 |
-| `utils.py` | 数据库工具函数和类型转换 | 中 |
+| 文件名             | 主要职责                                                     |
+| :----------------- | :----------------------------------------------------------- |
+| `__init__.py`      | 模块入口，主要用于包标识，**不导出**具体的 SQLAlchemy 数据模型类 (`XxxDB`)。 |
+| `session.py`       | 管理数据库引擎 (`engine`)、会话工厂 (`SessionLocal`) 和声明基类 (`Base`)。 |
+| `initialize.py`    | 提供数据库初始化功能，包括创建表结构和导入初始配置数据。     |
+| `migrate_configs.py` | 将 `config/` 目录下的 JSON 配置文件同步到数据库。            |
+| `utils.py`         | 提供数据库相关的辅助工具和自定义类型（如 JSON 字段处理）。   |
 
-### 1. 模块入口（\_\_init\_\_.py）
+**注意**: 根据最新的架构，`repository.py` 和 `model_manager.py` 文件已被移除。
 
-这个文件是数据库模块的入口点，主要负责导出数据模型类，使得其他模块可以简洁地导入所需类型：
+## 3. 核心功能与使用
 
-```python
-from core.models.content_type.content_type_db import ContentTypeName
-from core.models.style.style_db import ArticleStyle
-from core.models.platform.platform_db import Platform
-from core.models.topic.topic_db import Topic
-from core.models.article.article_db import Article
+### 3.1. 数据库会话管理 (`session.py`)
 
-__all__ = [
-    "ContentTypeName",
-    "ArticleStyle",
-    "Platform",
-    "Topic",
-    "Article"
-]
-```
-
-**为什么必要**：它提供了清晰的模块API，避免了循环导入问题，并集中管理了数据模型的导出。
-
-### 2. 数据库会话管理（session.py）
-
-这个文件是数据库操作的核心，提供数据库连接和会话管理功能：
+所有需要与数据库交互的操作（通常在 `XxxManager` 中执行）都应通过 `session.py` 提供的会话进行。推荐使用 `get_db` 上下文管理器来获取和管理会话：
 
 ```python
-@contextmanager
-def get_db() -> Generator[Session, None, None]:
-    """获取数据库会话的上下文管理器"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+from core.models.db.session import get_db
+# 模型应从其定义模块导入，例如:
+# from core.models.article.article_db import ArticleDB
 
-def init_db() -> None:
-    """初始化数据库，创建所有表"""
-    Base.metadata.create_all(bind=engine)
+# 在 Manager 或需要访问数据库的地方
+with get_db() as db_session:
+    # 使用 db_session 执行 SQLAlchemy 查询或操作
+    # new_article = ArticleDB(title="新文章", ...)
+    # db_session.add(new_article)
+    # ... (省略查询/操作示例)
 ```
 
-**为什么必要**：它确保了所有数据库操作使用一致的连接方式，提供了上下文管理器保证资源正确释放，并提供了数据导入导出功能。
+`session.py` 还定义了 `Base`，所有 SQLAlchemy 模型（如 `ArticleDB`, `TopicDB` 等）都需要继承自这个基类。
 
-### 3. 数据库初始化（initialize.py）
+### 3.2. 数据库初始化 (`initialize.py`)
 
-负责数据库表结构创建和默认数据导入，确保系统初始状态正确：
+在首次运行或需要重置数据库时，可以使用 `initialize.py` 中的功能。
+
+```bash
+# 运行初始化脚本 (通常在项目设置脚本中调用)
+# 这会创建所有表并导入默认配置数据
+python -m core.models.db.initialize [--sync-mode] # --sync-mode 可选，见下一节
+```
+
+该脚本会调用 `initialize_all()` 函数，它执行主要步骤：
+1.  `init_database_structure_and_defaults()`: 创建表结构并确保默认数据（如默认风格/平台）存在。
+2.  调用 `migrate_configs.migrate_all()`: 将 `config/` 目录下的配置数据同步到数据库中。
+
+### 3.3. 配置迁移/同步 (`migrate_configs.py`)
+
+该文件负责保持 `config/` 目录下的 JSON 配置文件与数据库中对应表的数据一致。
+
+核心函数是 `migrate_all(sync_mode: bool = False)`:
+
+*   **`sync_mode=False` (默认，增量同步)**:
+    *   只添加或更新配置文件中存在的记录。
+    *   不删除数据库中存在但配置文件中已移除的记录。
+    *   这是应用启动时或常规运行时推荐的方式，以保护用户可能在数据库中直接修改或添加的数据。
+*   **`sync_mode=True` (完整同步)**:
+    *   使数据库中的配置记录与配置文件完全一致。
+    *   会删除数据库中存在但配置文件中已移除的记录。
+    *   **谨慎使用**，通常只在需要强制同步或重置配置时通过初始化脚本手动触发。
+
+可以通过 `initialize.py` 脚本传递 `--sync-mode` 参数来控制首次初始化的同步模式。
 
 ```python
-def initialize_all():
-    """初始化所有数据"""
-    init_database()
-    import_all_from_files()
+# 在代码中手动触发同步 (示例)
+from core.models.db.migrate_configs import migrate_all
+
+# 执行增量同步
+migrate_all(sync_mode=False)
+
+# 执行完整同步 (谨慎!)
+# migrate_all(sync_mode=True)
 ```
 
-**为什么必要**：它提供了系统启动时的数据库初始化功能，确保必要的表结构和默认数据存在，支持增量更新和全量重置。
+### 3.4. 数据库模型导入
 
-### 4. 数据仓库（repository.py）
-
-实现数据仓库模式，为各类数据实体提供统一的CRUD操作接口：
+由于 `core.models.db.__init__.py` **不负责导出模型**，你需要从模型所在的具体模块导入 SQLAlchemy 模型类：
 
 ```python
-class BaseRepository(Generic[ModelType]):
-    """基础数据仓库，提供通用CRUD操作"""
-    # 实现通用的增删改查方法...
-
-class ContentTypeRepository(BaseRepository[ContentType]):
-    """内容类型数据仓库"""
-    # 内容类型特定的方法...
+from core.models.article.article_db import ArticleDB
+from core.models.topic.topic_db import TopicDB
+# ... 等等
 ```
 
-**为什么必要**：它提供了类型安全的数据访问接口，封装了数据库操作细节，使业务层代码更清晰，并通过泛型基类减少了重复代码。
+### 3.5. 工具函数 (`utils.py`)
 
-### 5. 配置迁移（migrate_configs.py）
-
-负责将JSON配置文件同步到数据库，支持增量更新和全量同步：
+如果定义了例如 `JSONEncodedDict` 这样的自定义类型，可以在 SQLAlchemy 模型中使用它：
 
 ```python
-def migrate_all(sync_mode: bool = False):
-    """迁移所有配置到数据库"""
-    migrate_content_types(sync_mode)
-    migrate_article_styles(sync_mode)
-    migrate_platforms(sync_mode)
+# 示例: 在 xxx_db.py 模型定义中
+from sqlalchemy import Column, Integer, String
+from core.models.db.session import Base # Import Base from session
+from core.models.db.utils import JSONEncodedDict # Import custom type
+
+class MyModelDB(Base):
+    __tablename__ = 'my_table'
+    id = Column(Integer, primary_key=True)
+    metadata = Column(JSONEncodedDict) # 使用自定义 JSON 类型
 ```
 
-**为什么必要**：它确保了配置文件与数据库的一致性，支持同步模式（删除不存在的记录）和增量模式（只添加新记录），提供了安全的配置迁移机制。
+## 4. 数据库访问模式的变化
 
-### 6. 工具函数（utils.py）
+请注意，数据库的 **直接访问逻辑已从 `db` 模块移除**。
 
-提供数据库操作相关的辅助工具和类型转换功能：
+*   不再有 `Repository` 类。
+*   不再有 `DBAdapter`。
+*   数据 CRUD 操作现在由各模块的 `XxxManager` 类负责，它们直接使用 `db.session.get_db()` 获取会话，并调用 SQLAlchemy 的 Session API (如 `session.add()`, `session.query()`, `session.commit()` 等) 进行数据库交互。
 
-```python
-class JSONEncodedDict(TypeDecorator):
-    """存储和检索JSON格式的字典"""
-    # JSON字段类型实现...
+`core.models.db` 模块的核心职责是提供 **基础支持**: 会话管理、模型基类、初始化、迁移和工具。
 
-class TopicAdapter:
-    """话题模型适配器，处理不同类型话题模型之间的转换"""
-    # 模型转换方法...
-```
+## 5. 数据库工具使用 (命令行)
 
-**为什么必要**：它提供了通用的工具函数和类型转换功能，简化了重复代码，并支持JSON字段的存储和检索。
-
-## 数据库访问模式
-
-### 通过 ContentManager 类访问数据库
-
-ContentManager 是访问数据库的主要接口，它通过 DBAdapter 处理与数据库的交互：
-
-```python
-from core.models.content_manager import ContentManager
-
-# 初始化 ContentManager (默认使用数据库)
-ContentManager.initialize(use_db=True)
-
-# 获取内容类型
-content_type = ContentManager.get_content_type("article")
-
-# 保存内容类型
-ContentManager.save_content_type(content_type)
-
-# 获取文章风格
-style = ContentManager.get_article_style("wechat")
-
-# 保存文章风格
-ContentManager.save_article_style(style)
-
-# 获取平台配置
-platform = ContentManager.get_platform("wechat")
-
-# 保存平台配置
-ContentManager.save_platform(platform)
-```
-
-### 数据库同步策略
-
-GenFlow 采用了以下数据库同步策略：
-
-1. **应用启动时**：执行增量同步（`sync_mode=False`）
-   - 只添加或更新配置文件中的内容
-   - 不会删除数据库中已存在但配置文件中不存在的记录
-   - 保护用户数据不被意外删除
-
-2. **手动执行全量同步**：使用 `initialize_database.py` 脚本
-   - 执行完整同步（`sync_mode=True`）
-   - 会删除数据库中存在但配置文件中不存在的记录
-   - 确保数据库和配置文件完全一致
-
-## 数据库工具使用
+(此部分可以保留，用于检查数据库状态和配置)
 
 ### 初始化和同步数据库
 
 ```bash
+# 初始化数据库并执行默认的增量同步
+python -m core.models.db.initialize
+
 # 初始化数据库并执行完整同步（会删除不存在的配置）
-python initialize_database.py
-
-# 或者使用数据库工具
-python db_tools.py init
+python -m core.models.db.initialize --sync-mode
 ```
 
-### 查看数据库状态
+### 查看数据库状态和配置 (假设存在 db_tools.py 脚本)
 
 ```bash
+# 查看状态
 python db_tools.py status
-```
 
-输出示例：
-```
-检查数据库状态...
-✓ 数据库文件存在: core/data/genflow.db
-✓ 数据库包含 4 个表:
-  - content_type: 17 条记录
-  - article_style: 8 条记录
-  - platform: 9 条记录
-  - content_type_style: 10 条记录
-```
-
-### 检查配置一致性
-
-检查数据库和配置文件之间的一致性：
-
-```bash
+# 检查配置一致性
 python db_tools.py check
-```
 
-输出示例：
-```
-内容类型对比:
-  - 数据库中: 17 个内容类型
-  - 文件中: 17 个内容类型
-  ✓ 内容类型ID完全一致
-
-文章风格对比:
-  - 数据库中: 8 个文章风格
-  - 文件中: 8 个文章风格
-  ✓ 文章风格ID完全一致
-
-平台配置对比:
-  - 数据库中: 9 个平台配置
-  - 文件中: 9 个平台配置
-  ✓ 平台配置ID完全一致
-```
-
-### 查看配置信息
-
-查看内容类型、文章风格和平台配置：
-
-```bash
-# 列出所有内容类型
+# 列出内容类型
 python db_tools.py content
 
-# 列出所有文章风格
+# 列出文章风格
 python db_tools.py styles
 
-# 列出所有平台配置
+# 列出平台配置
 python db_tools.py platforms
 ```
 
-## 代码示例
+## 6. 故障排除
 
-### 创建和保存新内容类型
-
-```python
-from core.models.content_manager import ContentManager
-from core.models.content_type import ContentType
-
-# 初始化 ContentManager
-ContentManager.initialize(use_db=True)
-
-# 创建新内容类型
-new_content_type = ContentType(
-    id="my_custom_type",
-    name="我的自定义类型",
-    description="这是一个自定义的内容类型",
-    default_word_count=2000,
-    is_enabled=True,
-    prompt_template="请生成一篇关于{{topic}}的{{style}}文章",
-    output_format={
-        "title": "标题",
-        "content": "正文内容"
-    },
-    required_elements={
-        "introduction": "介绍部分",
-        "body": "主体部分",
-        "conclusion": "结论部分"
-    },
-    optional_elements={
-        "references": "参考资料"
-    }
-)
-
-# 保存到数据库
-success = ContentManager.save_content_type(new_content_type)
-if success:
-    print(f"内容类型 {new_content_type.id} 保存成功")
-else:
-    print("保存失败")
-```
-
-### 数据同步模式切换
-
-```python
-from core.models.content_manager import ContentManager
-
-# 常规增量同步（不删除）
-ContentManager.sync_configs_to_db()
-
-# 完整同步（包括删除）
-ContentManager.sync_configs_to_db_full()
-```
-
-## 故障排除
+(此部分可以保留)
 
 ### 数据库文件损坏
 
 如果数据库文件损坏，可以删除数据库文件并重新初始化：
 
 ```bash
-# 删除数据库文件
 rm core/data/genflow.db
-
-# 重新初始化
-python initialize_database.py
+python -m core.models.db.initialize
 ```
 
 ### 配置不一致
 
-如果配置文件和数据库不一致，可以执行完整同步：
+如果配置文件和数据库不一致，可以考虑执行完整同步（谨慎）：
 
 ```bash
-python db_tools.py init
+python -m core.models.db.initialize --sync-mode
 ```
 
 ### 数据库查询问题
 
-如果需要直接查询数据库，可以使用 SQLite 命令行工具：
+使用 SQLite 命令行工具：
 
 ```bash
 sqlite3 core/data/genflow.db
-
-# 查看表结构
 .tables
-.schema content_type
-
-# 查询内容类型
-SELECT id, name FROM content_type;
-
-# 退出
+.schema content_type_name
+SELECT name, created_at FROM content_type_name;
 .quit
 ```
 
-## 开发和扩展
+## 7. 开发和扩展
 
-如需扩展数据库功能，可以在以下文件中添加代码：
+扩展 `db` 模块通常涉及：
 
-- `core/models/db/repository.py` - 为新实体添加专用的数据仓库类
-- `core/models/db/model_manager.py` - 定义新的数据模型和关系
-- `core/models/infra/adapters/` - 添加新的适配器类实现特定实体的数据访问
-- `core/models/infra/db_adapter.py` - 扩展统一的数据库适配器接口
+1.  **添加新的 SQLAlchemy 模型**: 在相应的业务模块下创建 `xxx_db.py` 文件，定义继承自 `db.session.Base` 的模型类。
+2.  **修改表结构**: 修改现有的 `xxx_db.py` 文件。注意：简单的修改（如添加列）可以通过重新运行 `initialize.py` 应用，但复杂的结构变更可能需要更复杂的迁移策略（如使用 Alembic，目前项目未引入）。
+3.  **添加新的配置迁移**: 如果添加了新的配置文件类型，需要在 `migrate_configs.py` 中添加对应的 `migrate_xxx()` 函数，并在 `migrate_all()` 中调用。
+4.  **添加工具函数**: 在 `utils.py` 中添加通用的数据库相关辅助功能。
 
-遵循以下原则扩展数据库模块：
-
-1. **单一职责原则**：每个类和方法应该只有一个责任
-2. **接口分离原则**：不强制客户端依赖它们不使用的接口
-3. **依赖倒置原则**：高级模块不应依赖低级模块，两者都应依赖抽象
-4. **开闭原则**：对扩展开放，对修改关闭
-
-## 注意事项
-
-1. **数据备份**：在进行重要更改前，建议备份数据库文件
-2. **同步模式**：请谨慎使用完整同步模式，以免意外删除数据
-3. **配置修改**：修改配置后，需要重启应用或手动同步才能生效
-4. **迁移方案**：将来如需迁移到其他数据库系统，可以通过 DBAdapter 接口实现
-
-# 内容类型管理
-
-GenFlow在数据库中存储和管理各种内容类型配置。下面是管理这些配置的示例代码：
-
-```python
-# 导入必要的模块
-from core.models.content_manager import ContentManager
-
-# 初始化内容管理器
-ContentManager.initialize()
-
-# 获取所有内容类型
-content_types = ContentManager.get_all_content_types()
-print(f"可用的内容类型: {list(content_types.keys())}")
-
-# 获取特定内容类型
-blog_type = ContentManager.get_content_type('blog')
-print(f"博客内容类型: {blog_type.name}")
-print(f"结构模板数量: {len(blog_type.structure_templates)}")
-
-# 根据类别获取内容类型
-tech_type = ContentManager.get_content_type_by_category('技术')
-if tech_type:
-    print(f"技术类别推荐内容类型: {tech_type.name}")
-```
+**避免**: 不要在 `db` 模块内部添加特定业务实体的 CRUD 逻辑，这应由对应的 `XxxManager` 处理。

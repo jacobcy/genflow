@@ -14,6 +14,8 @@ from .outline_db import Outline, OutlineNode as OutlineNodeDB
 from .outline_factory import OutlineFactory
 from .outline_manager import OutlineManager
 from .outline_converter import OutlineConverter
+from .outline_storage import OutlineStorage
+from .outline_adapter import OutlineAdapter
 
 # 导出所有公共组件
 __all__ = [
@@ -24,5 +26,7 @@ __all__ = [
     'OutlineNodeDB',
     'OutlineFactory',
     'OutlineManager',
-    'OutlineConverter'
+    'OutlineConverter',
+    'OutlineStorage',
+    'OutlineAdapter'
 ]

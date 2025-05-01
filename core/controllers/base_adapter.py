@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 from loguru import logger
 
-from core.models.content_manager import ContentManager
+from core.models.facade.content_manager import ContentManager
 
 class BaseTeamAdapter(ABC):
     """团队适配器基类"""

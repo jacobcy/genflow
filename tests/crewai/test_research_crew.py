@@ -19,7 +19,7 @@ from core.agents.research_crew.research_crew import (
 )
 from core.models.research.research import BasicResearch, TopicResearch, ExpertInsight, KeyFinding
 from core.models.outline.article_outline import ArticleOutline, OutlineSection, ArticleSectionType
-from core.models.content_manager import ContentManager
+from core.models.facade.content_manager import ContentManager
 from core.config import Config
 from crewai import Crew, Task, Agent
 
@@ -188,7 +188,7 @@ class TestResearchCrew:
         result = await research_crew.research_topic("集成测试话题", content_type="article")
 
         # 验证ContentManager.get_content_type是否被调用
-        from core.models.content_manager import ContentManager
+        from core.models.facade.content_manager import ContentManager
         ContentManager.get_content_type.assert_called_with("article")
 
         # 验证研究配置中是否包含内容类型信息

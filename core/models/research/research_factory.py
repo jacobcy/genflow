@@ -6,16 +6,17 @@
 
 from typing import Dict, List, Optional, Any, Union, cast
 import uuid
-import logging
 from datetime import datetime
 from loguru import logger
 
 from .basic_research import BasicResearch, KeyFinding, Source, ExpertInsight
 from .research import TopicResearch
 from .research_manager import ResearchManager
-from .utils import validate_research_data, format_research_as_json
+from .utils.research_formatter import format_research_as_markdown, format_research_as_json
+from .utils.research_validator import get_research_completeness, validate_research_data
 
-logger = logging.getLogger(__name__)
+# 使用loguru而非标准日志
+# logger = logging.getLogger(__name__)
 
 class ResearchFactory:
     """
@@ -50,7 +51,7 @@ class ResearchFactory:
         sources = sources or []
 
         # 生成唯一ID
-        research_id = kwargs.get("id") or f"research_{uuid.uuid4().hex[:8]}"
+        research_id = kwargs.pop("id", None) or f"research_{uuid.uuid4().hex[:8]}"
 
         # 创建研究报告实例
         research = TopicResearch(
@@ -113,23 +114,42 @@ class ResearchFactory:
         """
         ResearchManager.ensure_initialized()
 
-        # 如果是BasicResearch，转换为TopicResearch
-        if isinstance(research, BasicResearch) and not isinstance(research, TopicResearch):
-            research = TopicResearch.from_basic_research(research, topic_id="")  # 使用空字符串而非None
-
-        # 如果是字典，转换为TopicResearch
-        if isinstance(research, dict):
-            research = TopicResearch(**research)
+        # 处理不同类型的输入
+        processed_research = cls._prepare_research_for_save(research)
 
         # 验证数据
-        if not cls.validate_research(research):
+        if not cls.validate_research(processed_research):
             raise ValueError("研究报告数据无效，无法保存")
 
         # 保存研究报告
-        if ResearchManager.save_research(research):
-            return research.id
+        if ResearchManager.save_research(processed_research):
+            return processed_research.id
         else:
-            raise RuntimeError(f"保存研究报告失败: {research.id}")
+            raise RuntimeError(f"保存研究报告失败: {processed_research.id}")
+
+    @classmethod
+    def _prepare_research_for_save(cls, research: Union[BasicResearch, TopicResearch, Dict[str, Any]]) -> TopicResearch:
+        """
+        准备研究报告以便保存
+
+        将不同类型的研究报告转换为TopicResearch类型
+
+        Args:
+            research: 待处理的研究报告
+
+        Returns:
+            TopicResearch: 处理后的研究报告
+        """
+        # 如果是BasicResearch，转换为TopicResearch
+        if isinstance(research, BasicResearch) and not isinstance(research, TopicResearch):
+            return TopicResearch.from_basic_research(research, topic_id="")  # 使用空字符串而非None
+
+        # 如果是字典，转换为TopicResearch
+        if isinstance(research, dict):
+            return TopicResearch(**research)
+
+        # 如果已经是TopicResearch，直接返回
+        return research
 
     @classmethod
     def delete_research(cls, research_id: str) -> bool:
@@ -302,11 +322,10 @@ class ResearchFactory:
         Returns:
             str: Markdown格式的文本
         """
-        from .utils import format_research_as_markdown
         return format_research_as_markdown(research)
 
     @classmethod
-    def to_json(cls, research: Union[BasicResearch, TopicResearch]) -> Dict[str, Any]:
+    def to_json(cls, research: Union[BasicResearch, TopicResearch, Dict[str, Any]]) -> Dict[str, Any]:
         """
         将研究报告转换为JSON格式
 
@@ -329,5 +348,4 @@ class ResearchFactory:
         Returns:
             Dict[str, Any]: 完整度评估结果
         """
-        from .utils import get_research_completeness
         return get_research_completeness(research)

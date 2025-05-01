@@ -3,12 +3,12 @@
 提供研究报告的数据库模型定义，包括ORM映射和转换方法。
 """
 
-from sqlalchemy import Column, String, Text, DateTime, Float, ForeignKey, Integer
+from sqlalchemy import Column, String, Text, DateTime, Float, ForeignKey
 from sqlalchemy.orm import relationship
 import json
 from datetime import datetime
 import uuid
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 
 from core.models.db.session import Base
 from .basic_research import BasicResearch, Source, KeyFinding, ExpertInsight
@@ -30,8 +30,8 @@ class Research(Base):
     # 分类与关联
     topic_id = Column(String(50), nullable=True, index=True)
 
-    # 元数据
-    metadata = Column(Text, nullable=True, default="{}")
+    # 元数据 - 不能使用metadata作为字段名，因为它是SQLAlchemy的保留字
+    meta_data = Column(Text, nullable=True, default="{}")
     research_timestamp = Column(DateTime, nullable=False, default=datetime.now)
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
@@ -49,7 +49,7 @@ class Research(Base):
         """
         # 处理JSON字段
         try:
-            metadata_str = str(getattr(self, "metadata", "{}"))
+            metadata_str = str(getattr(self, "meta_data", "{}"))
             metadata = json.loads(metadata_str)
         except:
             metadata = {}
@@ -99,7 +99,7 @@ class Research(Base):
             Research: 研究报告模型实例
         """
         # 序列化JSON字段
-        metadata = json.dumps(data.get("metadata", {}))
+        meta_data = json.dumps(data.get("metadata", {}))
 
         # 处理日期字段
         research_timestamp = data.get("research_timestamp", datetime.now())
@@ -133,7 +133,7 @@ class Research(Base):
             summary=data.get("summary"),
             report=data.get("report"),
             topic_id=data.get("topic_id"),
-            metadata=metadata,
+            meta_data=meta_data,
             research_timestamp=research_timestamp,
             created_at=created_at,
             updated_at=updated_at
@@ -161,7 +161,7 @@ class Research(Base):
 
         # 处理JSON字段
         try:
-            metadata_str = safe_get("metadata", "{}")
+            metadata_str = safe_get("meta_data", "{}")
             if not isinstance(metadata_str, str):
                 metadata_str = str(metadata_str) if metadata_str else "{}"
             metadata = json.loads(metadata_str)
@@ -241,7 +241,7 @@ class ResearchSource(Base):
             url=safe_get("url"),
             author=safe_get("author"),
             publish_date=safe_get("publish_date"),
-            reliability_score=safe_get("reliability_score", 0.0),
+            reliability_score=float(safe_get("reliability_score", 0.0)),
             content_snippet=safe_get("content_snippet")
         )
 
@@ -279,7 +279,7 @@ class ResearchFinding(Base):
 
         return KeyFinding(
             content=safe_get("content", ""),
-            importance=safe_get("importance", 0.0),
+            importance=float(safe_get("importance", 0.0)),
             sources=[]  # 在实际实现中应查询关联的sources
         )
 

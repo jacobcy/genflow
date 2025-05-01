@@ -5,7 +5,7 @@
 """
 
 from typing import Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 class ContentTypeModel(BaseModel):
     """简化的内容类型模型，仅包含必要信息"""
@@ -19,9 +19,9 @@ class ContentTypeModel(BaseModel):
     needs_expert: bool = Field(default=False, description="是否需要专家观点")
     needs_data_analysis: bool = Field(default=False, description="是否需要数据分析")
 
-    class Config:
-        """Pydantic配置"""
-        use_enum_values = True
+    model_config = ConfigDict(
+        use_enum_values=True
+    )
 
     def get_type_summary(self) -> Dict[str, Any]:
         """获取内容类型摘要信息

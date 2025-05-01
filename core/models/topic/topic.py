@@ -1,14 +1,16 @@
 """话题数据模型
 
 包含话题的基本信息结构和相关功能。
-话题是内容创作的主题，包含标题、描述、关键词等信息。
+话题是内容创作的主题，包含标题、描述等基本信息。
+所有话题都来自外部抓取，不包含创建话题的功能。
 """
 
 import uuid
 import json
-from typing import Dict, List, Optional, Any, Union
+import time
+from typing import Dict, Any, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, validator, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from loguru import logger
 
@@ -16,29 +18,28 @@ from loguru import logger
 class Topic(BaseModel):
     """话题模型，包含话题的基本信息
 
-    话题是内容创作的基础，提供标题、描述、关键词等信息，
-    用于指导内容生成过程。
+    话题是内容创作的基础，提供标题、描述等信息。
+    该模型不包含创建话题的功能，仅用于表示外部抓取的话题数据。
     """
     # 基本信息
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="话题唯一ID")
     title: str = Field(..., description="话题标题")
     description: str = Field(default="", description="话题描述")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="最后更新时间")
-
-    # 分类和标签
-    category: str = Field(default="general", description="话题分类")
-    tags: List[str] = Field(default_factory=list, description="话题标签")
-    keywords: List[str] = Field(default_factory=list, description="关键词列表")
-
-    # 内容相关属性
-    language: str = Field(default="zh-CN", description="语言")
-    content_type: str = Field(default="article", description="内容类型，如article、video等")
     platform: str = Field(default="", description="目标平台")
 
-    # 额外属性
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="元数据，存储附加信息")
-    parent_id: Optional[str] = Field(default=None, description="父话题ID，用于构建话题层次结构")
+    # 时间相关字段
+    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    updated_at: datetime = Field(default_factory=datetime.now, description="最后更新时间")
+    source_time: Optional[int] = Field(default=None, description="来源时间戳")
+    expire_time: Optional[int] = Field(default=None, description="过期时间戳")
+
+    # URL相关字段
+    url: str = Field(default="", description="话题链接")
+    mobile_url: str = Field(default="", description="移动端链接")
+
+    # 内容特性字段
+    hot: int = Field(default=0, description="热度值")
+    cover: str = Field(default="", description="封面图片URL")
 
     @field_validator('id')
     def validate_id(cls, v):
@@ -62,7 +63,16 @@ class Topic(BaseModel):
         Returns:
             Dict[str, Any]: 话题的字典表示
         """
-        return self.model_dump()
+        data = self.model_dump()
+
+        # 确保时间字段正确
+        if self.source_time is None:
+            data['source_time'] = int(time.time())
+        if self.expire_time is None:
+            # 默认7天后过期
+            data['expire_time'] = int(time.time()) + 7 * 24 * 60 * 60
+
+        return data
 
     def to_json(self) -> str:
         """转换为JSON字符串
@@ -86,11 +96,10 @@ class Topic(BaseModel):
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "title": "Python异步编程最佳实践",
                 "description": "探讨Python中异步编程的最佳实践和常见陷阱",
-                "category": "programming",
-                "tags": ["Python", "异步", "编程技巧"],
-                "keywords": ["asyncio", "异步IO", "协程", "并发"],
-                "language": "zh-CN",
-                "content_type": "tutorial",
+                "url": "https://example.com/topics/python-async",
+                "mobile_url": "https://m.example.com/topics/python-async",
+                "hot": 100,
+                "cover": "https://example.com/images/python-async.jpg",
                 "platform": "medium"
             }
         }

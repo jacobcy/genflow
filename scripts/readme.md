@@ -19,8 +19,9 @@
 | `start-backend-debug.sh` | 以调试模式启动后端服务 | `./start-backend-debug.sh` |
 | `start-frontend.sh` | 启动前端开发服务器 | `./start-frontend.sh` |
 | `test-db-connection.sh` | 测试数据库连接 | `./test-db-connection.sh` |
-| `init_db.py` | 初始化数据库结构和基础数据 | `python init_db.py` |
-| `db_manager.py` | 数据库管理工具 | `python db_manager.py [command]` |
+| `initialize_database.py` | 初始化数据库结构和基础数据 | `python initialize_database.py` |
+| `db_tools.py` | 数据库管理工具 | `python db_tools.py [command]` |
+| `debug_redis.py` | Redis 调试工具 | `python debug_redis.py [command]` |
 
 ### 集成开发环境
 
@@ -43,6 +44,8 @@
 | 脚本 | 描述 | 用法 |
 |------|------|------|
 | `start-backend.sh` | 以生产模式启动后端服务 | `./start-backend.sh` |
+| `start-frontend-prod.sh` | 构建并以生产模式启动前端服务 | `./start-frontend-prod.sh` |
+| `start-prod.sh` | 启动完整的生产环境（后端+前端） | `./start-prod.sh` |
 
 ## 废弃脚本
 
@@ -67,10 +70,22 @@
 ./scripts/start-dev.sh
 ```
 
-### 单独启动后端（调试模式）
+### 启动完整生产环境
 
 ```bash
-./scripts/start-backend-debug.sh
+./scripts/start-prod.sh
+```
+
+### 单独启动后端（生产模式）
+
+```bash
+./scripts/start-backend.sh
+```
+
+### 单独启动前端（生产模式）
+
+```bash
+./scripts/start-frontend-prod.sh
 ```
 
 ### 测试数据库连接
@@ -81,13 +96,15 @@
 
 ## 脚本依赖关系
 
-- `start-dev.sh` 依赖于 `init_db.py` 进行数据库初始化
-- `start-backend-debug.sh` 和 `start-backend.sh` 都依赖于已配置好的环境变量
+- `start-dev.sh` 依赖于 `initialize_database.py` 进行数据库初始化
+- `start-backend-debug.sh`, `start-backend.sh`, `start-prod.sh` 都依赖于已配置好的环境变量
+- `start-frontend-prod.sh` 依赖前端项目的构建脚本和 `serve` 工具
+- `start-prod.sh` 依赖 `start-backend.sh` 和 `start-frontend-prod.sh`
 - 所有脚本都假设已激活 Python 虚拟环境
 
 ## 注意事项
 
 1. 运行脚本前确保位于项目根目录
 2. 确保脚本有执行权限 (`chmod +x scripts/*.sh`)
-3. 后端服务默认在 8081 端口运行，前端服务在 6060 端口运行
+3. 后端服务默认在 8081 端口运行，前端开发服务在 6060 端口，前端生产服务在 3000 端口
 4. 环境变量配置在 `.env` 和 `backend/.env` 文件中

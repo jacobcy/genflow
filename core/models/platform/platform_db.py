@@ -2,70 +2,69 @@ from sqlalchemy import Column, String, Text, Boolean, DateTime, ForeignKey, Tabl
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict, MutableList
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 
 from core.models.db.session import Base
 from core.models.db.utils import JSONEncodedDict
 
-class Platform(Base):
-    """平台配置模型"""
+class PlatformDB(Base):
+    """平台配置的数据库存储模型"""
     __tablename__ = "platform"
-    __table_args__ = {'extend_existing': True}  # 允许重新定义已存在的表
+    __table_args__ = {'extend_existing': True}
 
-    name = Column(String(100), primary_key=True, index=True, nullable=False)
+    # Use 'id' as primary key to match Pydantic model and config files
+    id = Column(String(100), primary_key=True, index=True, nullable=False)
+    name = Column(String(100), nullable=False, index=True)
     description = Column(Text, nullable=True)
-    is_enabled = Column(Boolean, default=True)
+    is_enabled = Column(Boolean, default=True) # Consider removing if config is static
 
-    # 平台特性
-    platform_type = Column(String(50), nullable=True)
+    # Platform characteristics (simplified)
+    platform_type = Column(String(50), nullable=True) # Corresponds to category?
     url = Column(String(255), nullable=True)
-    logo_url = Column(String(255), nullable=True)
+    logo_url = Column(String(255), nullable=True) # Might be better stored elsewhere or in config
 
-    # 平台限制
-    max_title_length = Column(JSONEncodedDict, nullable=True)
-    max_content_length = Column(JSONEncodedDict, nullable=True)
-    allowed_media_types = Column(JSONEncodedDict, nullable=True)
+    # Store complex constraints and technical details as JSON
+    # This avoids complex table structures for potentially changing static config
+    constraints = Column(JSONEncodedDict, nullable=True)
+    technical = Column(JSONEncodedDict, nullable=True)
+    # Removed individual constraint/technical columns like max_title_length, etc.
+    # Removed api_config (now part of technical)
+    # Removed allowed_media_types, max_content_length (part of constraints)
 
-    # API配置
-    api_config = Column(JSONEncodedDict, nullable=True)
-
-    # 时间戳
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Timestamps using timezone-aware UTC
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
-        return f"<Platform {self.name}>"
+        return f"<PlatformDB {self.id}>"
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典格式
+        """转换为字典格式 (仅基本字段)
+
+        Note: This might not be needed if data access goes via Manager+Pydantic
 
         Returns:
             Dict[str, Any]: 字典表示
         """
-        # 处理SQLAlchemy对象的属性访问
-        created_at_value = None
-        updated_at_value = None
-
-        if hasattr(self, 'created_at') and self.created_at is not None:
-            if isinstance(self.created_at, datetime):
-                created_at_value = self.created_at.isoformat()
-
-        if hasattr(self, 'updated_at') and self.updated_at is not None:
-            if isinstance(self.updated_at, datetime):
-                updated_at_value = self.updated_at.isoformat()
+        # Process timestamps carefully
+        def format_dt(dt):
+            if dt and isinstance(dt, datetime):
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt.isoformat()
+            return None
 
         return {
+            "id": self.id,
             "name": self.name,
             "description": self.description,
             "is_enabled": self.is_enabled,
             "platform_type": self.platform_type,
             "url": self.url,
             "logo_url": self.logo_url,
-            "max_title_length": self.max_title_length,
-            "max_content_length": self.max_content_length,
-            "allowed_media_types": self.allowed_media_types,
-            "api_config": self.api_config,
-            "created_at": created_at_value,
-            "updated_at": updated_at_value
+            "constraints": self.constraints, # Keep as is from JSON column
+            "technical": self.technical,   # Keep as is from JSON column
+            "created_at": format_dt(self.created_at),
+            "updated_at": format_dt(self.updated_at)
         }

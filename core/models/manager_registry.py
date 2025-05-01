@@ -6,9 +6,9 @@
 from typing import Type, Optional, cast
 from loguru import logger
 
-from .simple_content_manager import SimpleContentManager
-from .content_manager import ContentManager
-from .config_manager import ConfigManager
+from .facade.simple_content_manager import SimpleContentManager
+from .facade.content_manager import ContentManager
+from .facade.config_manager import ConfigManager
 from .operation_manager import OperationManager
 
 

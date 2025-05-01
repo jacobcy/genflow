@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, Union, List
 from loguru import logger
 
 from core.controllers.base_adapter import BaseTeamAdapter
-from core.models.content_manager import ContentManager
+from core.models.facade.content_manager import ContentManager
 from core.models.topic.topic import Topic
 from core.models.research.research import BasicResearch, TopicResearch
 from core.agents.research_crew import ResearchCrew

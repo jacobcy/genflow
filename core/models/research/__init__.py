@@ -14,6 +14,8 @@ from .basic_research import (
 from .research import TopicResearch
 
 from .research_factory import ResearchFactory
+from .research_storage import ResearchStorage
+from .research_adapter import ResearchAdapter
 
 # 导出主要类，方便使用
 __all__ = [
@@ -23,5 +25,7 @@ __all__ = [
     'Source',
     'ExpertInsight',
     'ArticleSection',
-    'ResearchFactory'
+    'ResearchFactory',
+    'ResearchStorage',
+    'ResearchAdapter'
 ]

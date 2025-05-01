@@ -1,25 +1,27 @@
 """平台管理器
 
-负责管理发布平台的获取、保存等操作
+负责从配置文件加载平台配置并提供访问接口。
+这是一个只读的配置管理器。
 """
 
 from typing import Dict, List, Optional, Any, ClassVar
 from loguru import logger
 import os
-import json
-from pathlib import Path
 
-from core.models.article.article import Article
-from core.models.platform.platform import Platform, get_default_platform
-from core.models.infra.json_loader import JsonModelLoader
-from core.models.platform.platform_validator import validate_article_against_platform
-from ..infra.base_manager import BaseManager
+# Import Pydantic model and loader
+from core.models.platform.platform import Platform
+from core.models.infra.json_loader import load_json_config, get_config_file_path
 
+# Removed BaseManager import
+# Removed platform_validator import
+# Removed Article import
 
-class PlatformManager(BaseManager):
+# No longer inherits from BaseManager
+class PlatformManager:
     """平台管理器
 
-    提供平台相关的操作，包括获取、保存平台
+    从 config/platforms/platforms.json 加载平台配置并提供访问接口。
+    这是一个只读的配置管理器。
     """
 
     _platforms: ClassVar[Dict[str, Platform]] = {}
@@ -33,49 +35,54 @@ class PlatformManager(BaseManager):
 
     @classmethod
     def initialize(cls) -> None:
-        """初始化平台管理器"""
+        """初始化平台管理器，从 JSON 文件加载数据"""
         if cls._initialized:
             return
 
-        # 加载平台数据
         cls._load_platforms()
-
         cls._initialized = True
-        logger.info("平台管理器初始化完成")
+        logger.info(f"平台管理器初始化完成，加载了 {len(cls._platforms)} 个平台。")
 
     @classmethod
     def _load_platforms(cls) -> None:
-        """从文件目录加载平台数据"""
-        # 从platforms目录加载平台数据
-        platforms_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'platforms')
-        platforms: List[Platform] = []
+        """从 core/models/platform/collection/ 目录加载平台数据"""
+        cls._platforms = {}
+        # Define the relative path to the collection directory
+        collection_dir = os.path.join(os.path.dirname(__file__), 'collection')
 
-        try:
-            # 加载目录中的所有平台JSON文件
-            if os.path.exists(platforms_dir):
-                for file_path in Path(platforms_dir).glob("*.json"):
-                    try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            platform_data = json.load(f)
-                            platform = Platform(**platform_data)
-                            platforms.append(platform)
-                    except Exception as file_e:
-                        logger.error(f"加载平台文件失败 {file_path}: {str(file_e)}")
-        except Exception as e:
-            logger.error(f"从目录加载平台失败: {str(e)}")
+        if not os.path.isdir(collection_dir):
+            logger.error(f"平台配置目录不存在: {collection_dir}")
+            return
 
-        # 保存到缓存中
-        for platform in platforms:
-            cls._platforms[platform.name] = platform
+        loaded_count = 0
+        for filename in os.listdir(collection_dir):
+            if filename.endswith(".json"):
+                file_path = os.path.join(collection_dir, filename)
+                try:
+                    # Use the json_loader utility for consistency, though direct open is fine too
+                    platform_data = load_json_config(file_path)
+                    if platform_data:
+                        # Use the simplified Platform Pydantic model
+                        platform = Platform(**platform_data)
+                        # Use 'id' field from JSON as the key
+                        if hasattr(platform, 'id') and platform.id:
+                            cls._platforms[platform.id] = platform
+                            loaded_count += 1
+                        else:
+                            logger.warning(f"平台文件 {filename} 数据缺少 'id' 字段，跳过。")
+                    else:
+                        logger.warning(f"无法加载或解析平台文件: {file_path}")
+                except Exception as e:
+                    logger.error(f"加载平台文件失败: {file_path}, 错误: {e}")
 
-        logger.info(f"已加载 {len(platforms)} 个平台")
+        logger.debug(f"从 {collection_dir} 成功加载 {loaded_count} 个平台配置。")
 
     @classmethod
     def get_platform(cls, platform_id: str) -> Optional[Platform]:
-        """获取指定ID的平台
+        """获取指定ID的平台配置
 
         Args:
-            platform_id: 平台ID
+            platform_id: 平台ID (e.g., 'wechat_mp')
 
         Returns:
             Optional[Platform]: 平台对象，不存在则返回None
@@ -85,109 +92,38 @@ class PlatformManager(BaseManager):
 
     @classmethod
     def get_platform_by_name(cls, name: str) -> Optional[Platform]:
-        """根据名称获取平台
+        """根据平台名称获取平台配置 (大小写不敏感)
 
         Args:
-            name: 平台名称
+            name: 平台名称 (e.g., '微信公众号')
 
         Returns:
             Optional[Platform]: 平台对象，不存在则返回None
         """
         cls.ensure_initialized()
-
-        # 直接匹配名称
-        if name in cls._platforms:
-            return cls._platforms[name]
-
-        # 不区分大小写匹配
+        search_name = name.lower()
         for platform in cls._platforms.values():
-            if platform.name.lower() == name.lower():
+            if platform.name.lower() == search_name:
                 return platform
-
         return None
 
     @classmethod
     def get_all_platforms(cls) -> List[Platform]:
-        """获取所有平台
+        """获取所有已加载的平台配置列表
 
         Returns:
-            List[Platform]: 平台列表
+            List[Platform]: 平台对象列表
         """
         cls.ensure_initialized()
         return list(cls._platforms.values())
 
-    @classmethod
-    def save_platform(cls, platform: Platform) -> bool:
-        """保存平台
+    # Removed save_platform method
+    # Removed validate_article method
+    # Removed get_platform_constraints method
 
-        Args:
-            platform: 平台对象
-
-        Returns:
-            bool: 是否成功保存
-        """
-        cls.ensure_initialized()
-
-        # 保存到缓存
-        cls._platforms[platform.name] = platform
-
-        # 尝试保存到文件
-        try:
-            platforms_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'platforms')
-            os.makedirs(platforms_dir, exist_ok=True)
-
-            file_path = os.path.join(platforms_dir, f"{platform.name}.json")
-            with open(file_path, 'w', encoding='utf-8') as f:
-                # 将Platform对象转换为字典
-                platform_dict = platform.dict()
-                json.dump(platform_dict, f, ensure_ascii=False, indent=2)
-
-            logger.info(f"平台保存成功: {platform.name}")
-            return True
-        except Exception as e:
-            logger.error(f"保存平台到文件失败: {str(e)}")
-            return False
-
-    @classmethod
-    def validate_article(cls, article: Article, platform_name: str) -> Dict[str, Any]:
-        """验证文章是否符合平台要求
-
-        Args:
-            article: 文章对象
-            platform_name: 平台名称
-
-        Returns:
-            Dict[str, Any]: 验证结果，包含是否通过验证和详细信息
-        """
-        cls.ensure_initialized()
-
-        # 获取平台对象
-        platform = cls.get_platform_by_name(platform_name)
-        if not platform:
-            return {
-                "valid": False,
-                "message": f"找不到平台: {platform_name}",
-                "details": []
-            }
-
-        # 使用平台验证工具验证文章
-        return validate_article_against_platform(article, platform)
-
-    @classmethod
-    def get_platform_constraints(cls, platform_name: str) -> Dict[str, Any]:
-        """获取平台的内容约束
-
-        Args:
-            platform_name: 平台名称
-
-        Returns:
-            Dict[str, Any]: 平台约束配置
-        """
-        cls.ensure_initialized()
-
-        platform = cls.get_platform_by_name(platform_name)
-        if not platform:
-            return {}
-
-        # 使用Platform模型中的方法获取约束
-        return platform.get_platform_constraints()
+    # Add method to get default if needed, based on a predefined ID
+    # For example, if 'default' is a valid platform ID in the config:
+    # @classmethod
+    # def get_default_platform(cls) -> Optional[Platform]:
+    #     cls.ensure_initialized()
+    #     return cls.get_platform('default')

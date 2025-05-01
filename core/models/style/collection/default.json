@@ -1,0 +1,22 @@
+{
+  "name": "default",
+  "type": "general",
+  "description": "默认通用风格",
+  "target_audience": "general",
+  "content_types": [],
+  "tone": "neutral",
+  "formality": 3,
+  "emotion": false,
+  "emoji": false,
+  "language_level": "normal",
+  "recommended_patterns": [
+    "清晰的结构",
+    "逻辑性强",
+    "易于理解",
+    "重点突出"
+  ],
+  "examples": [
+    "这是一个符合默认风格的示例段落，语气中性，表达清晰。",
+    "默认风格通常避免使用过多的专业术语和复杂的句式。"
+  ]
+}
